@@ -5,7 +5,7 @@
 #include <freertos/task.h>
 
 #include <cstdint>
-#include <iostream>
+#include <cstdio>
 #include <mutex>
 #include <unordered_map>
 
@@ -18,12 +18,12 @@ class Router {
   void register_actor(const uint64_t actor_id) {
     // TODO(raphaelhetzel) Potentially optimize by directly using freertos
     std::unique_lock<std::mutex> lock(mutex);
-    std::cout << "register\n";
+    printf("register\n");
     if (routing_table.find(actor_id) == routing_table.end()) {
       routing_table.insert(std::make_pair(
           actor_id, xQueueCreate(10, sizeof(uint32_t) + sizeof(uint64_t))));
     } else {
-      std::cout << "tried to register already registered actor\n";
+      printf("tried to register already registered actor\n");
     }
   }
 
@@ -78,7 +78,7 @@ class Actor {
   ~Actor() { router->deregister_actor(id); }
 
   int receive(uint64_t sender, uint32_t message) {
-    std::cout << sender << " " << id << " " <<  message << "\n";
+    printf("%lld -> %lld: %d\n", sender, id, message);
     send((id + 1) % 16, message);
     return 0;
   }
@@ -116,6 +116,7 @@ void actor_task(void* params) {
 }
 
 void app_main(void) {
+  printf("%d \n", xPortGetFreeHeapSize());
   Router* router = new Router();
 
   TaskHandle_t handles[16] = {NULL};
@@ -130,5 +131,6 @@ void app_main(void) {
   }
 
   vTaskDelay(1500 / portTICK_PERIOD_MS);
+  printf("%d \n", xPortGetFreeHeapSize());
   router->send(0, 1, 16);
 }
