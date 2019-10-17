@@ -1,5 +1,5 @@
 idf_component_register(
-  SRCS "lua_cpp_test.cpp"
+  SRCS "main.cpp"
   INCLUDE_DIRS ""
   REQUIRES "lua"
 )
