@@ -6,12 +6,36 @@
 
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
+#include <memory>
 #include <mutex>
+#include <optional>
 #include <unordered_map>
 
 extern "C" {
 void app_main(void);
 }
+
+class Message {
+ public:
+  Message(const Message& old) = delete;
+  Message(Message&& old) : data_(old.data_) { old.data_ = nullptr; }
+
+  Message() { data_ = new char[1508]; }
+
+  ~Message() { delete data_; }
+
+  uint64_t sender() { return *reinterpret_cast<uint64_t*>(data_); }
+
+  void sender(uint64_t sendr) { *reinterpret_cast<uint64_t*>(data_) = sendr; }
+
+  char* buffer() { return data_ + 8; }
+
+  void* raw() { return data_; }
+
+ private:
+  char* data_;
+};
 
 class Router {
  public:
@@ -20,8 +44,7 @@ class Router {
     std::unique_lock<std::mutex> lock(mutex);
     printf("register\n");
     if (routing_table.find(actor_id) == routing_table.end()) {
-      routing_table.insert(std::make_pair(
-          actor_id, xQueueCreate(10, sizeof(uint32_t) + sizeof(uint64_t))));
+      routing_table.insert(std::make_pair(actor_id, xQueueCreate(1, 1508)));
     } else {
       printf("tried to register already registered actor\n");
     }
@@ -36,32 +59,30 @@ class Router {
     }
   }
 
-  void send(uint64_t sender, uint64_t receiver, int32_t message) {
+  void send(uint64_t sender, uint64_t receiver, Message message) {
     std::unique_lock<std::mutex> lock(mutex);
     auto queue = routing_table.find(receiver);
     if (queue != routing_table.end()) {
       QueueHandle_t handle = queue->second;
       lock.unlock();
-      auto full_message = std::make_pair(sender, message);
-      xQueueSend(handle, &full_message, 100 / portTICK_PERIOD_MS);
+      message.sender(sender);
+      xQueueSend(handle, message.raw(), 100 / portTICK_PERIOD_MS);
     }
   }
 
-  bool receive(uint64_t receiver, uint64_t* sender, uint32_t* buffer) {
+  std::optional<Message> receive(uint64_t receiver) {
     std::unique_lock<std::mutex> lock(mutex);
     auto queue = routing_table.find(receiver);
     if (queue != routing_table.end()) {
       QueueHandle_t handle = queue->second;
       lock.unlock();  // This is not completely safe and assumes a queue is not
                       // read after delete is called
-      std::pair<uint64_t, int32_t> full_message;
-      if (xQueueReceive(handle, &full_message, portMAX_DELAY)) {
-        *buffer = full_message.second;
-        *sender = full_message.first;
-        return true;
+      auto message = Message();
+      if (xQueueReceive(handle, message.raw(), portMAX_DELAY)) {
+        return message;
       }
     }
-    return false;
+    return std::nullopt;
   }
 
  private:
@@ -73,22 +94,36 @@ class Actor {
  public:
   Actor(uint64_t id, Router* router) : id(id), router(router) {
     router->register_actor(id);
+    timestamp = xTaskGetTickCount();
+    round = 0;
   }
 
   ~Actor() { router->deregister_actor(id); }
 
-  int receive(uint64_t sender, uint32_t message) {
-    printf("%lld -> %lld: %d\n", sender, id, message);
-    send((id + 1) % 16, message);
-    return 0;
+  void receive(uint64_t sender, char* message) {
+    if (round == 10000 && id == 0) {
+      printf("%lld: %d\n", id,
+             portTICK_PERIOD_MS * (xTaskGetTickCount() - timestamp));
+      fflush(stdout);
+      round = 0;
+      timestamp = xTaskGetTickCount();
+    }
+    if (id == 0) {
+      round++;
+    }
+    Message m = Message();
+    snprintf(m.buffer(), 1500, "Test %lld", id);
+    send((id + 1) % 16, std::move(m));
   }
 
  private:
   uint64_t id;
   Router* router;
+  uint32_t timestamp;
+  uint32_t round;
 
-  int send(uint64_t receiver, uint32_t message) {
-    router->send(id, receiver, message);
+  int send(uint64_t receiver, Message&& message) {
+    router->send(id, receiver, std::move(message));
     return 0;
   }
 };
@@ -103,15 +138,14 @@ void actor_task(void* params) {
   uint64_t id = ((struct Params*)params)->id;
 
   Actor* actor = new Actor(id, router);
-  uint32_t message;
-  uint64_t sender;
 
   while (true) {
-    if (router->receive(id, &sender, &message)) {
-      actor->receive(sender, message);
+    auto message = router->receive(id);
+    if (message) {
+      actor->receive((*message).sender(), (*message).buffer());
     }
     // Without IO, taskYIELD() doesn't reset the idle task watchdog
-    vTaskDelay(10 / portTICK_PERIOD_MS);
+    // vTaskDelay(10 / portTICK_PERIOD_MS);
   }
 }
 
@@ -132,5 +166,5 @@ void app_main(void) {
 
   vTaskDelay(1500 / portTICK_PERIOD_MS);
   printf("%d \n", xPortGetFreeHeapSize());
-  router->send(0, 1, 16);
+  router->send(0, 1, Message());
 }
