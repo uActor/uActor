@@ -21,9 +21,15 @@ class Message {
   Message(const Message& old) = delete;
   Message(Message&& old) : data_(old.data_) { old.data_ = nullptr; }
 
-  Message() { data_ = new char[1508]; }
+  explicit Message(bool init = true) {
+    if (init) {
+      data_ = new char[1508];
+    }
+  }
 
   ~Message() { delete data_; }
+
+  void moved() { data_ = nullptr; }
 
   uint64_t sender() { return *reinterpret_cast<uint64_t*>(data_); }
 
@@ -44,7 +50,8 @@ class Router {
     std::unique_lock<std::mutex> lock(mutex);
     printf("register\n");
     if (routing_table.find(actor_id) == routing_table.end()) {
-      routing_table.insert(std::make_pair(actor_id, xQueueCreate(1, 1508)));
+      routing_table.insert(
+          std::make_pair(actor_id, xQueueCreate(16, sizeof(Message))));
     } else {
       printf("tried to register already registered actor\n");
     }
@@ -66,7 +73,8 @@ class Router {
       QueueHandle_t handle = queue->second;
       lock.unlock();
       message.sender(sender);
-      xQueueSend(handle, message.raw(), 100 / portTICK_PERIOD_MS);
+      xQueueSend(handle, &message, portMAX_DELAY);
+      message.moved();
     }
   }
 
@@ -77,8 +85,8 @@ class Router {
       QueueHandle_t handle = queue->second;
       lock.unlock();  // This is not completely safe and assumes a queue is not
                       // read after delete is called
-      auto message = Message();
-      if (xQueueReceive(handle, message.raw(), portMAX_DELAY)) {
+      auto message = Message(false);
+      if (xQueueReceive(handle, &message, portMAX_DELAY)) {
         return message;
       }
     }
@@ -111,8 +119,11 @@ class Actor {
     if (id == 0) {
       round++;
     }
+
     Message m = Message();
-    snprintf(m.buffer(), 1500, "Test %lld", id);
+    for (int i = 0; i < 1500 / 8; i += 1) {
+      *(reinterpret_cast<uint64_t*>(m.buffer()) + i) = id;
+    }
     send((id + 1) % 16, std::move(m));
   }
 
@@ -158,13 +169,14 @@ void app_main(void) {
 
   for (uint64_t i = 0; i < 16; i++) {
     params[i] = {.id = i, .router = router};
-    vTaskDelay(100 / portTICK_PERIOD_MS);
+    // vTaskDelay(100 / portTICK_PERIOD_MS);
     char buffer[16];
     snprintf(buffer, sizeof(buffer), "Test%lld", i);
-    xTaskCreate(&actor_task, buffer, 2048, &params[i], 5, &handles[i]);
+    xTaskCreatePinnedToCore(&actor_task, buffer, 2048, &params[i], 5,
+                            &handles[i], i % 2);
   }
 
   vTaskDelay(1500 / portTICK_PERIOD_MS);
   printf("%d \n", xPortGetFreeHeapSize());
-  router->send(0, 1, Message());
+  router->send(0, 1, Message(true));
 }
