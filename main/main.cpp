@@ -1,5 +1,16 @@
 // TODO(raphaelhetzel) Split into multiple files once the APIs are defined
 
+#define STATIC_MESSAGE_SIZE 1500
+
+// Write out the id to the task in 8 byte
+// steps to touch the data in some way
+#define TOUCH_DATA true
+
+// TRUE: Message copied to the queue FALSE: Reference copied to the queue
+#define BY_VALUE false
+
+#define QUEUE_SIZE 1
+
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 #include <freertos/task.h>
@@ -23,7 +34,7 @@ class Message {
 
   explicit Message(bool init = true) {
     if (init) {
-      data_ = new char[1508];
+      data_ = new char[STATIC_MESSAGE_SIZE + 8];
     }
   }
 
@@ -48,10 +59,14 @@ class Router {
   void register_actor(const uint64_t actor_id) {
     // TODO(raphaelhetzel) Potentially optimize by directly using freertos
     std::unique_lock<std::mutex> lock(mutex);
-    printf("register\n");
     if (routing_table.find(actor_id) == routing_table.end()) {
       routing_table.insert(
-          std::make_pair(actor_id, xQueueCreate(16, sizeof(Message))));
+#if BY_VALUE
+          std::make_pair(actor_id,
+                         xQueueCreate(QUEUE_SIZE, STATIC_MESSAGE_SIZE + 8)));
+#else
+          std::make_pair(actor_id, xQueueCreate(QUEUE_SIZE, sizeof(Message))));
+#endif
     } else {
       printf("tried to register already registered actor\n");
     }
@@ -73,8 +88,12 @@ class Router {
       QueueHandle_t handle = queue->second;
       lock.unlock();
       message.sender(sender);
+#if BY_VALUE
+      xQueueSend(handle, message.raw(), portMAX_DELAY);
+#else
       xQueueSend(handle, &message, portMAX_DELAY);
       message.moved();
+#endif
     }
   }
 
@@ -85,10 +104,17 @@ class Router {
       QueueHandle_t handle = queue->second;
       lock.unlock();  // This is not completely safe and assumes a queue is not
                       // read after delete is called
+#if BY_VALUE
+      auto message = Message(true);
+      if (xQueueReceive(handle, message.raw(), portMAX_DELAY)) {
+        return message;
+      }
+#else
       auto message = Message(false);
       if (xQueueReceive(handle, &message, portMAX_DELAY)) {
         return message;
       }
+#endif
     }
     return std::nullopt;
   }
@@ -109,8 +135,11 @@ class Actor {
   ~Actor() { router->deregister_actor(id); }
 
   void receive(uint64_t sender, char* message) {
+    if (round == 0) {
+      timestamp = xTaskGetTickCount();
+    }
     if (round == 10000 && id == 0) {
-      printf("%lld: %d\n", id,
+      printf("Measurement: %d\n",
              portTICK_PERIOD_MS * (xTaskGetTickCount() - timestamp));
       fflush(stdout);
       round = 0;
@@ -121,9 +150,12 @@ class Actor {
     }
 
     Message m = Message();
-    for (int i = 0; i < 1500 / 8; i += 1) {
-      *(reinterpret_cast<uint64_t*>(m.buffer()) + i) = id;
+#if TOUCH_DATA
+    for (int i = 0; i < STATIC_MESSAGE_SIZE;
+         i += STATIC_MESSAGE_SIZE + (STATIC_MESSAGE_SIZE / 100)) {
+      *(m.buffer() + i) = id % 255;
     }
+#endif
     send((id + 1) % 16, std::move(m));
   }
 
@@ -161,7 +193,7 @@ void actor_task(void* params) {
 }
 
 void app_main(void) {
-  printf("%d \n", xPortGetFreeHeapSize());
+  printf("InitialHeap: %d \n", xPortGetFreeHeapSize());
   Router* router = new Router();
 
   TaskHandle_t handles[16] = {NULL};
@@ -169,14 +201,13 @@ void app_main(void) {
 
   for (uint64_t i = 0; i < 16; i++) {
     params[i] = {.id = i, .router = router};
-    // vTaskDelay(100 / portTICK_PERIOD_MS);
     char buffer[16];
     snprintf(buffer, sizeof(buffer), "Test%lld", i);
     xTaskCreatePinnedToCore(&actor_task, buffer, 2048, &params[i], 5,
                             &handles[i], i % 2);
   }
 
-  vTaskDelay(1500 / portTICK_PERIOD_MS);
-  printf("%d \n", xPortGetFreeHeapSize());
+  vTaskDelay(1000 / portTICK_PERIOD_MS);
+  printf("StaticHeap: %d \n", xPortGetFreeHeapSize());
   router->send(0, 1, Message(true));
 }
