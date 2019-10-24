@@ -3,4 +3,4 @@ idf_component_register(
   EXCLUDE_SRCS "lua/testes/"
   INCLUDE_DIRS "include" "lua"
 )
-# target_compile_options(${COMPONENT_LIB} PUBLIC -DLUA_C89_NUMBERS)
+target_compile_options(${COMPONENT_LIB} PUBLIC -DLUA_32BITS)

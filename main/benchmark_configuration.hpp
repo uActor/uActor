@@ -15,6 +15,11 @@
 // TRUE: Use an implementation of the router that
 // is based on c++ condition variables
 // FALSE: Router based on FreeRTOS queues
-#define COND_VAR true
+#define COND_VAR false
+
+#define LUA_ACTORS true
+
+// Touch the data array bytewise, which is not efficient for Lua
+#define TOUCH_BYTEWISE false
 
 #endif  // MAIN_BENCHMARK_CONFIGURATION_HPP_
