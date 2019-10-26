@@ -46,6 +46,7 @@ class Router {
   void send(uint64_t sender, uint64_t receiver, Message message);
   void register_actor(const uint64_t actor_id);
   void deregister_actor(uint64_t actor_id);
+  void register_alias(const uint64_t actor_id, const uint64_t alias_id);
   std::optional<Message> receive(uint64_t receiver);
 #if COND_VAR
  private:

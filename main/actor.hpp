@@ -10,12 +10,9 @@
 class Actor {
  public:
   Actor(uint64_t id, Router* router) : id(id), router(router) {
-    router->register_actor(id);
     timestamp = xTaskGetTickCount();
     round = 0;
   }
-
-  ~Actor() { router->deregister_actor(id); }
 
   void receive(uint64_t sender, char* message) {
     if (round == 0) {
@@ -60,7 +57,7 @@ class Actor {
     }
 #endif
 #endif
-    send((id + 1) % 16, std::move(m));
+    send((id + 1) % (NUM_ACTORS), std::move(m));
   }
 
  private:
@@ -71,7 +68,7 @@ class Actor {
 
   int send(uint64_t receiver, Message&& message) {
     // printf("[%d]%lld -> %lld: %.*s\n", xPortGetFreeHeapSize(), id, receiver,
-    // 1500, message.buffer());
+    // STATIC_MESSAGE_SIZE, message.buffer());
     router->send(id, receiver, std::move(message));
     return 0;
   }

@@ -11,6 +11,10 @@ void Router::register_actor(const uint64_t actor_id) {
     printf("tried to register already registered actor\n");
   }
 }
+void Router::register_alias(const uint64_t actor_id, const uint64_t alias_id) {
+  // Currently not implemented
+  assert(false);
+}
 
 void Router::deregister_actor(uint64_t actor_id) {
   std::unique_lock<std::mutex> lock(mutex);
@@ -28,6 +32,7 @@ void Router::send(uint64_t sender, uint64_t receiver, Message message) {
     lock.unlock();
     std::unique_lock<std::mutex> inner_lock(*handle.mutex);
     message.sender(sender);
+    message.receiver(receiver);
 #if BY_VALUE
 #else
     handle.queue = std::move(message);
@@ -75,6 +80,14 @@ void Router::register_actor(const uint64_t actor_id) {
   }
 }
 
+void Router::register_alias(const uint64_t actor_id, const uint64_t alias_id) {
+  std::unique_lock<std::mutex> lock(mutex);
+  auto queue = routing_table.find(actor_id);
+  if (queue != routing_table.end()) {
+    routing_table.insert(std::make_pair(alias_id, queue->second));
+  }
+}
+
 void Router::deregister_actor(uint64_t actor_id) {
   std::unique_lock<std::mutex> lock(mutex);
   auto queue = routing_table.find(actor_id);
@@ -85,12 +98,13 @@ void Router::deregister_actor(uint64_t actor_id) {
 }
 
 void Router::send(uint64_t sender, uint64_t receiver, Message message) {
-  std::unique_lock<std::mutex> lock(mutex);
+  // std::unique_lock<std::mutex> lock(mutex);
   auto queue = routing_table.find(receiver);
   if (queue != routing_table.end()) {
     QueueHandle_t handle = queue->second;
-    lock.unlock();
+    // lock.unlock();
     message.sender(sender);
+    message.receiver(receiver);
 #if BY_VALUE
     xQueueSend(handle, message.raw(), portMAX_DELAY);
 #else
@@ -115,6 +129,7 @@ std::optional<Message> Router::receive(uint64_t receiver) {
 #else
     auto message = Message(false);
     if (xQueueReceive(handle, &message, portMAX_DELAY)) {
+      // printf("%lld -> %lld\n", message.sender(), message.receiver());
       return message;
     }
 #endif

@@ -9,12 +9,11 @@
 #include <cstring>
 #include <utility>
 
-#include "benchmark_configuration.hpp"
-#if LUA_ACTORS
-#include "lua_actor.hpp"
-#else
+#include <lua.hpp>
+
 #include "actor.hpp"
-#endif
+#include "benchmark_configuration.hpp"
+#include "lua_actor.hpp"
 #include "message.hpp"
 #include "router.hpp"
 
@@ -32,15 +31,28 @@ void actor_task(void* params) {
   uint64_t id = ((struct Params*)params)->id;
 
 #if LUA_ACTORS
-  LuaActor* actor = new LuaActor(id, router);
+  lua_State* lua_state = LuaActor::create_state();
+  LuaActor* actor[ACTORS_PER_THREAD];
+  for (int i = 0; i < ACTORS_PER_THREAD; i++) {
+    actor[i] = new LuaActor(id * ACTORS_PER_THREAD + i, router, lua_state);
+  }
 #else
-  Actor* actor = new Actor(id, router);
+  Actor* actor[ACTORS_PER_THREAD];
+  for (int i = 0; i < ACTORS_PER_THREAD; i++) {
+    actor[i] = new Actor(id * ACTORS_PER_THREAD + i, router);
+  }
 #endif
 
+  router->register_actor(id * ACTORS_PER_THREAD);
+  for (int i = 1; i < ACTORS_PER_THREAD; i++) {
+    router->register_alias(id * ACTORS_PER_THREAD, id * ACTORS_PER_THREAD + i);
+  }
+
   while (true) {
-    auto message = router->receive(id);
+    auto message = router->receive(id * ACTORS_PER_THREAD);
     if (message) {
-      actor->receive((*message).sender(), (*message).buffer());
+      actor[message->receiver() - id * ACTORS_PER_THREAD]->receive(
+          message->sender(), message->buffer());
     }
     // Without IO, taskYIELD() doesn't reset the idle task watchdog
     // vTaskDelay(10 / portTICK_PERIOD_MS);
@@ -51,10 +63,11 @@ void app_main(void) {
   printf("InitialHeap: %d \n", xPortGetFreeHeapSize());
   Router* router = new Router();
 
-  TaskHandle_t handles[16] = {NULL};
-  Params* params = static_cast<Params*>(pvPortMalloc(sizeof(Params) * 16));
+  TaskHandle_t handles[NUM_THREADS] = {NULL};
+  Params* params =
+      static_cast<Params*>(pvPortMalloc(sizeof(Params) * NUM_THREADS));
 
-  for (uint64_t i = 0; i < 16; i++) {
+  for (uint64_t i = 0; i < NUM_THREADS; i++) {
     params[i] = {.id = i, .router = router};
     char buffer[16];
     snprintf(buffer, sizeof(buffer), "Test%lld", i);

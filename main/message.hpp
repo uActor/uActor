@@ -21,7 +21,7 @@ class Message {
 
   explicit Message(bool init = true) {
     if (init) {
-      data_ = new char[STATIC_MESSAGE_SIZE + 8];
+      data_ = new char[STATIC_MESSAGE_SIZE + 16];
     } else {
       data_ = nullptr;
     }
@@ -33,9 +33,15 @@ class Message {
 
   uint64_t sender() { return *reinterpret_cast<uint64_t*>(data_); }
 
-  void sender(uint64_t sendr) { *reinterpret_cast<uint64_t*>(data_) = sendr; }
+  uint64_t receiver() { return *(reinterpret_cast<uint64_t*>(data_) + 1); }
 
-  char* buffer() { return data_ + 8; }
+  void sender(uint64_t sender) { *reinterpret_cast<uint64_t*>(data_) = sender; }
+
+  void receiver(uint64_t receiver) {
+    *(reinterpret_cast<uint64_t*>(data_) + 1) = receiver;
+  }
+
+  char* buffer() { return data_ + 16; }
 
   void* raw() { return data_; }
 
