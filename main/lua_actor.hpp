@@ -65,28 +65,21 @@ class LuaActor {
     round = 0;
     snprintf(actor_name, sizeof(actor_name), "actor_%lld", id);
 
+#if (LUA_PERSISTENT_RUNTIME && !LUA_SHARED_RUNTIME)
+    lua_state = create_state();
+#endif
+
+#if LUA_SHARED_RUNTIME
     if (!master_state) {
       lua_state = create_state();
     } else {
       lua_state = master_state;
     }
+#endif
 
-    lua_newtable(lua_state);
-    lua_getglobal(lua_state, "send");
-    lua_setfield(lua_state, -2, "send");
-    lua_getglobal(lua_state, "print");
-    lua_setfield(lua_state, -2, "print");
-    lua_setglobal(lua_state, actor_name);
-
-    luaL_loadstring(lua_state, receive_loop);
-    lua_getglobal(lua_state, actor_name);
-    lua_setupvalue(lua_state, -2, 1);
-
-    if (lua_pcall(lua_state, 0, 0, 0)) {
-      printf("LUA LOAD ERROR!\n");
-      printf("%s\n", lua_tostring(lua_state, 1));
-      lua_pop(lua_state, 1);
-    }
+#if LUA_PERSISTENT_ACTORS
+    setup_actor();
+#endif
   }
 
   void receive(uint64_t sender, char* message) {
@@ -106,9 +99,21 @@ class LuaActor {
       round++;
     }
 
+#if !LUA_SHARED_RUNTIME && !LUA_PERSISTENT_RUNTIME
+    lua_state = create_state();
+#endif
+
+#if !LUA_PERSISTENT_ACTORS
+    setup_actor();
+#endif
+
+#if LUA_SHARED_RUNTIME
     lua_getglobal(lua_state, actor_name);
     lua_getfield(lua_state, -1, "receive");
     lua_replace(lua_state, 1);
+#else  // local runtime, code not sandboxed
+    lua_getglobal(lua_state, "receive");
+#endif
 
     lua_pushinteger(lua_state, id);
     lua_pushinteger(lua_state, NUM_ACTORS);
@@ -119,7 +124,19 @@ class LuaActor {
       printf("%s\n", lua_tostring(lua_state, 1));
       lua_pop(lua_state, 1);
     }
+#if !LUA_PERSISTENT_ACTORS && LUA_SHARED_RUNTIME
+    lua_pushnil(lua_state);
+    lua_setglobal(lua_state, actor_name);
     lua_gc(lua_state, LUA_GCCOLLECT, 0);
+#elif !LUA_PERSISTENT_ACTORS && !LUA_PERSISTENT_RUNTIME
+    lua_close(lua_state);
+#elif !LUA_PERSISTENT_ACTORS && LUA_PERSISTENT_RUNTIME
+    lua_pushnil(lua_state);
+    lua_setglobal(lua_state, "receive");
+    lua_gc(lua_state, LUA_GCCOLLECT, 0);
+#else
+    lua_gc(lua_state, LUA_GCCOLLECT, 0);
+#endif
   }
 
   static lua_State* create_state() {
@@ -138,10 +155,31 @@ class LuaActor {
     // lua_pop(lua_state, 1);
     // luaL_requiref(lua_state, "utf8", luaopen_utf8, 1);
     // lua_pop(lua_state, 1);
-
     lua_pushcfunction(lua_state, send);
     lua_setglobal(lua_state, "send");
     return lua_state;
+  }
+
+  void setup_actor() {
+#if LUA_SHARED_RUNTIME
+    lua_newtable(lua_state);
+    lua_getglobal(lua_state, "send");
+    lua_setfield(lua_state, -2, "send");
+    lua_getglobal(lua_state, "print");
+    lua_setfield(lua_state, -2, "print");
+    lua_setglobal(lua_state, actor_name);
+#endif
+    luaL_loadstring(lua_state, receive_loop);
+#if LUA_SHARED_RUNTIME
+    lua_getglobal(lua_state, actor_name);
+    lua_setupvalue(lua_state, -2, 1);
+#endif
+
+    if (lua_pcall(lua_state, 0, 0, 0)) {
+      printf("LUA LOAD ERROR!\n");
+      printf("%s\n", lua_tostring(lua_state, 1));
+      lua_pop(lua_state, 1);
+    }
   }
 
  private:
@@ -173,8 +211,8 @@ class LuaActor {
       lua_pop(state, 1);
     }
     lua_pop(state, 1);
-    // printf("[%d]%lld -> %lld: %.*s\n", xPortGetFreeHeapSize(), id, receiver,
-    // STATIC_MESSAGE_SIZE, m.buffer());
+    // printf("[%d]%lld -> %lld: %.*s\n", xPortGetFreeHeapSize(), id,
+    // receiver, STATIC_MESSAGE_SIZE, m.buffer());
     g_router->send(id, receiver, std::move(m));
     return 0;
   }

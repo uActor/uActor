@@ -7,6 +7,9 @@
 // steps to touch the data in some way
 #define TOUCH_DATA true
 
+// Touch the data array bytewise, which is not efficient for Lua
+#define TOUCH_BYTEWISE false
+
 // TRUE: Message copied to the queue FALSE: Reference copied to the queue
 #define BY_VALUE false
 
@@ -20,12 +23,17 @@
 
 #define LUA_ACTORS true
 
-// Touch the data array bytewise, which is not efficient for Lua
-#define TOUCH_BYTEWISE false
+#define LUA_SHARED_RUNTIME true
 
-#define NUM_THREADS 16
+#define LUA_PERSISTENT_ACTORS true
 
-#define ACTORS_PER_THREAD 1
+// Can only be set to false when both SHARED_RUNTIME and PERSISTENT_ACTORS are
+// set to false!
+#define LUA_PERSISTENT_RUNTIME true
+
+#define NUM_THREADS 4
+
+#define ACTORS_PER_THREAD 32
 
 #define NUM_ACTORS NUM_THREADS* ACTORS_PER_THREAD
 

@@ -31,7 +31,11 @@ void actor_task(void* params) {
   uint64_t id = ((struct Params*)params)->id;
 
 #if LUA_ACTORS
+#if LUA_SHARED_RUNTIME
   lua_State* lua_state = LuaActor::create_state();
+#else
+  lua_State* lua_state = nullptr;
+#endif
   LuaActor* actor[ACTORS_PER_THREAD];
   for (int i = 0; i < ACTORS_PER_THREAD; i++) {
     actor[i] = new LuaActor(id * ACTORS_PER_THREAD + i, router, lua_state);
