@@ -43,6 +43,10 @@ class TableEntry {
 
 class Router {
  public:
+  static Router& getInstance() {
+    static Router instance;
+    return instance;
+  }
   void send(uint64_t sender, uint64_t receiver, Message message);
   void register_actor(const uint64_t actor_id);
   void deregister_actor(uint64_t actor_id);

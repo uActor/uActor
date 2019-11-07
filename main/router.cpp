@@ -128,7 +128,7 @@ std::optional<Message> Router::receive(uint64_t receiver) {
     }
 #else
     auto message = Message(false);
-    if (xQueueReceive(handle, &message, portMAX_DELAY)) {
+    if (xQueueReceive(handle, &message, 100)) {
       // printf("%lld -> %lld\n", message.sender(), message.receiver());
       return message;
     }

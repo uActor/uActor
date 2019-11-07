@@ -31,7 +31,7 @@
 // set to false!
 #define LUA_PERSISTENT_RUNTIME true
 
-#define NUM_THREADS 4
+#define NUM_THREADS 1
 
 #define ACTORS_PER_THREAD 32
 
