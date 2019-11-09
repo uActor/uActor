@@ -1,6 +1,8 @@
 #ifndef MAIN_BENCHMARK_CONFIGURATION_HPP_
 #define MAIN_BENCHMARK_CONFIGURATION_HPP_
 
+#define BENCHMARK false
+
 #define STATIC_MESSAGE_SIZE 1500
 
 // Write out the id to the task in 8 byte

@@ -19,3 +19,13 @@ uint32_t ManagedActor::receive_next_internal() {
   }
   return _timeout;
 }
+
+bool ManagedActor::enqueue(Message&& message) {
+  if (waiting && pattern.matches(message)) {
+    message_queue.emplace_front(std::move(message));
+    return false;
+  } else {
+    message_queue.emplace_back(std::move(message));
+    return true;
+  }
+}

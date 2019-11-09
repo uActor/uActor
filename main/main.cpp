@@ -1,7 +1,6 @@
 // TODO(raphaelhetzel) Split into multiple files once the APIs are defined
 
 #include <freertos/FreeRTOS.h>
-#include <freertos/queue.h>
 #include <freertos/task.h>
 
 #include <cstdint>
@@ -11,9 +10,9 @@
 
 #include <lua.hpp>
 
-#include "actor.hpp"
+#include "benchmark_actor.hpp"
 #include "benchmark_configuration.hpp"
-#include "lua_actor.hpp"
+#include "benchmark_lua_actor.hpp"
 #include "lua_runtime.hpp"
 #include "managed_actor.hpp"
 #include "message.hpp"
@@ -23,10 +22,7 @@ extern "C" {
 void app_main(void);
 }
 
-// struct Params {
-//   uint64_t id;
-//   Router* router;
-// };
+#if BENCHMARK
 
 void actor_task(void* params) {
   Router* router = ((struct Params*)params)->router;
@@ -67,6 +63,37 @@ void actor_task(void* params) {
 
 void app_main(void) {
   printf("InitialHeap: %d \n", xPortGetFreeHeapSize());
+  Router* router = new Router();
+
+  TaskHandle_t handles[NUM_THREADS] = {NULL};
+  Params* params =
+      static_cast<Params*>(pvPortMalloc(sizeof(Params) * NUM_THREADS));
+
+  for (uint64_t i = 0; i < NUM_THREADS; i++) {
+    params[i] = {.id = i, .router = router};
+    char buffer[16];
+    snprintf(buffer, sizeof(buffer), "Test%lld", i);
+    xTaskCreatePinnedToCore(&actor_task, buffer, 6168, &params[i], 5,
+                            &handles[i], i % 2);
+  }
+
+  vTaskDelay(1000 / portTICK_PERIOD_MS);
+  printf("StaticHeap: %d \n", xPortGetFreeHeapSize());
+  router->send(0, 1, Message(true));
+}
+#else
+
+const char receive_fun[] = R"(function receive(id);
+      if(id == 2) then
+        send(id+1);
+        deferred_sleep(5000);
+      elseif(id < 33) then
+        send(id+1);
+      end
+      end)";
+
+void app_main(void) {
+  printf("InitialHeap: %d \n", xPortGetFreeHeapSize());
   TaskHandle_t handle = {NULL};
   Params params = {.id = 1, .router = &Router::getInstance()};
   xTaskCreatePinnedToCore(&LuaRuntime::os_task, "TEST", 6168, &params, 5,
@@ -75,28 +102,14 @@ void app_main(void) {
   for (int i = 0; i < ACTORS_PER_THREAD; i++) {
     Message m = Message(true);
     *reinterpret_cast<uint64_t*>(m.buffer()) = 2 + i;
+    std::fill(m.buffer() + 8, m.buffer() + STATIC_MESSAGE_SIZE, 0);
+    std::memcpy((m.buffer() + 8), receive_fun, sizeof(receive_fun));
     Router::getInstance().send(0, 1, std::move(m));
   }
   vTaskDelay(1000 / portTICK_PERIOD_MS);
   Router::getInstance().send(0, 2, Message(true));
-  // ManagedActor a = ManagedActor(1, "");
-  // ManagedActor b = ManagedActor();
-  // Router* router = new Router();
-
-  // TaskHandle_t handles[NUM_THREADS] = {NULL};
-  // Params* params =
-  //     static_cast<Params*>(pvPortMalloc(sizeof(Params) * NUM_THREADS));
-
-  // for (uint64_t i = 0; i < NUM_THREADS; i++) {
-  //   params[i] = {.id = i, .router = router};
-  //   char buffer[16];
-  //   snprintf(buffer, sizeof(buffer), "Test%lld", i);
-  //   xTaskCreatePinnedToCore(&actor_task, buffer, 6168, &params[i], 5,
-  //                           &handles[i], i % 2);
-  // }
-
-  // vTaskDelay(1000 / portTICK_PERIOD_MS);
 
   printf("StaticHeap: %d \n", xPortGetFreeHeapSize());
-  // router->send(0, 1, Message(true));
 }
+
+#endif

@@ -1,5 +1,5 @@
-#ifndef MAIN_ACTOR_HPP_
-#define MAIN_ACTOR_HPP_
+#ifndef MAIN_BENCHMARK_ACTOR_HPP_
+#define MAIN_BENCHMARK_ACTOR_HPP_
 
 #include <utility>
 
@@ -74,4 +74,4 @@ class Actor {
   }
 };
 
-#endif  // MAIN_ACTOR_HPP_
+#endif  // MAIN_BENCHMARK_ACTOR_HPP_
