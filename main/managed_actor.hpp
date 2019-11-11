@@ -37,7 +37,7 @@ class ManagedActor {
 
   bool enqueue(Message&& message);
 
-  void trigger_timeout() { message_queue.emplace_front(new Message(true)); }
+  void trigger_timeout() { message_queue.emplace_front(0); }
 
   uint64_t id() { return _id; }
 

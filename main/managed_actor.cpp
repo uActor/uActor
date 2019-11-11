@@ -1,4 +1,3 @@
-
 #include "managed_actor.hpp"
 
 uint32_t ManagedActor::receive_next_internal() {

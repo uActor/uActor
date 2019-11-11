@@ -8,45 +8,53 @@
 class Message {
  public:
   Message(const Message& old) = delete;
-  Message(Message&& old) : data_(old.data_) { old.data_ = nullptr; }
+  Message(Message&& old) : _data(old._data) { old._data = nullptr; }
 
   Message& operator=(Message&& old) {
-    if (data_) {
-      delete data_;
+    if (_data) {
+      delete _data;
     }
-    data_ = old.data_;
-    old.data_ = nullptr;
+    _data = old._data;
+    old._data = nullptr;
     return *this;
   }
 
-  explicit Message(bool init = true) {
+  explicit Message(size_t size, bool init = true) {
     if (init) {
-      data_ = new char[STATIC_MESSAGE_SIZE + 16];
+      _data = new char[size + 2 * sizeof(uint64_t) + sizeof(size_t)];
+      // assert(_data);
+      *reinterpret_cast<size_t*>(_data + 2 * sizeof(uint64_t)) = size;
     } else {
-      data_ = nullptr;
+      _data = nullptr;
     }
   }
 
-  ~Message() { delete data_; }
+  ~Message() { delete _data; }
 
-  void moved() { data_ = nullptr; }
+  void moved() { _data = nullptr; }
 
-  uint64_t sender() { return *reinterpret_cast<uint64_t*>(data_); }
+  uint64_t sender() const { return *reinterpret_cast<uint64_t*>(_data); }
 
-  uint64_t receiver() { return *(reinterpret_cast<uint64_t*>(data_) + 1); }
-
-  void sender(uint64_t sender) { *reinterpret_cast<uint64_t*>(data_) = sender; }
-
-  void receiver(uint64_t receiver) {
-    *(reinterpret_cast<uint64_t*>(data_) + 1) = receiver;
+  uint64_t receiver() const {
+    return *(reinterpret_cast<uint64_t*>(_data) + 1);
   }
 
-  char* buffer() { return data_ + 16; }
+  size_t size() const {
+    return *reinterpret_cast<size_t*>(_data + 2 * sizeof(uint64_t));
+  }
 
-  void* raw() { return data_; }
+  void sender(uint64_t sender) { *reinterpret_cast<uint64_t*>(_data) = sender; }
+
+  void receiver(uint64_t receiver) {
+    *(reinterpret_cast<uint64_t*>(_data) + 1) = receiver;
+  }
+
+  char* buffer() { return _data + 2 * sizeof(uint64_t) + sizeof(size_t); }
+
+  void* raw() { return _data; }
 
  private:
-  char* data_;
+  char* _data;
 };
 
 #endif  //  MAIN_MESSAGE_HPP_

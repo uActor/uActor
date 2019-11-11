@@ -122,12 +122,12 @@ std::optional<Message> Router::receive(uint64_t receiver) {
     lock.unlock();  // This is not completely safe and assumes a queue is not
                     // read after delete is called
 #if BY_VALUE
-    auto message = Message(true);
+    auto message = Message(STATIC_MESSAGE_SIZE);
     if (xQueueReceive(handle, message.raw(), portMAX_DELAY)) {
       return message;
     }
 #else
-    auto message = Message(false);
+    auto message = Message(0, false);
     if (xQueueReceive(handle, &message, 100)) {
       // printf("%lld -> %lld\n", message.sender(), message.receiver());
       return message;

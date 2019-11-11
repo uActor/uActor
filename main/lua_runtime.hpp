@@ -32,4 +32,3 @@ class LuaRuntime : public ActorRuntime<ManagedLuaActor, LuaRuntime> {
 };
 
 #endif  // MAIN_LUA_RUNTIME_HPP_
-

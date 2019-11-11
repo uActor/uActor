@@ -193,7 +193,7 @@ class LuaActor {
   static int send(lua_State* state) {
     uint64_t id = lua_tointeger(state, 1);
     uint64_t receiver = lua_tointeger(state, 2);
-    Message m = Message();
+    Message m = Message(STATIC_MESSAGE_SIZE);
 
     lua_pushnil(state);
     while (lua_next(state, 3) != 0) {

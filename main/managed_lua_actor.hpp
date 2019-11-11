@@ -17,7 +17,7 @@ class ManagedLuaActor : public ManagedActor {
   }
 
   void receive(const Message& m) {
-    printf("receive %s\n", name());
+    printf("receive %s: size: %d\n", name(), m.size());
     lua_getglobal(state, name());
     lua_getfield(state, -1, "receive");
     lua_replace(state, 1);
@@ -29,6 +29,8 @@ class ManagedLuaActor : public ManagedActor {
       printf("%s\n", lua_tostring(state, 1));
       lua_pop(state, 1);
     }
+
+    lua_gc(state, LUA_GCCOLLECT, 0);
   }
 
  private:
@@ -38,7 +40,7 @@ class ManagedLuaActor : public ManagedActor {
     ManagedLuaActor* actor = reinterpret_cast<ManagedLuaActor*>(
         lua_touserdata(state, lua_upvalueindex(1)));
     uint64_t receiver = lua_tointeger(state, 1);
-    Message m = Message();
+    Message m = Message(0);
     actor->send(receiver, std::move(m));
     return 0;
   }

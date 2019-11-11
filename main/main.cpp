@@ -79,7 +79,7 @@ void app_main(void) {
 
   vTaskDelay(1000 / portTICK_PERIOD_MS);
   printf("StaticHeap: %d \n", xPortGetFreeHeapSize());
-  router->send(0, 1, Message(true));
+  router->send(0, 1, Message(STATIC_MESSAGE_SIZE));
 }
 #else
 
@@ -100,14 +100,14 @@ void app_main(void) {
                           &handle, 1);
   vTaskDelay(1000 / portTICK_PERIOD_MS);
   for (int i = 0; i < ACTORS_PER_THREAD; i++) {
-    Message m = Message(true);
+    Message m = Message(sizeof(receive_fun) + 8);
     *reinterpret_cast<uint64_t*>(m.buffer()) = 2 + i;
-    std::fill(m.buffer() + 8, m.buffer() + STATIC_MESSAGE_SIZE, 0);
+    std::fill(m.buffer() + 8, m.buffer() + sizeof(receive_fun), 0);
     std::memcpy((m.buffer() + 8), receive_fun, sizeof(receive_fun));
     Router::getInstance().send(0, 1, std::move(m));
   }
   vTaskDelay(1000 / portTICK_PERIOD_MS);
-  Router::getInstance().send(0, 2, Message(true));
+  Router::getInstance().send(0, 2, Message(0));
 
   printf("StaticHeap: %d \n", xPortGetFreeHeapSize());
 }

@@ -30,7 +30,7 @@ class Actor {
       round++;
     }
 
-    Message m = Message();
+    Message m = Message(STATIC_MESSAGE_SIZE);
 #if TOUCH_DATA
 #if TOUCH_BYTEWISE
     for (int i = 0; i < STATIC_MESSAGE_SIZE; i++) {
