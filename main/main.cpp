@@ -51,7 +51,7 @@ void actor_task(void* params) {
   }
 
   while (true) {
-    auto message = router->receive(id * ACTORS_PER_THREAD);
+    auto message = router->receive(id * ACTORS_PER_THREAD, portMAX_DELAY);
     if (message) {
       actor[message->receiver() - id * ACTORS_PER_THREAD]->receive(
           message->sender(), message->buffer());
@@ -83,14 +83,30 @@ void app_main(void) {
 }
 #else
 
-const char receive_fun[] = R"(function receive(id);
-      if(id == 2) then
-        send(id+1);
-        deferred_sleep(5000);
-      elseif(id < 33) then
-        send(id+1);
-      end
-      end)";
+const char receive_fun[] = R"(function receive(sender, tag, message)
+local ping_tag = 1025;
+local pong_tag = 1026;
+if(id == 2 and tag == well_known_tags.init) then
+  print(id.." received : "..message);
+  for i = 3,33, 1
+  do
+    send(i, ping_tag, "ping");
+  end
+  deferred_block_for(33, 2, pong_tag, 5000);
+elseif(id == 2) then
+  print(id.." received : "..message);
+elseif(id == 3 and tag == ping_tag) then
+  print(id.." received : "..message);
+  deferred_block_for(9999, 9999, 9999, 2000);
+  send(sender, 1027, "foo");
+elseif(tag == ping_tag) then
+  send(sender, pong_tag, "pong"..id);
+  print(id.." received : "..message);
+elseif(id == 3 and tag == well_known_tags.timeout) then
+  deferred_block_for(9999, 9999, 9999, 2000);
+  print(id.." received expected timeout");
+end
+end)";
 
 void app_main(void) {
   printf("InitialHeap: %d \n", xPortGetFreeHeapSize());
@@ -101,13 +117,15 @@ void app_main(void) {
   vTaskDelay(1000 / portTICK_PERIOD_MS);
   for (int i = 0; i < ACTORS_PER_THREAD; i++) {
     Message m = Message(sizeof(receive_fun) + 8);
+    m.tag(Tags::WELL_KNOWN_TAGS::SPAWN_LUA_ACTOR);
     *reinterpret_cast<uint64_t*>(m.buffer()) = 2 + i;
     std::fill(m.buffer() + 8, m.buffer() + sizeof(receive_fun), 0);
     std::memcpy((m.buffer() + 8), receive_fun, sizeof(receive_fun));
     Router::getInstance().send(0, 1, std::move(m));
   }
   vTaskDelay(1000 / portTICK_PERIOD_MS);
-  Router::getInstance().send(0, 2, Message(0));
+  Router::getInstance().send(
+      0, 2, Message(0, 2, Tags::WELL_KNOWN_TAGS::INIT, "start"));
 
   printf("StaticHeap: %d \n", xPortGetFreeHeapSize());
 }

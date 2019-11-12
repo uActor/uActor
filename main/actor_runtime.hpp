@@ -51,7 +51,15 @@ class ActorRuntime {
   void event_loop() {
     while (true) {
       // Enqueue from threads master queue
-      auto message = router->receive(id);
+      size_t wait_time = portMAX_DELAY;
+      if (timeouts.size() > 0) {
+        wait_time = (timeouts.begin()->first - xTaskGetTickCount()) /
+                    portTICK_PERIOD_MS;
+      }
+      if (ready_queue.size() > 0) {
+        wait_time = 0;
+      }
+      auto message = router->receive(id, wait_time);
       if (message) {
         if (message->receiver() == id) {
           add_actor_wrapper(message->buffer());
@@ -62,6 +70,13 @@ class ActorRuntime {
               if (std::find(ready_queue.begin(), ready_queue.end(),
                             receiver->second.id()) == ready_queue.end()) {
                 ready_queue.push_back(receiver->second.id());
+              }
+              auto it = std::find_if(
+                  timeouts.begin(), timeouts.end(), [&](auto& element) {
+                    return element.second == receiver->second.id();
+                  });
+              if (it != timeouts.end()) {
+                timeouts.erase(it);
               }
             }
           }
@@ -89,9 +104,8 @@ class ActorRuntime {
         if (wait_time == 0) {
           ready_queue.push_back(actor.id());
         } else if (wait_time < UINT32_MAX) {
-          timeouts.insert(std::make_pair(
-              xTaskGetTickCount() + wait_time / portTICK_PERIOD_MS,
-              actor.id()));
+          timeouts.emplace(xTaskGetTickCount() + wait_time / portTICK_PERIOD_MS,
+                           actor.id());
         }
       }
     }

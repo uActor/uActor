@@ -51,7 +51,7 @@ class Router {
   void register_actor(const uint64_t actor_id);
   void deregister_actor(uint64_t actor_id);
   void register_alias(const uint64_t actor_id, const uint64_t alias_id);
-  std::optional<Message> receive(uint64_t receiver);
+  std::optional<Message> receive(uint64_t receiver, size_t wait_time = 0);
 #if COND_VAR
  private:
   std::unordered_map<uint64_t, TableEntry> routing_table;

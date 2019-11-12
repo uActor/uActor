@@ -16,8 +16,12 @@
 struct Pattern {
   uint64_t sender;
   uint64_t receiver;
+  uint32_t tag;
 
-  bool matches(const Message& message) { return true; }
+  bool matches(const Message& message) {
+    return message.sender() == sender && message.receiver() == receiver &&
+           message.tag() == tag;
+  }
 };
 
 class ManagedActor {
@@ -37,7 +41,10 @@ class ManagedActor {
 
   bool enqueue(Message&& message);
 
-  void trigger_timeout() { message_queue.emplace_front(0); }
+  void trigger_timeout() {
+    message_queue.emplace_front(id(), id(), Tags::WELL_KNOWN_TAGS::TIMEOUT,
+                                "timeout");
+  }
 
   uint64_t id() { return _id; }
 
@@ -51,16 +58,20 @@ class ManagedActor {
   }
 
   void deferred_sleep(uint32_t timeout) {
+    waiting = true;
+    pattern.receiver = _id;
+    pattern.sender = _id;
+    pattern.tag = Tags::WELL_KNOWN_TAGS::TIMEOUT;
     _timeout = timeout;
-    pattern.receiver = UINT32_MAX;
-    pattern.sender = UINT32_MAX;
   }
 
-  void deffered_block_for(uint64_t sender, uint64_t receiver,
+  void deffered_block_for(uint64_t sender, uint64_t receiver, uint32_t tag,
                           uint32_t timeout) {
-    _timeout = timeout;
+    waiting = true;
     pattern.receiver = receiver;
     pattern.sender = sender;
+    pattern.tag = tag;
+    _timeout = timeout;
   }
 
  private:

@@ -114,7 +114,7 @@ void Router::send(uint64_t sender, uint64_t receiver, Message message) {
   }
 }
 
-std::optional<Message> Router::receive(uint64_t receiver) {
+std::optional<Message> Router::receive(uint64_t receiver, size_t wait_time) {
   std::unique_lock<std::mutex> lock(mutex);
   auto queue = routing_table.find(receiver);
   if (queue != routing_table.end()) {
@@ -128,7 +128,7 @@ std::optional<Message> Router::receive(uint64_t receiver) {
     }
 #else
     auto message = Message(0, false);
-    if (xQueueReceive(handle, &message, 100)) {
+    if (xQueueReceive(handle, &message, wait_time)) {
       // printf("%lld -> %lld\n", message.sender(), message.receiver());
       return message;
     }

@@ -15,7 +15,7 @@
 // TRUE: Message copied to the queue FALSE: Reference copied to the queue
 #define BY_VALUE false
 
-#define QUEUE_SIZE 1
+#define QUEUE_SIZE 100
 
 // TRUE: Use an implementation of the router that
 // is based on c++ condition variables
