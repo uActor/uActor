@@ -1,5 +1,5 @@
-#ifndef MAIN_LUA_RUNTIME_HPP_
-#define MAIN_LUA_RUNTIME_HPP_
+#ifndef MAIN_INCLUDE_LUA_RUNTIME_HPP_
+#define MAIN_INCLUDE_LUA_RUNTIME_HPP_
 
 #include <lua.hpp>
 #include <utility>
@@ -7,11 +7,11 @@
 #include "actor_runtime.hpp"
 #include "managed_actor.hpp"
 #include "managed_lua_actor.hpp"
-#include "router.hpp"
+#include "router_v2.hpp"
 
 class LuaRuntime : public ActorRuntime<ManagedLuaActor, LuaRuntime> {
  public:
-  LuaRuntime(Router* router, uint64_t id)
+  LuaRuntime(RouterV2* router, uint64_t id)
       : ActorRuntime<ManagedLuaActor, LuaRuntime>(router, id) {
     state = create_lua_state();
   }
@@ -31,4 +31,4 @@ class LuaRuntime : public ActorRuntime<ManagedLuaActor, LuaRuntime> {
   friend ActorRuntime;
 };
 
-#endif  // MAIN_LUA_RUNTIME_HPP_
+#endif  // MAIN_INCLUDE_LUA_RUNTIME_HPP_

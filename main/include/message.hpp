@@ -1,17 +1,18 @@
-#ifndef MAIN_MESSAGE_HPP_
-#define MAIN_MESSAGE_HPP_
+#ifndef MAIN_INCLUDE_MESSAGE_HPP_
+#define MAIN_INCLUDE_MESSAGE_HPP_
 
 #include <cassert>
 #include <cstdint>
 #include <cstring>
 
-#include "benchmark_configuration.hpp"
+#include "../benchmark_configuration.hpp"
 
 struct Tags {
   enum WELL_KNOWN_TAGS : uint32_t {
     INIT = 1,
     SPAWN_LUA_ACTOR,
     TIMEOUT,
+    EXIT,
     FAKE_ITERATOR_END  // well known last value to allow iterator over the enum
   };
   constexpr static const char* tag_name(uint32_t tag) {
@@ -22,7 +23,9 @@ struct Tags {
         return "spawn_lua_actor";
       case 3:
         return "timeout";
-      case 4:  // every value requested should be defined, hence no default
+      case 4:
+        return "exit";
+      case 5:  // every value requested should be defined, hence no default
         return nullptr;
     }
     return nullptr;
@@ -107,4 +110,4 @@ class Message {
   InternalDataStructure* _data;
 };
 
-#endif  //  MAIN_MESSAGE_HPP_
+#endif  // MAIN_INCLUDE_MESSAGE_HPP_

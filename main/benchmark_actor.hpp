@@ -5,11 +5,12 @@
 
 #include "benchmark_configuration.hpp"
 
-#include "message.hpp"
-#include "router.hpp"
+#include "include/message.hpp"
+#include "include/router_v2.hpp"
+
 class Actor {
  public:
-  Actor(uint64_t id, Router* router) : id(id), router(router) {
+  explicit Actor(uint64_t id) : id(id) {
     timestamp = xTaskGetTickCount();
     round = 0;
   }
@@ -62,14 +63,13 @@ class Actor {
 
  private:
   uint64_t id;
-  Router* router;
   uint32_t timestamp;
   uint32_t round;
 
   int send(uint64_t receiver, Message&& message) {
     // printf("[%d]%lld -> %lld: %.*s\n", xPortGetFreeHeapSize(), id, receiver,
     // STATIC_MESSAGE_SIZE, message.buffer());
-    router->send(id, receiver, std::move(message));
+    RouterV2::getInstance().send(id, receiver, std::move(message));
     return 0;
   }
 };

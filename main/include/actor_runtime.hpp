@@ -1,8 +1,5 @@
-#ifndef MAIN_ACTOR_RUNTIME_HPP_
-#define MAIN_ACTOR_RUNTIME_HPP_
-
-#include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
+#ifndef MAIN_INCLUDE_ACTOR_RUNTIME_HPP_
+#define MAIN_INCLUDE_ACTOR_RUNTIME_HPP_
 
 #include <algorithm>
 #include <cstdint>
@@ -11,24 +8,27 @@
 #include <unordered_map>
 #include <utility>
 
-#include "router.hpp"
+#include "board_functions.hpp"
+#include "router_v2.hpp"
 
 struct Params {
   uint64_t id;
-  Router* router;
+  RouterV2* router;
 };
 
 template <typename ActorType, typename RuntimeType>
 class ActorRuntime {
  public:
   static void os_task(void* params) {
-    Router* router = ((struct Params*)params)->router;
+    RouterV2* router = ((struct Params*)params)->router;
     uint64_t id = ((struct Params*)params)->id;
     RuntimeType* runtime = new RuntimeType(router, id);
     runtime->event_loop();
+    BoardFunctions::exit_thread();
   }
 
-  explicit ActorRuntime(Router* router, uint64_t id) : id(id), router(router) {
+  explicit ActorRuntime(RouterV2* router, uint64_t id)
+      : id(id), router(router) {
     router->register_actor(id);
   }
 
@@ -43,7 +43,7 @@ class ActorRuntime {
 
  private:
   uint64_t id;
-  Router* router;
+  RouterV2* router;
   std::list<uint64_t> ready_queue;
   std::map<uint32_t, uint64_t> timeouts;
   std::unordered_map<uint64_t, ActorType> actors;
@@ -51,10 +51,9 @@ class ActorRuntime {
   void event_loop() {
     while (true) {
       // Enqueue from threads master queue
-      size_t wait_time = portMAX_DELAY;
+      size_t wait_time = BoardFunctions::SLEEP_FOREVER;
       if (timeouts.size() > 0) {
-        wait_time = (timeouts.begin()->first - xTaskGetTickCount()) /
-                    portTICK_PERIOD_MS;
+        wait_time = (timeouts.begin()->first - BoardFunctions::timestamp());
       }
       if (ready_queue.size() > 0) {
         wait_time = 0;
@@ -62,7 +61,11 @@ class ActorRuntime {
       auto message = router->receive(id, wait_time);
       if (message) {
         if (message->receiver() == id) {
-          add_actor_wrapper(message->buffer());
+          if (message->tag() == Tags::WELL_KNOWN_TAGS::EXIT) {
+            return;
+          } else {
+            add_actor_wrapper(message->buffer());
+          }
         } else {
           auto receiver = actors.find(message->receiver());
           if (receiver != actors.end()) {
@@ -85,7 +88,7 @@ class ActorRuntime {
 
       // Enqueue from timeouts
       if (timeouts.begin() != timeouts.end()) {
-        if (timeouts.begin()->first < xTaskGetTickCount()) {
+        if (timeouts.begin()->first < BoardFunctions::timestamp()) {
           if (std::find(ready_queue.begin(), ready_queue.end(),
                         timeouts.begin()->second) == ready_queue.end()) {
             actors.at(timeouts.begin()->second).trigger_timeout();
@@ -104,8 +107,7 @@ class ActorRuntime {
         if (wait_time == 0) {
           ready_queue.push_back(actor.id());
         } else if (wait_time < UINT32_MAX) {
-          timeouts.emplace(xTaskGetTickCount() + wait_time / portTICK_PERIOD_MS,
-                           actor.id());
+          timeouts.emplace(BoardFunctions::timestamp() + wait_time, actor.id());
         }
       }
     }
@@ -118,4 +120,4 @@ class ActorRuntime {
   void add_actor(char* payload) { add_actor_base<>(payload); }
 };
 
-#endif  //  MAIN_ACTOR_RUNTIME_HPP_
+#endif  //  MAIN_INCLUDE_ACTOR_RUNTIME_HPP_

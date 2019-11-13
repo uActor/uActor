@@ -12,7 +12,7 @@
 #include <utility>
 
 #include "benchmark_configuration.hpp"
-#include "message.hpp"
+#include "include/message.hpp"
 
 class TableEntry {
  public:

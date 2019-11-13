@@ -5,10 +5,8 @@
 #include "lua.hpp"
 
 #include "benchmark_configuration.hpp"
-#include "message.hpp"
-#include "router.hpp"
-
-Router* g_router;
+#include "include/message.hpp"
+#include "include/router_v2.hpp"
 
 #if TOUCH_DATA
 #if TOUCH_BYTEWISE
@@ -59,9 +57,7 @@ const char receive_loop[] =
 
 class LuaActor {
  public:
-  LuaActor(uint64_t id, Router* router, lua_State* master_state)
-      : id(id), router(router) {
-    if (!id) g_router = router;
+  LuaActor(uint64_t id, lua_State* master_state) : id(id) {
     round = 0;
     snprintf(actor_name, sizeof(actor_name), "actor_%lld", id);
 
@@ -185,7 +181,6 @@ class LuaActor {
  private:
   uint64_t id;
   char actor_name[32];
-  Router* router;
   uint32_t timestamp;
   uint32_t round;
   lua_State* lua_state;
@@ -213,7 +208,7 @@ class LuaActor {
     lua_pop(state, 1);
     // printf("[%d]%lld -> %lld: %.*s\n", xPortGetFreeHeapSize(), id,
     // receiver, STATIC_MESSAGE_SIZE, m.buffer());
-    g_router->send(id, receiver, std::move(m));
+    RouterV2::getInstance().send(id, receiver, std::move(m));
     return 0;
   }
 };

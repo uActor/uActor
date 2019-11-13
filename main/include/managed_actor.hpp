@@ -1,5 +1,5 @@
-#ifndef MAIN_MANAGED_ACTOR_HPP_
-#define MAIN_MANAGED_ACTOR_HPP_
+#ifndef MAIN_INCLUDE_MANAGED_ACTOR_HPP_
+#define MAIN_INCLUDE_MANAGED_ACTOR_HPP_
 
 #include <algorithm>
 #include <cstdint>
@@ -11,7 +11,7 @@
 #include <utility>
 
 #include "message.hpp"
-#include "router.hpp"
+#include "router_v2.hpp"
 
 struct Pattern {
   uint64_t sender;
@@ -54,7 +54,7 @@ class ManagedActor {
 
  protected:
   void send(uint64_t receiver, Message&& m) {
-    Router::getInstance().send(_id, receiver, std::move(m));
+    RouterV2::getInstance().send(_id, receiver, std::move(m));
   }
 
   void deferred_sleep(uint32_t timeout) {
@@ -83,4 +83,4 @@ class ManagedActor {
   std::deque<Message> message_queue;
   char* _code;
 };
-#endif  //  MAIN_MANAGED_ACTOR_HPP_
+#endif  //  MAIN_INCLUDE_MANAGED_ACTOR_HPP_

@@ -1,5 +1,5 @@
-#ifndef MAIN_MANAGED_LUA_ACTOR_HPP_
-#define MAIN_MANAGED_LUA_ACTOR_HPP_
+#ifndef MAIN_INCLUDE_MANAGED_LUA_ACTOR_HPP_
+#define MAIN_INCLUDE_MANAGED_LUA_ACTOR_HPP_
 
 #include <cstdio>
 #include <utility>
@@ -131,4 +131,4 @@ class ManagedLuaActor : public ManagedActor {
   }
 };
 
-#endif  // MAIN_MANAGED_LUA_ACTOR_HPP_
+#endif  // MAIN_INCLUDE_MANAGED_LUA_ACTOR_HPP_

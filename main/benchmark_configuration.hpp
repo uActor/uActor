@@ -12,11 +12,13 @@
 // Touch the data array bytewise, which is not efficient for Lua
 #define TOUCH_BYTEWISE false
 
+// Currently only used with RouterV1
 // TRUE: Message copied to the queue FALSE: Reference copied to the queue
 #define BY_VALUE false
 
 #define QUEUE_SIZE 100
 
+// Currently only used with RouterV1
 // TRUE: Use an implementation of the router that
 // is based on c++ condition variables
 // FALSE: Router based on FreeRTOS queues

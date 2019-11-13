@@ -13,9 +13,11 @@
 #include "benchmark_actor.hpp"
 #include "benchmark_configuration.hpp"
 #include "benchmark_lua_actor.hpp"
-#include "lua_runtime.hpp"
-#include "managed_actor.hpp"
-#include "message.hpp"
+#include "include/board_functions.hpp"
+#include "include/lua_runtime.hpp"
+#include "include/managed_actor.hpp"
+#include "include/message.hpp"
+#include "include/router_v2.hpp"
 #include "router.hpp"
 
 extern "C" {
@@ -25,7 +27,7 @@ void app_main(void);
 #if BENCHMARK
 
 void actor_task(void* params) {
-  Router* router = ((struct Params*)params)->router;
+  RouterV2* router = ((struct Params*)params)->router;
   uint64_t id = ((struct Params*)params)->id;
 
 #if LUA_ACTORS
@@ -36,12 +38,12 @@ void actor_task(void* params) {
 #endif
   LuaActor* actor[ACTORS_PER_THREAD];
   for (int i = 0; i < ACTORS_PER_THREAD; i++) {
-    actor[i] = new LuaActor(id * ACTORS_PER_THREAD + i, router, lua_state);
+    actor[i] = new LuaActor(id * ACTORS_PER_THREAD + i, lua_state);
   }
 #else
   Actor* actor[ACTORS_PER_THREAD];
   for (int i = 0; i < ACTORS_PER_THREAD; i++) {
-    actor[i] = new Actor(id * ACTORS_PER_THREAD + i, router);
+    actor[i] = new Actor(id * ACTORS_PER_THREAD + i);
   }
 #endif
 
@@ -63,7 +65,7 @@ void actor_task(void* params) {
 
 void app_main(void) {
   printf("InitialHeap: %d \n", xPortGetFreeHeapSize());
-  Router* router = new Router();
+  RouterV2* router = &RouterV2::getInstance();
 
   TaskHandle_t handles[NUM_THREADS] = {NULL};
   Params* params =
@@ -111,7 +113,7 @@ end)";
 void app_main(void) {
   printf("InitialHeap: %d \n", xPortGetFreeHeapSize());
   TaskHandle_t handle = {NULL};
-  Params params = {.id = 1, .router = &Router::getInstance()};
+  Params params = {.id = 1, .router = &RouterV2::getInstance()};
   xTaskCreatePinnedToCore(&LuaRuntime::os_task, "TEST", 6168, &params, 5,
                           &handle, 1);
   vTaskDelay(1000 / portTICK_PERIOD_MS);
@@ -121,10 +123,10 @@ void app_main(void) {
     *reinterpret_cast<uint64_t*>(m.buffer()) = 2 + i;
     std::fill(m.buffer() + 8, m.buffer() + sizeof(receive_fun), 0);
     std::memcpy((m.buffer() + 8), receive_fun, sizeof(receive_fun));
-    Router::getInstance().send(0, 1, std::move(m));
+    RouterV2::getInstance().send(0, 1, std::move(m));
   }
   vTaskDelay(1000 / portTICK_PERIOD_MS);
-  Router::getInstance().send(
+  RouterV2::getInstance().send(
       0, 2, Message(0, 2, Tags::WELL_KNOWN_TAGS::INIT, "start"));
 
   printf("StaticHeap: %d \n", xPortGetFreeHeapSize());

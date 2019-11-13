@@ -1,5 +1,5 @@
 idf_component_register(
-  SRCS "main.cpp" "router.cpp" "managed_actor.cpp"
+  SRCS "main.cpp" "router.cpp" "managed_actor.cpp" "board_functions.cpp" "router_v2_freertos.cpp"
   INCLUDE_DIRS ""
   REQUIRES "lua"
 )
