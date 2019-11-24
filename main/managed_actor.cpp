@@ -3,8 +3,8 @@
 uint32_t ManagedActor::receive_next_internal() {
   waiting = false;
   _timeout = UINT32_MAX;
-  pattern.receiver = 0;
-  pattern.sender = 0;
+  pattern.receiver[0] = 0;
+  pattern.sender[0] = 0;
   pattern.tag = 0;
 
   this->receive(message_queue.front());

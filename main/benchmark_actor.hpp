@@ -4,7 +4,6 @@
 #include <utility>
 
 #include "benchmark_configuration.hpp"
-
 #include "include/message.hpp"
 #include "include/router_v2.hpp"
 

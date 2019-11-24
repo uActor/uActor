@@ -7,11 +7,10 @@
 #include "actor_runtime.hpp"
 #include "managed_actor.hpp"
 #include "managed_lua_actor.hpp"
-#include "router_v2.hpp"
 
 class LuaRuntime : public ActorRuntime<ManagedLuaActor, LuaRuntime> {
  public:
-  LuaRuntime(RouterV2* router, uint64_t id)
+  LuaRuntime(RouterV2* router, char* id)
       : ActorRuntime<ManagedLuaActor, LuaRuntime>(router, id) {
     state = create_lua_state();
   }
@@ -26,7 +25,9 @@ class LuaRuntime : public ActorRuntime<ManagedLuaActor, LuaRuntime> {
     return lua_state;
   }
 
-  void add_actor(char* payload) { add_actor_base<lua_State*>(payload, state); }
+  void add_actor(const char* payload) {
+    add_actor_base<lua_State*>(payload, state);
+  }
 
   friend ActorRuntime;
 };

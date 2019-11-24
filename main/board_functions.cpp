@@ -1,7 +1,7 @@
+#include "include/board_functions.hpp"
+
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
-
-#include "include/board_functions.hpp"
 
 const uint32_t BoardFunctions::SLEEP_FOREVER = portMAX_DELAY;
 

@@ -2,11 +2,11 @@
 #define MAIN_BENCHMARK_LUA_ACTOR_HPP_
 
 #include <utility>
-#include "lua.hpp"
 
 #include "benchmark_configuration.hpp"
 #include "include/message.hpp"
 #include "include/router_v2.hpp"
+#include "lua.hpp"
 
 #if TOUCH_DATA
 #if TOUCH_BYTEWISE

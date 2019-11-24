@@ -14,13 +14,13 @@
 #include "router_v2.hpp"
 
 struct Pattern {
-  uint64_t sender;
-  uint64_t receiver;
+  char sender[128];
+  char receiver[128];
   uint32_t tag;
 
   bool matches(const Message& message) {
-    return message.sender() == sender && message.receiver() == receiver &&
-           message.tag() == tag;
+    return strcmp(message.sender(), sender) == 0 &&
+           strcmp(message.receiver(), receiver) == 0 && message.tag() == tag;
   }
 };
 
@@ -28,9 +28,9 @@ class ManagedActor {
  public:
   ManagedActor(const ManagedActor&) = delete;
 
-  ManagedActor(uint64_t id, char* code)
-      : waiting(false), _timeout(UINT32_MAX), _id(id) {
-    snprintf(_name, sizeof(_name), "actor_%lld", id);
+  ManagedActor(const char* id, const char* code)
+      : waiting(false), _timeout(UINT32_MAX) {
+    strncpy(_id, id, sizeof(_id));
     _code = new char[strlen(code) + 1];
     strncpy(_code, code, strlen(code) + 1);
   }
@@ -46,30 +46,26 @@ class ManagedActor {
                                 "timeout");
   }
 
-  uint64_t id() { return _id; }
-
-  char* name() { return _name; }
+  char* id() { return _id; }
 
   char* code() { return _code; }
 
  protected:
-  void send(uint64_t receiver, Message&& m) {
-    RouterV2::getInstance().send(_id, receiver, std::move(m));
-  }
+  void send(Message&& m) { RouterV2::getInstance().send(std::move(m)); }
 
   void deferred_sleep(uint32_t timeout) {
     waiting = true;
-    pattern.receiver = _id;
-    pattern.sender = _id;
+    strncpy(pattern.receiver, _id, sizeof(pattern.receiver));
+    strncpy(pattern.sender, _id, sizeof(pattern.sender));
     pattern.tag = Tags::WELL_KNOWN_TAGS::TIMEOUT;
     _timeout = timeout;
   }
 
-  void deffered_block_for(uint64_t sender, uint64_t receiver, uint32_t tag,
-                          uint32_t timeout) {
+  void deffered_block_for(const char* sender, const char* receiver,
+                          uint32_t tag, uint32_t timeout) {
     waiting = true;
-    pattern.receiver = receiver;
-    pattern.sender = sender;
+    strncpy(pattern.sender, sender, sizeof(pattern.sender));
+    strncpy(pattern.receiver, receiver, sizeof(pattern.receiver));
     pattern.tag = tag;
     _timeout = timeout;
   }
@@ -78,8 +74,7 @@ class ManagedActor {
   bool waiting;
   Pattern pattern;
   uint32_t _timeout;
-  uint64_t _id;
-  char _name[32];
+  char _id[128];
   std::deque<Message> message_queue;
   char* _code;
 };

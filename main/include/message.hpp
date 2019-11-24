@@ -34,7 +34,22 @@ struct Tags {
 
 class Message {
  public:
-  Message(const Message& old) = delete;
+  Message(const Message& old) : _data(nullptr) {
+    _data = reinterpret_cast<InternalDataStructure*>(
+        new char[old.payload_size() + InternalDataStructure::size_overhead]);
+    std::memcpy(_data, old._data,
+                old.payload_size() + InternalDataStructure::size_overhead);
+  }
+
+  Message& operator=(const Message& old) {
+    if (_data && old.payload_size() != payload_size()) {
+      delete reinterpret_cast<char*>(_data);
+    }
+    std::memcpy(_data, old._data,
+                old.payload_size() + InternalDataStructure::size_overhead);
+    return *this;
+  }
+
   Message(Message&& old) : _data(old._data) { old._data = nullptr; }
 
   Message& operator=(Message&& old) {
@@ -46,65 +61,63 @@ class Message {
     return *this;
   }
 
-  explicit Message(size_t size, bool init = true) {
-    if (init) {
-      _data = reinterpret_cast<InternalDataStructure*>(
-          new char[size + InternalDataStructure::size_overhead]);
-      // assert(_data);
-      _data->size = size;
-    } else {
-      _data = nullptr;
-    }
-  }
+  Message() { _data = nullptr; }
 
-  Message(uint64_t sender, uint64_t receiver, uint32_t tag,
-          const char* message) {
-    size_t buffer_size = strlen(message) + 1;
+  Message(const char* sender, const char* receiver, uint32_t tag,
+          const char* message, size_t message_size = 0) {
+    size_t buffer_size = message_size > 0 ? message_size : strlen(message) + 1;
+    size_t sender_size = strlen(sender) + 1;
+    size_t receiver_size = strlen(receiver) + 1;
+    size_t payload_size = sender_size + buffer_size + receiver_size;
     _data = reinterpret_cast<InternalDataStructure*>(
-        new char[buffer_size + InternalDataStructure::size_overhead]);
-    _data->sender = sender;
-    _data->receiver = receiver;
-    _data->size = buffer_size;
+        new char[payload_size + InternalDataStructure::size_overhead]);
+
+    _data->sender_size = sender_size;
+    _data->receiver_size = receiver_size;
+    _data->buffer_size = buffer_size;
     _data->tag = tag;
 
-    std::strncpy(buffer(), message, buffer_size);
+    std::memcpy(_data->payload, sender, sender_size);
+    std::memcpy(_data->payload + sender_size, receiver, receiver_size);
+    std::memcpy(_data->payload + sender_size + receiver_size, message,
+                buffer_size);
   }
 
   ~Message() { delete _data; }
 
   void moved() { _data = nullptr; }
 
-  uint64_t sender() const { return _data->sender; }
+  const char* sender() const { return _data->payload; }
 
-  uint64_t receiver() const { return _data->receiver; }
-
-  size_t size() const { return _data->size; }
+  const char* receiver() const { return _data->payload + _data->sender_size; }
 
   uint32_t tag() const { return _data->tag; }
 
-  const char* ro_buffer() const {
-    return static_cast<const char*>(_data->payload);
+  const char* buffer() const {
+    return _data->payload + _data->sender_size + _data->receiver_size;
   }
 
-  void sender(uint64_t sender) { _data->sender = sender; }
+  size_t buffer_size() const { return _data->buffer_size; }
 
-  void receiver(uint64_t receiver) { _data->receiver = receiver; }
+  size_t sender_size() const { return _data->sender_size; }
 
-  void tag(uint32_t tag) { _data->tag = tag; }
+  size_t receiver_size() const { return _data->receiver_size; }
 
-  char* buffer() { return _data->payload; }
+  size_t payload_size() const {
+    return _data->receiver_size + _data->sender_size + _data->buffer_size;
+  }
 
   void* raw() { return _data; }
 
  private:
   struct InternalDataStructure {
     constexpr static size_t size_overhead =
-        2 * sizeof(uint64_t) + 2 * sizeof(size_t);
+        3 * sizeof(size_t) + sizeof(uint32_t);
 
-    uint64_t sender;
-    uint64_t receiver;
-    size_t size;
-    size_t tag;
+    size_t sender_size;
+    size_t receiver_size;
+    size_t buffer_size;
+    uint32_t tag;
     char payload[0];
   };
   InternalDataStructure* _data;

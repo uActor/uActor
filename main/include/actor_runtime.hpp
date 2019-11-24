@@ -3,8 +3,10 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <functional>
 #include <list>
 #include <map>
+#include <string>
 #include <unordered_map>
 #include <utility>
 
@@ -12,7 +14,7 @@
 #include "router_v2.hpp"
 
 struct Params {
-  uint64_t id;
+  char* id;
   RouterV2* router;
 };
 
@@ -21,32 +23,32 @@ class ActorRuntime {
  public:
   static void os_task(void* params) {
     RouterV2* router = ((struct Params*)params)->router;
-    uint64_t id = ((struct Params*)params)->id;
+    char* id = ((struct Params*)params)->id;
     RuntimeType* runtime = new RuntimeType(router, id);
     runtime->event_loop();
     BoardFunctions::exit_thread();
   }
 
-  explicit ActorRuntime(RouterV2* router, uint64_t id)
-      : id(id), router(router) {
+  explicit ActorRuntime(RouterV2* router, char* id) : id(id), router(router) {
     router->register_actor(id);
   }
 
  protected:
   template <typename... Args>
-  void add_actor_base(char* payload, Args... args) {
-    uint64_t actor_id = *reinterpret_cast<uint64_t*>(payload);
-    char* code = payload + 8;
-    actors.try_emplace(actor_id, actor_id, code, std::forward<Args>(args)...);
+  void add_actor_base(const char* payload, Args... args) {
+    const char* actor_id = payload;
+    const char* code = payload + strlen(payload) + 1;
+    actors.try_emplace(std::hash<std::string>{}(std::string(actor_id)),
+                       actor_id, code, std::forward<Args>(args)...);
     router->register_alias(id, actor_id);
   }
 
  private:
-  uint64_t id;
+  char* id;
   RouterV2* router;
-  std::list<uint64_t> ready_queue;
-  std::map<uint32_t, uint64_t> timeouts;
-  std::unordered_map<uint64_t, ActorType> actors;
+  std::list<size_t> ready_queue;
+  std::map<uint32_t, size_t> timeouts;
+  std::unordered_map<size_t, ActorType> actors;
 
   void event_loop() {
     while (true) {
@@ -60,24 +62,25 @@ class ActorRuntime {
       }
       auto message = router->receive(id, wait_time);
       if (message) {
-        if (message->receiver() == id) {
+        if (!strcmp(message->receiver(), id)) {
           if (message->tag() == Tags::WELL_KNOWN_TAGS::EXIT) {
             return;
           } else {
             add_actor_wrapper(message->buffer());
           }
         } else {
-          auto receiver = actors.find(message->receiver());
+          auto receiver = actors.find(
+              std::hash<std::string>{}(std::string(message->receiver())));
           if (receiver != actors.end()) {
+            size_t hash = std::hash<std::string>{}(receiver->second.id());
             if (receiver->second.enqueue(std::move(*message))) {
-              if (std::find(ready_queue.begin(), ready_queue.end(),
-                            receiver->second.id()) == ready_queue.end()) {
-                ready_queue.push_back(receiver->second.id());
+              if (std::find(ready_queue.begin(), ready_queue.end(), hash) ==
+                  ready_queue.end()) {
+                ready_queue.push_back(hash);
               }
               auto it = std::find_if(
-                  timeouts.begin(), timeouts.end(), [&](auto& element) {
-                    return element.second == receiver->second.id();
-                  });
+                  timeouts.begin(), timeouts.end(),
+                  [&](auto& element) { return element.second == hash; });
               if (it != timeouts.end()) {
                 timeouts.erase(it);
               }
@@ -100,24 +103,26 @@ class ActorRuntime {
 
       // Process one message
       if (ready_queue.size() > 0) {
-        uint64_t task = ready_queue.front();
+        size_t task = ready_queue.front();
         ready_queue.pop_front();
         ActorType& actor = actors.at(task);
         uint32_t wait_time = actor.receive_next_internal();
         if (wait_time == 0) {
-          ready_queue.push_back(actor.id());
+          ready_queue.push_back(
+              std::hash<std::string>{}(std::string(actor.id())));
         } else if (wait_time < UINT32_MAX) {
-          timeouts.emplace(BoardFunctions::timestamp() + wait_time, actor.id());
+          timeouts.emplace(BoardFunctions::timestamp() + wait_time,
+                           std::hash<std::string>{}(std::string(actor.id())));
         }
       }
     }
   }
 
-  void add_actor_wrapper(char* payload) {
+  void add_actor_wrapper(const char* payload) {
     static_cast<RuntimeType*>(this)->add_actor(payload);
   }
 
-  void add_actor(char* payload) { add_actor_base<>(payload); }
+  void add_actor(const char* payload) { add_actor_base<>(payload); }
 };
 
 #endif  //  MAIN_INCLUDE_ACTOR_RUNTIME_HPP_

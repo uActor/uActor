@@ -1,4 +1,5 @@
 #include "router.hpp"
+
 #include "benchmark_configuration.hpp"
 
 #if COND_VAR
