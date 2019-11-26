@@ -91,10 +91,7 @@ local ping_tag = 1025;
 local pong_tag = 1026;
 if(id == "actor/2" and tag == well_known_tags.init) then
   print(id.." received : "..message);
-  for i = 3,33, 1
-  do
-    send("actor/"..i, ping_tag, "ping");
-  end
+  send("actor/#", ping_tag, "ping");
   deferred_block_for("actor/33", "actor/2", pong_tag, 5000);
 elseif(id == "actor/2") then
   print(id.." received : "..message);
@@ -111,7 +108,7 @@ elseif(id == "actor/3" and tag == well_known_tags.timeout) then
 end
 end)";
 
-void app_main(void) {
+void inner_main(void*) {
   printf("InitialHeap: %d \n", xPortGetFreeHeapSize());
   TaskHandle_t handle = {NULL};
   Params params = {.id = "runtime/lua/1", .router = &RouterV2::getInstance()};
@@ -136,6 +133,14 @@ void app_main(void) {
       Message("root", "actor/2", Tags::WELL_KNOWN_TAGS::INIT, "start"));
 
   printf("StaticHeap: %d \n", xPortGetFreeHeapSize());
+  while (true) {
+    vTaskDelay(5000 / portTICK_PERIOD_MS);
+    printf("Heap: %d \n", xPortGetFreeHeapSize());
+  }
+}
+
+void app_main(void) {
+  xTaskCreatePinnedToCore(&inner_main, "MAIN", 6168, nullptr, 5, nullptr, 1);
 }
 
 #endif

@@ -36,7 +36,7 @@ class Message {
  public:
   Message(const Message& old) : _data(nullptr) {
     _data = reinterpret_cast<InternalDataStructure*>(
-        new char[old.payload_size() + InternalDataStructure::size_overhead]);
+        malloc(old.payload_size() + InternalDataStructure::size_overhead));
     std::memcpy(_data, old._data,
                 old.payload_size() + InternalDataStructure::size_overhead);
   }
