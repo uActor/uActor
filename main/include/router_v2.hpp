@@ -8,6 +8,7 @@
 #include <sstream>
 #include <stack>
 #include <string>
+#include <unordered_set>
 #include <utility>
 #include <variant>
 
@@ -33,20 +34,22 @@ class RouterNode {
     std::list<RouterNode*> aliases;
   };
 
-  bool operator<(const RouterNode& other) const { return path < other.path; }
+  void _send_message(Message&& message);
 
-  bool operator==(const RouterNode& other) const { return path == other.path; }
-
-  void _send_message(const Message& message);
-
-  void send_message(const Message& message) {
+  void send_message(Message&& message) {
     if (is_alias()) {
       for (RouterNode* master : *std::get<std::list<RouterNode*>*>(content)) {
-        master->send_message(message);
+        master->send_message(std::move(message));
       }
     } else if (is_master()) {
-      _send_message(message);
+      _send_message(std::move(message));
     }
+  }
+
+  bool has_listeners() {
+    return (is_alias() &&
+            !std::get<std::list<RouterNode*>*>(content)->empty()) ||
+           is_master();
   }
 
   std::optional<Message> _receive_message(uint32_t timeout);
@@ -97,10 +100,32 @@ class RouterNode {
 
   void _remove_queue();
 
+  struct PointerHash {
+    bool operator()(RouterNode* node) const {
+      // if(!lhs || !rhs) return true;
+      return std::hash<std::string>()(node->path);
+    }
+  };
+
+  struct PointerEqual {
+    bool operator()(RouterNode* lhs, RouterNode* rhs) const {
+      // if(!lhs || !rhs) return true;
+      return lhs->path == rhs->path;
+    }
+  };
+
+  struct PointerCompare {
+    bool operator()(RouterNode* lhs, RouterNode* rhs) const {
+      // if(!lhs || !rhs) return true;
+      return lhs->path < rhs->path;
+    }
+  };
+
   std::optional<std::list<RouterNode*>> prepare_remove() {
     if (is_master()) {
       std::list<RouterNode*> aliases =
           std::move(std::get<MasterStructure>(content).aliases);
+      _remove_queue();
       content.emplace<std::monostate>();
       return std::move(aliases);
     }
@@ -121,7 +146,8 @@ class RouterNode {
   std::variant<std::monostate, MasterStructure, std::list<RouterNode*>*>
       content;
   RouterNode* parent;
-  std::set<RouterNode> children;
+  std::unordered_set<RouterNode*, PointerHash, PointerEqual> children;
+  // std::set<RouterNode*, PointerCompare> children;
   std::string path;
 };
 
@@ -134,45 +160,63 @@ class RouterV2 {
 
   void send(Message&& message) {
     send_recursive(&root, std::string(message.receiver()), std::move(message),
-                   false);
+                   false, false);
   }
 
   void send_recursive(RouterNode* node, std::string path_tail,
-                      const Message& message, bool wildcard,
-                      std::string head_path = "") {
-    node->send_message(message);
+                      Message&& message, bool wildcard_in_path, bool wildcard) {
+    if (wildcard_in_path && node->has_listeners()) {
+      std::stringstream new_head;
+      RouterNode* walk = node;
+      std::stack<RouterNode*> path;
+      while (walk) {
+        if (walk->parent) {
+          path.push(walk);
+        }
+        walk = walk->parent;
+      }
+
+      while (!path.empty()) {
+        new_head << path.top()->path;
+        path.pop();
+        if (!path.empty()) {
+          new_head << "/";
+        }
+      }
+      Message out = Message(message.sender(), new_head.str().c_str(),
+                            message.tag(), message.buffer());
+      node->send_message(std::move(out));
+    } else if (node->has_listeners()) {
+      if (!wildcard && path_tail.empty()) {
+        node->send_message(std::move(message));
+        return;
+      } else {
+        node->send_message(Message(message));
+      }
+    }
     std::istringstream stream(path_tail);
     std::string next_segment;
     std::string new_tail;
-    if (!std::getline(stream, next_segment, '/')) {
-      next_segment = "";
-    }
+    std::getline(stream, next_segment, '/');
     if (!std::getline(stream, new_tail)) {
       new_tail = "";
     }
 
-    if (next_segment == "+" || next_segment == "#" || wildcard) {
+    if ((!next_segment.empty() &&
+         (next_segment == "+" || next_segment == "#")) ||
+        wildcard) {
       for (auto it = node->children.begin(); it != node->children.end(); ++it) {
-        RouterNode* child = const_cast<RouterNode*>(&(*it));
-        std::stringstream np;
-        np << head_path << child->path;
-        if (new_tail != "") {
-          np << "/" << new_tail;
-        }
-        std::stringstream new_head;
-        new_head << head_path << child->path << "/";
-        Message out = Message(message.sender(), np.str().c_str(), message.tag(),
-                              message.buffer());
-        send_recursive(child, new_tail, out, (next_segment == "#" || wildcard),
-                       new_head.str());
+        RouterNode* child = const_cast<RouterNode*>((*it));
+        send_recursive(child, new_tail, Message(message), true,
+                       (next_segment == "#" || wildcard));
       }
     } else {
-      auto it = node->children.find(RouterNode(next_segment));
+      RouterNode tmp = RouterNode(next_segment);
+      auto it = node->children.find(&tmp);
       if (it != node->children.end()) {
-        RouterNode* child = const_cast<RouterNode*>(&(*it));
-        std::stringstream new_head;
-        new_head << head_path << child->path << "/";
-        send_recursive(child, new_tail, message, false, new_head.str());
+        RouterNode* child = const_cast<RouterNode*>((*it));
+        send_recursive(child, new_tail, std::move(message), wildcard_in_path,
+                       false);
       }
     }
   }
@@ -183,14 +227,14 @@ class RouterV2 {
     std::istringstream path(actor_id);
     std::string next_segment;
     while (std::getline(path, next_segment, '/')) {
-      std::set<RouterNode>::iterator it =
-          current->children.find(RouterNode(next_segment));
+      RouterNode tmp = RouterNode(next_segment);
+      auto it = current->children.find(&tmp);
       if (it != current->children.end()) {
-        current = const_cast<RouterNode*>(&((*it)));
+        current = const_cast<RouterNode*>(((*it)));
       } else {
         current = const_cast<RouterNode*>(
-            &(*(current->children.emplace(RouterNode(current, next_segment))
-                    .first)));
+            (*(current->children.emplace(new RouterNode(current, next_segment))
+                   .first)));
       }
     }
     current->add_master();
@@ -198,18 +242,15 @@ class RouterV2 {
 
   void deregister_actor(const char* actor_id) {
     std::unique_lock<std::mutex> lock(mutex);
-    std::stack<std::pair<std::string, RouterNode*>> previous;
 
     RouterNode* current = &root;
     std::istringstream path(actor_id);
     std::string next_segment = "";
-
-    previous.push(std::make_pair(next_segment, current));
-
     while (std::getline(path, next_segment, '/')) {
-      auto it = current->children.find(RouterNode(next_segment));
+      RouterNode tmp = RouterNode(next_segment);
+      auto it = current->children.find(&tmp);
       if (it != current->children.end()) {
-        current = const_cast<RouterNode*>(&((*it)));
+        current = const_cast<RouterNode*>(((*it)));
       } else {
         printf("error, path does not exist\n");
         return;
@@ -235,7 +276,9 @@ class RouterV2 {
     RouterNode* previous = nullptr;
     while (current) {
       if (previous) {
-        current->children.erase(RouterNode(previous->path));
+        delete previous;
+        RouterNode tmp = RouterNode(previous->path);
+        current->children.erase(&tmp);
       }
       if (!current->is_master() && !current->is_alias() &&
           current->children.begin() == current->children.end() &&
@@ -256,9 +299,10 @@ class RouterV2 {
     std::string next_segment;
 
     while (std::getline(path, next_segment, '/')) {
-      auto it = current->children.find(RouterNode(next_segment));
+      RouterNode tmp = RouterNode(next_segment);
+      auto it = current->children.find(&tmp);
       if (it != current->children.end()) {
-        current = const_cast<RouterNode*>(&((*it)));
+        current = const_cast<RouterNode*>(((*it)));
       } else {
         printf("error, path does not exist\n");
         return;
@@ -272,12 +316,14 @@ class RouterV2 {
     current = &root;
 
     while (std::getline(path, next_segment, '/')) {
-      auto it = current->children.find(RouterNode(next_segment));
+      RouterNode tmp = RouterNode(next_segment);
+      auto it = current->children.find(&tmp);
       if (it != current->children.end()) {
-        current = const_cast<RouterNode*>(&((*it)));
+        current = const_cast<RouterNode*>(((*it)));
       } else {
-        auto inserted = current->children.emplace(current, next_segment);
-        current = const_cast<RouterNode*>(&(*inserted.first));
+        auto inserted =
+            current->children.emplace(new RouterNode(current, next_segment));
+        current = const_cast<RouterNode*>((*inserted.first));
       }
     }
 
@@ -291,9 +337,10 @@ class RouterV2 {
     std::string next_segment;
 
     while (std::getline(path, next_segment, '/')) {
-      auto it = current->children.find(RouterNode(next_segment));
+      RouterNode tmp = RouterNode(next_segment);
+      auto it = current->children.find(&tmp);
       if (it != current->children.end()) {
-        current = const_cast<RouterNode*>(&((*it)));
+        current = const_cast<RouterNode*>(((*it)));
       } else {
         printf("error, path does not exist\n");
         return std::nullopt;

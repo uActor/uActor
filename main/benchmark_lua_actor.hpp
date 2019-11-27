@@ -188,19 +188,25 @@ class LuaActor {
   static int send(lua_State* state) {
     uint64_t id = lua_tointeger(state, 1);
     uint64_t receiver = lua_tointeger(state, 2);
-    Message m = Message(STATIC_MESSAGE_SIZE);
+
+    char self[128], next[128];
+    snprintf(self, sizeof(self), "%lld", id);
+    snprintf(next, sizeof(next), "%lld", receiver);
+
+    Message m = Message(self, next, 1234, STATIC_MESSAGE_SIZE);
 
     lua_pushnil(state);
     while (lua_next(state, 3) != 0) {
 #if TOUCH_BYTEWISE
       if (lua_tointeger(state, -2) < STATIC_MESSAGE_SIZE + 1) {
-        *(m.buffer() + lua_tointeger(state, -2) - 1) =
+        *(const_cast<char*>(m.buffer()) + lua_tointeger(state, -2) - 1) =
             48 + lua_tointeger(state, -1);
       }
 #else
       if (lua_tointeger(state, -2) < STATIC_MESSAGE_SIZE / 4 + 1) {
-        *reinterpret_cast<uint32_t*>(m.buffer() + lua_tointeger(state, -2) -
-                                     1) = lua_tointeger(state, -1);
+        *reinterpret_cast<uint32_t*>(const_cast<char*>(m.buffer()) +
+                                     lua_tointeger(state, -2) - 1) =
+            lua_tointeger(state, -1);
       }
 #endif
       lua_pop(state, 1);
@@ -208,7 +214,8 @@ class LuaActor {
     lua_pop(state, 1);
     // printf("[%d]%lld -> %lld: %.*s\n", xPortGetFreeHeapSize(), id,
     // receiver, STATIC_MESSAGE_SIZE, m.buffer());
-    RouterV2::getInstance().send(id, receiver, std::move(m));
+    // printf("%s -> %s\n", self, next);
+    RouterV2::getInstance().send(std::move(m));
     return 0;
   }
 };

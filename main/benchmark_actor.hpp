@@ -12,6 +12,8 @@ class Actor {
   explicit Actor(uint64_t id) : id(id) {
     timestamp = xTaskGetTickCount();
     round = 0;
+    snprintf(self, sizeof(self), "%lld", id);
+    snprintf(next, sizeof(next), "%lld", (id + 1) % 32);
   }
 
   void receive(uint64_t sender, char* message) {
@@ -30,18 +32,19 @@ class Actor {
       round++;
     }
 
-    Message m = Message(STATIC_MESSAGE_SIZE);
+    Message m = Message(self, next, 1234, STATIC_MESSAGE_SIZE);
 #if TOUCH_DATA
 #if TOUCH_BYTEWISE
     for (int i = 0; i < STATIC_MESSAGE_SIZE; i++) {
       if ((i % (STATIC_MESSAGE_SIZE / 20) == 0)) {
-        *(m.buffer() + i) = 50;
+        *(const_cast<char*>(m.buffer()) + i) = 50;
       } else {
-        *(m.buffer() + i) = 49;
+        *(const_cast<char*>(m.buffer()) + i) = 49;
       }
     }
 #else
-    uint32_t* casted_buffer = reinterpret_cast<uint32_t*>(m.buffer());
+    uint32_t* casted_buffer =
+        reinterpret_cast<uint32_t*>(const_cast<char*>(m.buffer()));
     for (int i = 0; i < STATIC_MESSAGE_SIZE / 4; i++) {
       if ((i * 4 % (STATIC_MESSAGE_SIZE / 20) == 0)) {
         *(casted_buffer + i) = 49 << 24 | 49 << 16 | 49 << 8 | 50;
@@ -57,20 +60,14 @@ class Actor {
     }
 #endif
 #endif
-    send((id + 1) % (NUM_ACTORS), std::move(m));
+    RouterV2::getInstance().send(std::move(m));
   }
 
  private:
+  char self[128], next[128];
   uint64_t id;
   uint32_t timestamp;
   uint32_t round;
-
-  int send(uint64_t receiver, Message&& message) {
-    // printf("[%d]%lld -> %lld: %.*s\n", xPortGetFreeHeapSize(), id, receiver,
-    // STATIC_MESSAGE_SIZE, message.buffer());
-    RouterV2::getInstance().send(id, receiver, std::move(message));
-    return 0;
-  }
 };
 
 #endif  // MAIN_BENCHMARK_ACTOR_HPP_

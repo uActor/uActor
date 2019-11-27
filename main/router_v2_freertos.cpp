@@ -18,10 +18,9 @@ class RouterNode::Queue {
 
   ~Queue() { vQueueDelete(queue); }
 
-  void send_message(const Message& message) {
-    Message m = message;
-    xQueueSend(queue, &m, portMAX_DELAY);
-    m.moved();
+  void send_message(Message&& message) {
+    xQueueSend(queue, &message, portMAX_DELAY);
+    message.moved();
   }
 
   std::optional<Message> receive_message(uint32_t timeout) {
@@ -50,8 +49,8 @@ std::optional<Message> RouterNode::_receive_message(uint32_t timeout) {
   return std::get<MasterStructure>(content).queue->receive_message(timeout);
 }
 
-void RouterNode::_send_message(const Message& message) {
-  std::get<MasterStructure>(content).queue->send_message(message);
+void RouterNode::_send_message(Message&& message) {
+  std::get<MasterStructure>(content).queue->send_message(std::move(message));
 }
 
 void RouterNode::_remove_queue() {

@@ -146,17 +146,18 @@ TEST(ROUTER, wildcard_hash) {
 }
 
 TEST(ROUTER, wildcard_path_creation) {
-  RouterV2::getInstance().register_actor("foo/bar/baz/1");
+  RouterV2 router = RouterV2();
+  router.register_actor("foo/bar/baz/1");
   Message m1 = Message("asdf", "foo/#", 1, "");
   Message m2 = Message("asdf", "foo/+/baz/1", 1, "");
 
-  RouterV2::getInstance().send(std::move(m1));
-  auto result1 = RouterV2::getInstance().receive("foo/bar/baz/1");
+  router.send(std::move(m1));
+  auto result1 = router.receive("foo/bar/baz/1");
   ASSERT_TRUE(result1);
   ASSERT_STREQ(result1->receiver(), "foo/bar/baz/1");
 
-  RouterV2::getInstance().send(std::move(m2));
-  auto result2 = RouterV2::getInstance().receive("foo/bar/baz/1");
+  router.send(std::move(m2));
+  auto result2 = router.receive("foo/bar/baz/1");
   ASSERT_TRUE(result2);
   ASSERT_STREQ(result2->receiver(), "foo/bar/baz/1");
 }

@@ -83,6 +83,24 @@ class Message {
                 buffer_size);
   }
 
+  Message(const char* sender, const char* receiver, uint32_t tag,
+          size_t message_size) {
+    size_t buffer_size = message_size;
+    size_t sender_size = strlen(sender) + 1;
+    size_t receiver_size = strlen(receiver) + 1;
+    size_t payload_size = sender_size + buffer_size + receiver_size;
+    _data = reinterpret_cast<InternalDataStructure*>(
+        new char[payload_size + InternalDataStructure::size_overhead]);
+
+    _data->sender_size = sender_size;
+    _data->receiver_size = receiver_size;
+    _data->buffer_size = buffer_size;
+    _data->tag = tag;
+
+    std::memcpy(_data->payload, sender, sender_size);
+    std::memcpy(_data->payload + sender_size, receiver, receiver_size);
+  }
+
   ~Message() { delete _data; }
 
   void moved() { _data = nullptr; }

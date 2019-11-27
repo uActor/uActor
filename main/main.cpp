@@ -25,11 +25,16 @@ void app_main(void);
 
 #include "benchmark_actor.hpp"
 #include "benchmark_lua_actor.hpp"
-#include "router.hpp"
+// #include "router.hpp"
+
+struct BenchmarkParams {
+  uint64_t id;
+  RouterV2* router;
+};
 
 void actor_task(void* params) {
-  RouterV2* router = ((struct Params*)params)->router;
-  uint64_t id = ((struct Params*)params)->id;
+  RouterV2* router = ((struct BenchmarkParams*)params)->router;
+  uint64_t id = ((struct BenchmarkParams*)params)->id;
 
 #if LUA_ACTORS
 #if LUA_SHARED_RUNTIME
@@ -47,42 +52,47 @@ void actor_task(void* params) {
     actor[i] = new Actor(id * ACTORS_PER_THREAD + i);
   }
 #endif
-
-  router->register_actor(id * ACTORS_PER_THREAD);
+  char primary[128], buffer[128];
+  snprintf(primary, sizeof(primary), "%lld", id * ACTORS_PER_THREAD);
+  router->register_actor(primary);
   for (int i = 1; i < ACTORS_PER_THREAD; i++) {
-    router->register_alias(id * ACTORS_PER_THREAD, id * ACTORS_PER_THREAD + i);
+    snprintf(buffer, sizeof(buffer), "%lld", id * ACTORS_PER_THREAD + i);
+    router->register_alias(primary, buffer);
   }
 
   while (true) {
-    auto message = router->receive(id * ACTORS_PER_THREAD, portMAX_DELAY);
+    auto message = router->receive(primary, portMAX_DELAY);
     if (message) {
-      actor[message->receiver() - id * ACTORS_PER_THREAD]->receive(
-          message->sender(), message->buffer());
+      actor[std::stoi(message->receiver()) - id * ACTORS_PER_THREAD]->receive(
+          std::stoi(message->sender()), const_cast<char*>(message->buffer()));
     }
-    // Without IO, taskYIELD() doesn't reset the idle task watchdog
-    // vTaskDelay(10 / portTICK_PERIOD_MS);
   }
 }
 
-void app_main(void) {
+void real_main(void*) {
   printf("InitialHeap: %d \n", xPortGetFreeHeapSize());
   RouterV2* router = &RouterV2::getInstance();
 
-  TaskHandle_t handles[NUM_THREADS] = {NULL};
-  Params* params =
-      static_cast<Params*>(pvPortMalloc(sizeof(Params) * NUM_THREADS));
+  // TaskHandle_t handles[NUM_THREADS] = {NULL};
+  BenchmarkParams* params = static_cast<BenchmarkParams*>(
+      pvPortMalloc(sizeof(BenchmarkParams) * NUM_THREADS));
 
   for (uint64_t i = 0; i < NUM_THREADS; i++) {
     params[i] = {.id = i, .router = router};
     char buffer[16];
     snprintf(buffer, sizeof(buffer), "Test%lld", i);
-    xTaskCreatePinnedToCore(&actor_task, buffer, 6168, &params[i], 5,
-                            &handles[i], i % 2);
+    xTaskCreatePinnedToCore(&actor_task, buffer, 7500, &params[i], 5, nullptr,
+                            i % 2);
   }
 
   vTaskDelay(1000 / portTICK_PERIOD_MS);
   printf("StaticHeap: %d \n", xPortGetFreeHeapSize());
-  router->send(0, 1, Message(STATIC_MESSAGE_SIZE));
+  router->send(Message("0", "1", 1234, ""));
+  vTaskDelete(nullptr);
+}
+
+void app_main(void) {
+  xTaskCreatePinnedToCore(&real_main, "MAIN", 7500, nullptr, 5, nullptr, 0);
 }
 #else
 

@@ -12,10 +12,9 @@
 
 class RouterNode::Queue {
  public:
-  void send_message(const Message& message) {
+  void send_message(Message&& message) {
     // printf("%s -> %s\n", message.sender(), message.receiver());
-    Message m = message;
-    queue.emplace_back(std::move(m));
+    queue.emplace_back(std::move(message));
   }
 
   std::optional<Message> receive_message(uint32_t timeout) {
@@ -45,8 +44,8 @@ std::optional<Message> RouterNode::_receive_message(uint32_t timeout) {
   return std::get<MasterStructure>(content).queue->receive_message(timeout);
 }
 
-void RouterNode::_send_message(const Message& message) {
-  std::get<MasterStructure>(content).queue->send_message(message);
+void RouterNode::_send_message(Message&& message) {
+  std::get<MasterStructure>(content).queue->send_message(std::move(message));
 }
 
 void RouterNode::_remove_queue() {
