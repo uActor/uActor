@@ -293,7 +293,6 @@ class RouterV2 {
 
   void register_alias(const char* actor_id, const char* alias_id) {
     std::unique_lock<std::mutex> lock(mutex);
-
     RouterNode* current = &root;
     std::istringstream path(actor_id);
     std::string next_segment;
@@ -316,6 +315,9 @@ class RouterV2 {
     current = &root;
 
     while (std::getline(path, next_segment, '/')) {
+      if (next_segment == "#") {
+        break;
+      }
       RouterNode tmp = RouterNode(next_segment);
       auto it = current->children.find(&tmp);
       if (it != current->children.end()) {

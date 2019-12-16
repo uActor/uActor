@@ -105,7 +105,9 @@ class Message {
 
   void moved() { _data = nullptr; }
 
-  const char* sender() const { return _data->payload; }
+  const char* sender() const {
+    return _data->payload;
+  }
 
   const char* receiver() const { return _data->payload + _data->sender_size; }
 
@@ -126,6 +128,11 @@ class Message {
   }
 
   void* raw() { return _data; }
+
+  size_t internal_size() const {
+    return payload_size() + InternalDataStructure::size_overhead;
+  }
+  char* full_buffer() { return reinterpret_cast<char*>(_data); }
 
  private:
   struct InternalDataStructure {

@@ -1,40 +1,41 @@
 #include <gtest/gtest.h>
-// #include <thread>
+#include <thread>
 
-// #include <lua_runtime.hpp>
+#include <lua_runtime.hpp>
 #include <router_v2.hpp>
 
-// const char test_pong[] = R"(function receive(sender, tag, message)
-//   send(sender, 0, "pong");
-// end)";
+const char test_pong[] = R"(function receive(sender, tag, message)
+  print("ping");
+  send(sender, 0, "pong");
+end)";
 
-// TEST(RuntimeSystem, pingPong) {
-//   Params params = {.id = 1, .router = &RouterV2::getInstance()};
-//   std::thread runtime = std::thread(&LuaRuntime::os_task, &params);
-//   sleep(1);
+TEST(RuntimeSystem, pingPong) {
+  Params params = {.id = "runtime/1", .router = &RouterV2::getInstance()};
+  std::thread runtime = std::thread(&LuaRuntime::os_task, &params);
+  sleep(1);
 
-//   Message create_actor = Message(sizeof(test_pong) + 8);
-//   create_actor.sender(0);
-//   create_actor.receiver(1);
-//   create_actor.tag(Tags::WELL_KNOWN_TAGS::SPAWN_LUA_ACTOR);
-//   *reinterpret_cast<uint64_t*>(create_actor.buffer()) = 2;
-//   std::memcpy(create_actor.buffer() + 8, test_pong, sizeof(test_pong));
-//   RouterV2::getInstance().send(0, 1, std::move(create_actor));
+  Message create_actor = Message("root", "runtime/1", Tags::WELL_KNOWN_TAGS::SPAWN_LUA_ACTOR, sizeof(test_pong) + strlen("actor/1") + 1);
+  snprintf(const_cast<char*>(create_actor.buffer()), 10, "actor/1");
+  std::memcpy(const_cast<char*>(create_actor.buffer()) + strlen("actor/1") + 1, test_pong, sizeof(test_pong));
+  RouterV2::getInstance().send(std::move(create_actor));
 
-//   RouterV2::getInstance().register_actor(0);
-//   ASSERT_FALSE(RouterV2::getInstance().receive(0, 0));
+  sleep(1);
 
-//   RouterV2::getInstance().send(0, 1, Message(0, 2, 0, "ping"));
-//   sleep(1);
-//   std::optional<Message> result = RouterV2::getInstance().receive(0, 0);
-//   ASSERT_TRUE(result);
-//   ASSERT_STREQ(result->ro_buffer(), "pong");
+  RouterV2::getInstance().register_actor("root");
+  ASSERT_FALSE(RouterV2::getInstance().receive("root", 0));
 
-//   Message m = Message(0, 1, Tags::WELL_KNOWN_TAGS::EXIT, "");
-//   RouterV2::getInstance().send(0, 1, std::move(m));
-//   runtime.join();
-//   EXPECT_EQ(0, 0);
-// }
+  RouterV2::getInstance().send(Message("root", "actor/1", 0, "ping"));
+  sleep(1);
+  std::optional<Message> result = RouterV2::getInstance().receive("root", 0);
+  ASSERT_TRUE(result);
+  ASSERT_STREQ(result->buffer(), "pong");
+
+  Message m = Message("root", "runtime/1", Tags::WELL_KNOWN_TAGS::EXIT, "");
+  RouterV2::getInstance().send(std::move(m));
+  printf("join\n");
+  runtime.join();
+  EXPECT_EQ(0, 0);
+}
 
 TEST(ROUTER, register_send_receive) {
   RouterV2::getInstance().register_actor("foo/bar/1");

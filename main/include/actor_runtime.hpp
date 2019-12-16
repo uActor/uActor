@@ -39,12 +39,13 @@ class ActorRuntime {
     const char* actor_id = payload;
     const char* code = payload + strlen(payload) + 1;
     actors.try_emplace(std::hash<std::string>{}(std::string(actor_id)),
-                       actor_id, code, std::forward<Args>(args)...);
+                           actor_id, code, std::forward<Args>(args)...);
     router->register_alias(id, actor_id);
   }
 
- private:
   char* id;
+
+ private:
   RouterV2* router;
   std::list<size_t> ready_queue;
   std::map<uint32_t, size_t> timeouts;
@@ -62,7 +63,7 @@ class ActorRuntime {
       }
       auto message = router->receive(id, wait_time);
       if (message) {
-        if (!strcmp(message->receiver(), id)) {
+        if (strcmp(message->receiver(), id) == 0) {
           if (message->tag() == Tags::WELL_KNOWN_TAGS::EXIT) {
             return;
           } else {

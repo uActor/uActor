@@ -2,6 +2,10 @@
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include <nvs_flash.h>
+extern "C" {
+#include <esp_system.h>
+}
 
 #include <cstdint>
 #include <cstdio>
@@ -16,6 +20,8 @@
 #include "include/managed_actor.hpp"
 #include "include/message.hpp"
 #include "include/router_v2.hpp"
+#include "tcp_forwarder.hpp"
+#include "wifi_stack.hpp"
 
 extern "C" {
 void app_main(void);
@@ -99,48 +105,50 @@ void app_main(void) {
 const char receive_fun[] = R"(function receive(sender, tag, message)
 local ping_tag = 1025;
 local pong_tag = 1026;
-if(id == "actor/2" and tag == well_known_tags.init) then
+if(id == "actor/local/2" and tag == well_known_tags.init) then
   print(id.." received : "..message);
-  send("actor/#", ping_tag, "ping");
-  deferred_block_for("actor/33", "actor/2", pong_tag, 5000);
-elseif(id == "actor/2") then
+  send("actor/local/#", ping_tag, "ping");
+  deferred_block_for("actor/local/33", "actor/local/2", pong_tag, 5000);
+elseif(id == "actor/local/2") then
   print(id.." received : "..message);
-elseif(id == "actor/3" and tag == ping_tag) then
+elseif(id == "actor/local/3" and tag == ping_tag) then
   print(id.." received : "..message);
-  deferred_block_for("actor/9999", "actor/9999", 9999, 2000);
+  deferred_block_for("actor/local/9999", "actor/local/9999", 9999, 2000);
   send(sender, 1027, "foo");
 elseif(tag == ping_tag) then
   send(sender, pong_tag, "pong "..id);
   print(id.." received : "..message);
-elseif(id == "actor/3" and tag == well_known_tags.timeout) then
-  deferred_block_for("actor/9999", "actor/9999", 9999, 2000);
+elseif(id == "actor/local/3" and tag == well_known_tags.timeout) then
+  deferred_block_for("actor/local/9999", "actor/local/9999", 9999, 2000);
+  send("actor/local/45", ping_tag, "ping");
   print(id.." received expected timeout");
 end
 end)";
 
-void inner_main(void*) {
+void main_task(void*) {
   printf("InitialHeap: %d \n", xPortGetFreeHeapSize());
   TaskHandle_t handle = {NULL};
-  Params params = {.id = "runtime/lua/1", .router = &RouterV2::getInstance()};
-  xTaskCreatePinnedToCore(&LuaRuntime::os_task, "TEST", 6168, &params, 5,
+  Params params = {.id = "core.runtime.lua/local/1",
+                   .router = &RouterV2::getInstance()};
+  xTaskCreatePinnedToCore(&LuaRuntime::os_task, "TEST", 6168, &params, 7,
                           &handle, 1);
   vTaskDelay(1000 / portTICK_PERIOD_MS);
   char name[128];
   for (int i = 0; i < ACTORS_PER_THREAD; i++) {
-    snprintf(name, sizeof(name), "actor/%d", 2 + i);
+    snprintf(name, sizeof(name), "actor/local/%d", 2 + i);
     char* buffer = new char[sizeof(receive_fun) + strlen(name) + 1];
     strncpy(buffer, name, strlen(name) + 1);
     // std::fill(buffer, buffer + 8 + sizeof(receive_fun), 0);
     std::memcpy((buffer + strlen(name) + 1), receive_fun, sizeof(receive_fun));
-    Message m =
-        Message("root", "runtime/lua/1", Tags::WELL_KNOWN_TAGS::SPAWN_LUA_ACTOR,
-                buffer, sizeof(receive_fun) + strlen(name) + 1);
+    Message m = Message("root", "core.runtime.lua/local/1",
+                        Tags::WELL_KNOWN_TAGS::SPAWN_LUA_ACTOR, buffer,
+                        sizeof(receive_fun) + strlen(name) + 1);
     RouterV2::getInstance().send(std::move(m));
     delete buffer;
   }
   vTaskDelay(1000 / portTICK_PERIOD_MS);
   RouterV2::getInstance().send(
-      Message("root", "actor/2", Tags::WELL_KNOWN_TAGS::INIT, "start"));
+      Message("root", "actor/local/2", Tags::WELL_KNOWN_TAGS::INIT, "start"));
 
   printf("StaticHeap: %d \n", xPortGetFreeHeapSize());
   while (true) {
@@ -150,7 +158,22 @@ void inner_main(void*) {
 }
 
 void app_main(void) {
-  xTaskCreatePinnedToCore(&inner_main, "MAIN", 6168, nullptr, 5, nullptr, 1);
+  esp_err_t ret = nvs_flash_init();
+  if (ret == ESP_ERR_NVS_NO_FREE_PAGES ||
+      ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+    ESP_ERROR_CHECK(nvs_flash_erase());
+    ret = nvs_flash_init();
+  }
+  ESP_ERROR_CHECK(ret);
+
+  xTaskCreatePinnedToCore(&main_task, "MAIN", 6168, nullptr, 5, nullptr, 1);
+  /* Network forwarding experiments
+  xTaskCreatePinnedToCore(&WifiStack::os_task, "FORWARDER", 6168, nullptr, 4,
+                          nullptr, 1);
+  vTaskDelay(5000 / portTICK_PERIOD_MS);
+  xTaskCreatePinnedToCore(&TCPForwarder::os_task, "TCP", 6168, nullptr, 4,
+                          nullptr, 1);
+  */
 }
 
 #endif
