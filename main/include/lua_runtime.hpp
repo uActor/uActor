@@ -10,9 +10,15 @@
 
 class LuaRuntime : public ActorRuntime<ManagedLuaActor, LuaRuntime> {
  public:
-  LuaRuntime(RouterV2* router, char* id)
-      : ActorRuntime<ManagedLuaActor, LuaRuntime>(router, id) {
+  LuaRuntime(RouterV3* router, const char* node_id, const char* id)
+      : ActorRuntime<ManagedLuaActor, LuaRuntime>(router, node_id,
+                                                  "lua_runtime", id) {
     state = create_lua_state();
+  }
+
+  ~LuaRuntime() {
+    actors.clear();
+    lua_close(state);
   }
 
  private:
@@ -25,8 +31,8 @@ class LuaRuntime : public ActorRuntime<ManagedLuaActor, LuaRuntime> {
     return lua_state;
   }
 
-  void add_actor(const char* payload) {
-    add_actor_base<lua_State*>(payload, state);
+  void add_actor(Publication&& publication) {
+    add_actor_base<lua_State*>(publication, state);
   }
 
   friend ActorRuntime;

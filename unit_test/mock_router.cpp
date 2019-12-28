@@ -8,7 +8,7 @@
 #include <unordered_map>
 #include <variant>
 
-#include <router_v2.hpp>
+#include "router_v2.hpp"
 
 class RouterNode::Queue {
  public:

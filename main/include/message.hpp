@@ -105,9 +105,7 @@ class Message {
 
   void moved() { _data = nullptr; }
 
-  const char* sender() const {
-    return _data->payload;
-  }
+  const char* sender() const { return _data->payload; }
 
   const char* receiver() const { return _data->payload + _data->sender_size; }
 

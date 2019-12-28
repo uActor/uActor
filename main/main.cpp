@@ -12,7 +12,7 @@ extern "C" {
 #include <cstring>
 #include <utility>
 
-#include <lua.hpp>
+#include "lua.hpp"
 
 #include "benchmark_configuration.hpp"
 #include "include/board_functions.hpp"
@@ -102,53 +102,54 @@ void app_main(void) {
 }
 #else
 
-const char receive_fun[] = R"(function receive(sender, tag, message)
-local ping_tag = 1025;
-local pong_tag = 1026;
-if(id == "actor/local/2" and tag == well_known_tags.init) then
-  print(id.." received : "..message);
-  send("actor/local/#", ping_tag, "ping");
-  deferred_block_for("actor/local/33", "actor/local/2", pong_tag, 5000);
-elseif(id == "actor/local/2") then
-  print(id.." received : "..message);
-elseif(id == "actor/local/3" and tag == ping_tag) then
-  print(id.." received : "..message);
-  deferred_block_for("actor/local/9999", "actor/local/9999", 9999, 2000);
-  send(sender, 1027, "foo");
-elseif(tag == ping_tag) then
-  send(sender, pong_tag, "pong "..id);
-  print(id.." received : "..message);
-elseif(id == "actor/local/3" and tag == well_known_tags.timeout) then
-  deferred_block_for("actor/local/9999", "actor/local/9999", 9999, 2000);
-  send("actor/local/45", ping_tag, "ping");
-  print(id.." received expected timeout");
+const char receive_fun[] = R"(
+function receive(message)
+  print(message.sender_node_id.."."..message.sender_actor_type.."."..message.sender_instance_id.." -> "..node_id.."."..actor_type.."."..instance_id);
+  if(instance_id == "1") then
+    if(message.command == "init") then
+      deferred_block_for({sender_instance_id="32", _optional_foo="bar"}, 2000);
+      --delayed_send(1000, {node_id=node_id, actor_type=actor_type, instance_id=instance_id}); TODO implement (drop sleep)
+      send({node_id=node_id, actor_type=actor_type, message="ping"});
+    end
+  elseif(instance_id=="2") then
+    deferred_block_for({foo="bar"}, 5000);
+  else
+    send({node_id=message.sender_node_id, instance_id=message.sender_instance_id, actor_type=message.sender_actor_type, message="pong"})
+  end
 end
-end)";
+)";
 
 void main_task(void*) {
   printf("InitialHeap: %d \n", xPortGetFreeHeapSize());
   TaskHandle_t handle = {NULL};
-  Params params = {.id = "core.runtime.lua/local/1",
-                   .router = &RouterV2::getInstance()};
-  xTaskCreatePinnedToCore(&LuaRuntime::os_task, "TEST", 6168, &params, 7,
+
+  Params params = {.node_id = "node_1", .instance_id = "1"};
+
+  xTaskCreatePinnedToCore(&LuaRuntime::os_task, "TEST", 6168, &params, 4,
                           &handle, 1);
   vTaskDelay(1000 / portTICK_PERIOD_MS);
   char name[128];
   for (int i = 0; i < ACTORS_PER_THREAD; i++) {
-    snprintf(name, sizeof(name), "actor/local/%d", 2 + i);
-    char* buffer = new char[sizeof(receive_fun) + strlen(name) + 1];
-    strncpy(buffer, name, strlen(name) + 1);
-    // std::fill(buffer, buffer + 8 + sizeof(receive_fun), 0);
-    std::memcpy((buffer + strlen(name) + 1), receive_fun, sizeof(receive_fun));
-    Message m = Message("root", "core.runtime.lua/local/1",
-                        Tags::WELL_KNOWN_TAGS::SPAWN_LUA_ACTOR, buffer,
-                        sizeof(receive_fun) + strlen(name) + 1);
-    RouterV2::getInstance().send(std::move(m));
-    delete buffer;
+    snprintf(name, sizeof(name), "%d", i + 1);
+    Publication create_actor = Publication("node_1", "root", "1");
+    create_actor.set_attr("command", "spawn_lua_actor");
+    create_actor.set_attr("spawn_code", receive_fun);
+    create_actor.set_attr("spawn_node_id", "node_1");
+    create_actor.set_attr("spawn_actor_type", "actor");
+    create_actor.set_attr("spawn_instance_id", name);
+    create_actor.set_attr("node_id", "node_1");
+    create_actor.set_attr("actor_type", "lua_runtime");
+    create_actor.set_attr("instance_id", "1");
+    RouterV3::get_instance().publish(std::move(create_actor));
   }
   vTaskDelay(1000 / portTICK_PERIOD_MS);
-  RouterV2::getInstance().send(
-      Message("root", "actor/local/2", Tags::WELL_KNOWN_TAGS::INIT, "start"));
+
+  Publication start = Publication("node_1", "root", "1");
+  start.set_attr("node_id", "node_1");
+  start.set_attr("instance_id", "1");
+  start.set_attr("actor_type", "actor");
+  start.set_attr("command", "init");
+  RouterV3::get_instance().publish(std::move(start));
 
   printf("StaticHeap: %d \n", xPortGetFreeHeapSize());
   while (true) {

@@ -3,33 +3,45 @@
 
 #include <cstdio>
 #include <utility>
+#include <list>
+#include <string>
 
-#include <lua.hpp>
+#include "lua.hpp"
 
 #include "managed_actor.hpp"
 #include "message.hpp"
 
 class ManagedLuaActor : public ManagedActor {
  public:
-  ManagedLuaActor(const char* id, const char* cin, lua_State* global_state)
-      : ManagedActor(id, cin), state(global_state) {
-    createActorEnvironment(code());
+  ManagedLuaActor(size_t local_id, const char* node_id, const char* actor_type,
+                  const char* instance_id, const char* code,
+                  lua_State* global_state)
+      : ManagedActor(local_id, node_id, actor_type, instance_id, code),
+        state(global_state) {
+    createActorEnvironment(code);
   }
 
-  void receive(const Message& m) {
-    lua_getglobal(state, id());
+  ~ManagedLuaActor() {
+    lua_pushglobaltable(state);
+    lua_pushnil(state);
+    lua_seti(state, -2, id());
+    lua_gc(state, LUA_GCCOLLECT, 0);
+  }
+
+  void receive(const Publication& m) {
+    lua_pushglobaltable(state);
+    lua_geti(state, -1, id());
     lua_getfield(state, -1, "receive");
     lua_replace(state, 1);
+    lua_pop(state, 1);
 
-    lua_pushstring(state, m.sender());
-    lua_pushinteger(state, m.tag());
-    if (m.buffer_size() > 0) {
-      lua_pushstring(state, m.buffer());
-    } else {
-      lua_pushnil(state);
+    lua_newtable(state);
+    for (const auto& value : m) {
+      lua_pushstring(state, value.second.c_str());
+      lua_setfield(state, -2, value.first.c_str());
     }
 
-    if (lua_pcall(state, 3, 0, 0)) {
+    if (lua_pcall(state, 1, 0, 0)) {
       printf("LUA ERROR!\n");
       printf("%s\n", lua_tostring(state, 1));
       lua_pop(state, 1);
@@ -44,17 +56,21 @@ class ManagedLuaActor : public ManagedActor {
   static int send_wrapper(lua_State* state) {
     ManagedLuaActor* actor = reinterpret_cast<ManagedLuaActor*>(
         lua_touserdata(state, lua_upvalueindex(1)));
+    Publication p = Publication(actor->node_id(), actor->actor_type(),
+                                actor->instance_id());
+    luaL_checktype(state, 1, LUA_TTABLE);
+    lua_pushvalue(state, 1);
+    lua_pushnil(state);
 
-    const char* receiver = lua_tostring(state, 1);
-    const char* message = "";
-    if (lua_isstring(state, 3)) {
-      message = lua_tostring(state, 3);
+    while (lua_next(state, -2)) {
+      lua_pushvalue(state, -2);
+      std::string key(lua_tostring(state, -1));
+      std::string value(lua_tostring(state, -2));
+      p.set_attr(std::move(key), std::move(value));
+      lua_pop(state, 2);
     }
-    uint32_t tag = lua_tointeger(state, 2);
-
-    Message m = Message(actor->id(), receiver, tag, message);
-
-    actor->send(std::move(m));
+    lua_pop(state, 1);
+    actor->send(std::move(p));
     return 0;
   }
 
@@ -69,11 +85,28 @@ class ManagedLuaActor : public ManagedActor {
   static int deferred_block_for_wrapper(lua_State* state) {
     ManagedLuaActor* actor = reinterpret_cast<ManagedLuaActor*>(
         lua_touserdata(state, lua_upvalueindex(1)));
-    const char* sender = lua_tostring(state, 1);
-    const char* receiver = lua_tostring(state, 2);
-    uint32_t tag = lua_tointeger(state, 3);
-    uint32_t timeout = lua_tointeger(state, 4);
-    actor->deffered_block_for(sender, receiver, tag, timeout);
+
+    std::list<Constraint> filter_list;
+    luaL_checktype(state, 1, LUA_TTABLE);
+    lua_pushvalue(state, 1);
+    lua_pushnil(state);
+
+    while (lua_next(state, -2)) {
+      lua_pushvalue(state, -2);
+      std::string key(lua_tostring(state, -1));
+      std::string value(lua_tostring(state, -2));
+      if (key.rfind("_optional_") == 0) {
+        key = std::string("?") + key.substr(10);
+      }
+      filter_list.emplace_back(std::move(key), std::move(value));
+      lua_pop(state, 2);
+    }
+    lua_pop(state, 1);
+
+    Filter f(std::move(filter_list));
+
+    uint32_t timeout = lua_tointeger(state, 2);
+    actor->deffered_block_for(std::move(f), timeout);
     return 0;
   }
 
@@ -84,15 +117,28 @@ class ManagedLuaActor : public ManagedActor {
       {NULL, NULL}};
 
   void createActorEnvironment(const char* receive_function) {
+    lua_pushglobaltable(state);
     luaL_newlibtable(state, core);
     lua_pushlightuserdata(state, this);
     luaL_setfuncs(state, core, 1);
 
-    lua_pushstring(state, id());
-    lua_setfield(state, -2, "id");
+    lua_pushstring(state, node_id());
+    lua_setfield(state, -2, "node_id");
+
+    lua_pushstring(state, actor_type());
+    lua_setfield(state, -2, "actor_type");
+
+    lua_pushstring(state, instance_id());
+    lua_setfield(state, -2, "instance_id");
 
     lua_getglobal(state, "print");
     lua_setfield(state, -2, "print");
+
+    lua_getglobal(state, "tostring");
+    lua_setfield(state, -2, "tostring");
+
+    lua_getglobal(state, "tonumber");
+    lua_setfield(state, -2, "tonumber");
 
     lua_createtable(state, 0, Tags::WELL_KNOWN_TAGS::FAKE_ITERATOR_END);
     for (uint32_t i = 1; i < Tags::WELL_KNOWN_TAGS::FAKE_ITERATOR_END; i++) {
@@ -104,20 +150,15 @@ class ManagedLuaActor : public ManagedActor {
     }
     lua_setfield(state, -2, "well_known_tags");
 
-    // lua_newtable(state);
-    // lua_pushlightuserdata(state, this);
-    // lua_pushcclosure(state, &send_wrapper, 1);
-    // lua_setfield(state, -2, "send");
-    // lua_pushlightuserdata(state, this);
-    // lua_pushcclosure(state, &deferred_sleep_wrapper, 1);
-    // lua_setfield(state, -2, "deferred_sleep");
-    lua_setglobal(state, id());
+    lua_seti(state, -2, id());
 
     luaL_loadstring(state, receive_function);
 
-    // Sandboxing the actor
-    lua_getglobal(state, id());
+    // Sandbox the function by settings its
+    // global environment to the table created above
+    lua_geti(state, -2, id());
     lua_setupvalue(state, -2, 1);
+    lua_replace(state, -2);
 
     if (lua_pcall(state, 0, 0, 0)) {
       printf("LUA LOAD ERROR!\n");

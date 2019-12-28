@@ -1,4 +1,4 @@
-// TODO (raphaelhetzel) This is not cleaned up or completed yet,
+// TODO(raphaelhetzel) This is not cleaned up or completed yet,
 // this is deferred until the new attribute based routing is done.
 
 #ifndef MAIN_TCP_FORWARDER_HPP_
@@ -8,21 +8,21 @@
 #include <freertos/task.h>
 
 extern "C" {
-#include <lwip/netdb.h>
 #include <esp_event.h>
 #include <esp_log.h>
 #include <esp_netif.h>
 #include <esp_system.h>
 #include <esp_wifi.h>
 #include <lwip/err.h>
+#include <lwip/netdb.h>
 #include <lwip/sockets.h>
 #include <lwip/sys.h>
 }
 
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <utility>
-#include <algorithm>
 
 #include "include/board_functions.hpp"
 #include "include/router_v2.hpp"
@@ -160,7 +160,8 @@ class TCPForwarder {
               offset += std::min(len - 4, size_remaining);
               size_remaining -= std::min(len - 4, size_remaining);
             }
-          // TODO(raphaelhetzel) this part is untested && poentially incomplete
+            // TODO(raphaelhetzel) this part is untested && poentially
+            // incomplete
           } else if (buffer) {
             std::memcpy(buffer, rx_buffer, std::min(len, size_remaining));
             offset += std::min(len - 4, size_remaining);

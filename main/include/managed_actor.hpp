@@ -9,73 +9,85 @@
 #include <memory>
 #include <queue>
 #include <utility>
+#include <string>
 
 #include "message.hpp"
-#include "router_v2.hpp"
+#include "publication.hpp"
+#include "subscription.hpp"
 
-struct Pattern {
-  char sender[128];
-  char receiver[128];
-  uint32_t tag;
+class Pattern {
+ public:
+  Pattern() : filter() {}
 
-  bool matches(const Message& message) {
-    return strcmp(message.sender(), sender) == 0 &&
-           strcmp(message.receiver(), receiver) == 0 && message.tag() == tag;
+  bool matches(const Publication& publication) {
+    return filter.matches(publication);
   }
+
+  Filter filter;
 };
 
 class ManagedActor {
  public:
   ManagedActor(const ManagedActor&) = delete;
 
-  ManagedActor(const char* id, const char* code)
-      : waiting(false), _timeout(UINT32_MAX) {
-    strncpy(_id, id, sizeof(_id));
-    _code = new char[strlen(code) + 1];
-    strncpy(_code, code, strlen(code) + 1);
-  }
+  ManagedActor(size_t local_id, const char* node_id, const char* actor_type,
+               const char* instance_id, const char* code)
+      : _id(local_id),
+        waiting(false),
+        _timeout(UINT32_MAX),
+        _node_id(node_id),
+        _actor_type(actor_type),
+        _instance_id(instance_id),
+        _code(code) {}
 
-  virtual void receive(const Message& m) = 0;
+  virtual void receive(const Publication& p) = 0;
 
   uint32_t receive_next_internal();
 
-  bool enqueue(Message&& message);
+  bool enqueue(Publication&& message);
 
   void trigger_timeout() {
-    message_queue.emplace_front(id(), id(), Tags::WELL_KNOWN_TAGS::TIMEOUT,
-                                "timeout");
+    Publication p = Publication(_node_id.c_str(), _actor_type.c_str(),
+                                _instance_id.c_str());
+    p.set_attr("_internal_timeout", "_timeout");
+    message_queue.emplace_front(std::move(p));
   }
 
-  char* id() { return _id; }
+  const char* code() { return _code.c_str(); }
 
-  char* code() { return _code; }
+  size_t id() { return _id; }
+
+  const char* node_id() const { return _node_id.c_str(); }
+
+  const char* actor_type() const { return _actor_type.c_str(); }
+
+  const char* instance_id() const { return _instance_id.c_str(); }
 
  protected:
-  void send(Message&& m) { RouterV2::getInstance().send(std::move(m)); }
+  void send(Publication&& p) { RouterV3::get_instance().publish(std::move(p)); }
 
   void deferred_sleep(uint32_t timeout) {
     waiting = true;
-    strncpy(pattern.receiver, _id, sizeof(pattern.receiver));
-    strncpy(pattern.sender, _id, sizeof(pattern.sender));
-    pattern.tag = Tags::WELL_KNOWN_TAGS::TIMEOUT;
+    pattern.filter.clear();
+    pattern.filter = Filter{Constraint{"internal_timeout", "internal_timeout"}};
     _timeout = timeout;
   }
 
-  void deffered_block_for(const char* sender, const char* receiver,
-                          uint32_t tag, uint32_t timeout) {
+  void deffered_block_for(Filter&& filter, uint32_t timeout) {
     waiting = true;
-    strncpy(pattern.sender, sender, sizeof(pattern.sender));
-    strncpy(pattern.receiver, receiver, sizeof(pattern.receiver));
-    pattern.tag = tag;
+    pattern.filter = std::move(filter);
     _timeout = timeout;
   }
 
  private:
+  size_t _id;
   bool waiting;
   Pattern pattern;
   uint32_t _timeout;
-  char _id[128];
-  std::deque<Message> message_queue;
-  char* _code;
+  std::string _node_id;
+  std::string _actor_type;
+  std::string _instance_id;
+  std::string _code;
+  std::deque<Publication> message_queue;
 };
 #endif  //  MAIN_INCLUDE_MANAGED_ACTOR_HPP_

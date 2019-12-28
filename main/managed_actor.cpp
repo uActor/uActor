@@ -1,20 +1,19 @@
 #include "include/managed_actor.hpp"
 
+#include "benchmark_configuration.hpp"
 uint32_t ManagedActor::receive_next_internal() {
   waiting = false;
   _timeout = UINT32_MAX;
-  pattern.receiver[0] = 0;
-  pattern.sender[0] = 0;
-  pattern.tag = 0;
+  pattern.filter.clear();
 
   this->receive(message_queue.front());
   message_queue.pop_front();
   if (waiting) {
     auto it = std::find_if(
         message_queue.begin(), message_queue.end(),
-        [&](Message& message) { return pattern.matches(message); });
+        [&](Publication& message) { return pattern.matches(message); });
     if (it != message_queue.end()) {
-      Message message = std::move(*it);
+      Publication message = std::move(*it);
       message_queue.erase(it);
       message_queue.push_front(std::move(message));
       return 0;
@@ -25,17 +24,20 @@ uint32_t ManagedActor::receive_next_internal() {
   return _timeout;
 }
 
-bool ManagedActor::enqueue(Message&& message) {
+bool ManagedActor::enqueue(Publication&& pub) {
+  if (message_queue.size() >= QUEUE_SIZE) {
+    printf("Warning: Actor queue size excedes configured maximum.");
+  }
   if (waiting) {
-    if (pattern.matches(message)) {
-      message_queue.emplace_front(std::move(message));
+    if (pattern.matches(pub)) {
+      message_queue.push_front(std::move(pub));
       return true;
     } else {
-      message_queue.emplace_back(std::move(message));
+      message_queue.push_back(std::move(pub));
       return false;
     }
   } else {
-    message_queue.emplace_back(std::move(message));
+    message_queue.push_back(std::move(pub));
     return true;
   }
 }
