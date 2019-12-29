@@ -12,14 +12,13 @@ extern "C" {
 #include <cstring>
 #include <utility>
 
-#include "lua.hpp"
-
 #include "benchmark_configuration.hpp"
 #include "include/board_functions.hpp"
 #include "include/lua_runtime.hpp"
 #include "include/managed_actor.hpp"
 #include "include/message.hpp"
 #include "include/router_v2.hpp"
+#include "lua.hpp"
 #include "tcp_forwarder.hpp"
 #include "wifi_stack.hpp"
 
@@ -140,7 +139,7 @@ void main_task(void*) {
     create_actor.set_attr("node_id", "node_1");
     create_actor.set_attr("actor_type", "lua_runtime");
     create_actor.set_attr("instance_id", "1");
-    RouterV3::get_instance().publish(std::move(create_actor));
+    PubSub::Router::get_instance().publish(std::move(create_actor));
   }
   vTaskDelay(1000 / portTICK_PERIOD_MS);
 
@@ -149,7 +148,7 @@ void main_task(void*) {
   start.set_attr("instance_id", "1");
   start.set_attr("actor_type", "actor");
   start.set_attr("command", "init");
-  RouterV3::get_instance().publish(std::move(start));
+  PubSub::Router::get_instance().publish(std::move(start));
 
   printf("StaticHeap: %d \n", xPortGetFreeHeapSize());
   while (true) {

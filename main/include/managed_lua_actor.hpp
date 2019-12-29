@@ -2,12 +2,11 @@
 #define MAIN_INCLUDE_MANAGED_LUA_ACTOR_HPP_
 
 #include <cstdio>
-#include <utility>
 #include <list>
 #include <string>
+#include <utility>
 
 #include "lua.hpp"
-
 #include "managed_actor.hpp"
 #include "message.hpp"
 
@@ -86,7 +85,7 @@ class ManagedLuaActor : public ManagedActor {
     ManagedLuaActor* actor = reinterpret_cast<ManagedLuaActor*>(
         lua_touserdata(state, lua_upvalueindex(1)));
 
-    std::list<Constraint> filter_list;
+    std::list<PubSub::Constraint> filter_list;
     luaL_checktype(state, 1, LUA_TTABLE);
     lua_pushvalue(state, 1);
     lua_pushnil(state);
@@ -103,7 +102,7 @@ class ManagedLuaActor : public ManagedActor {
     }
     lua_pop(state, 1);
 
-    Filter f(std::move(filter_list));
+    PubSub::Filter f(std::move(filter_list));
 
     uint32_t timeout = lua_tointeger(state, 2);
     actor->deffered_block_for(std::move(f), timeout);

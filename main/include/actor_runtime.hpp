@@ -23,7 +23,7 @@ template <typename ActorType, typename RuntimeType>
 class ActorRuntime {
  public:
   static void os_task(void* params) {
-    RouterV3* router = &RouterV3::get_instance();
+    PubSub::Router* router = &PubSub::Router::get_instance();
     const char* instance_id = ((struct Params*)params)->instance_id;
     const char* node_id = ((struct Params*)params)->node_id;
 
@@ -34,10 +34,15 @@ class ActorRuntime {
     BoardFunctions::exit_thread();
   }
 
-  explicit ActorRuntime(RouterV3* router, const char* node_id,
+  explicit ActorRuntime(PubSub::Router* router, const char* node_id,
                         const char* actor_type, const char* instance_id)
-      : router_handle(
-            router->register_master(node_id, actor_type, instance_id)) {}
+      : router_handle(router->new_subscriber()) {
+    PubSub::Filter primary_filter{
+        PubSub::Constraint(std::string("node_id"), node_id),
+        PubSub::Constraint(std::string("actor_type"), actor_type),
+        PubSub::Constraint(std::string("instance_id"), instance_id)};
+    runtime_subscription_id = router_handle.subscribe(primary_filter);
+  }
 
  protected:
   template <typename... Args>
@@ -51,10 +56,10 @@ class ActorRuntime {
 
     actors.try_emplace(local_id, local_id, node_id, actor_type, instance_id,
                        code, std::forward<Args>(args)...);
-    size_t sub_id = router_handle.subscribe(
-        Filter{Constraint(std::string("node_id"), node_id),
-               Constraint(std::string("actor_type"), actor_type),
-               Constraint(std::string("?instance_id"), instance_id)});
+    size_t sub_id = router_handle.subscribe(PubSub::Filter{
+        PubSub::Constraint(std::string("node_id"), node_id),
+        PubSub::Constraint(std::string("actor_type"), actor_type),
+        PubSub::Constraint(std::string("?instance_id"), instance_id)});
     auto entry = subscription_mapping.find(sub_id);
     if (entry != subscription_mapping.end()) {
       entry->second.emplace_back(local_id);
@@ -67,12 +72,12 @@ class ActorRuntime {
   std::map<size_t, ActorType> actors;
 
  private:
-  RouterV3::ReceiverHandle router_handle;
-
+  PubSub::SubscriptionHandle router_handle;
   size_t next_id = 1;
   std::map<size_t, std::list<size_t>> subscription_mapping;
   std::list<size_t> ready_queue;
   std::list<std::pair<uint32_t, size_t>> timeouts;
+  size_t runtime_subscription_id;
 
   void event_loop() {
     while (true) {
@@ -88,8 +93,7 @@ class ActorRuntime {
       }
       auto publication = router_handle.receive(wait_time);
       if (publication) {
-        if (publication->subscription_id ==
-            router_handle.master_subscription_id()) {
+        if (publication->subscription_id == runtime_subscription_id) {
           if (publication->publication.has_attr("spawn_actor_type")) {
             add_actor_wrapper(publication->publication);
           } else {

@@ -6,12 +6,10 @@
 #include "benchmark_configuration.hpp"
 #include "include/publication.hpp"
 #include "include/subscription.hpp"
-class RouterV3::Receiver::Queue {
+namespace PubSub {
+class Router::Receiver::Queue {
  public:
-  Queue() {
-    printf("constructor\n");
-    queue = xQueueCreate(QUEUE_SIZE, sizeof(MatchedPublication*));
-  }
+  Queue() { queue = xQueueCreate(QUEUE_SIZE, sizeof(MatchedPublication*)); }
 
   ~Queue() { vQueueDelete(queue); }
 
@@ -34,25 +32,22 @@ class RouterV3::Receiver::Queue {
   QueueHandle_t queue;
 };
 
-RouterV3::Receiver::Receiver(RouterV3* router, std::string node_id,
-                             std::string actor_type, std::string instance_id)
-    : router(router) {
+Router::Receiver::Receiver(Router* router) : router(router) {
   router->register_receiver(this);
-  queue = std::make_unique<RouterV3::Receiver::Queue>();
-  Filter f = Filter{Constraint(std::string("node_id"), node_id),
-                    Constraint(std::string("actor_type"), actor_type),
-                    Constraint(std::string("instance_id"), instance_id)};
-  _primary_subscription_id = router->next_sub_id++;
-  filters.push_back(std::make_pair(_primary_subscription_id, std::move(f)));
+  queue = std::make_unique<Receiver::Queue>();
 }
 
-RouterV3::Receiver::~Receiver() { router->deregister_receiver(this); }
+Router::Receiver::~Receiver() { router->deregister_receiver(this); }
 
-std::optional<RouterV3::MatchedPublication> RouterV3::Receiver::receive(
-    size_t timeout) {
+std::optional<MatchedPublication> Router::Receiver::receive(size_t timeout) {
   return queue->receive_message(timeout);
 }
 
-void RouterV3::Receiver::publish(MatchedPublication&& publication) {
+void Router::Receiver::publish(MatchedPublication&& publication) {
   queue->send_message(std::move(publication));
 }
+
+SubscriptionHandle PubSub::Router::new_subscriber() {
+  return SubscriptionHandle{this};
+}
+}  // namespace PubSub

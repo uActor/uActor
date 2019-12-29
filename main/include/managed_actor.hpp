@@ -8,8 +8,8 @@
 #include <deque>
 #include <memory>
 #include <queue>
-#include <utility>
 #include <string>
+#include <utility>
 
 #include "message.hpp"
 #include "publication.hpp"
@@ -23,7 +23,7 @@ class Pattern {
     return filter.matches(publication);
   }
 
-  Filter filter;
+  PubSub::Filter filter;
 };
 
 class ManagedActor {
@@ -64,16 +64,19 @@ class ManagedActor {
   const char* instance_id() const { return _instance_id.c_str(); }
 
  protected:
-  void send(Publication&& p) { RouterV3::get_instance().publish(std::move(p)); }
+  void send(Publication&& p) {
+    PubSub::Router::get_instance().publish(std::move(p));
+  }
 
   void deferred_sleep(uint32_t timeout) {
     waiting = true;
     pattern.filter.clear();
-    pattern.filter = Filter{Constraint{"internal_timeout", "internal_timeout"}};
+    pattern.filter = PubSub::Filter{
+        PubSub::Constraint{"internal_timeout", "internal_timeout"}};
     _timeout = timeout;
   }
 
-  void deffered_block_for(Filter&& filter, uint32_t timeout) {
+  void deffered_block_for(PubSub::Filter&& filter, uint32_t timeout) {
     waiting = true;
     pattern.filter = std::move(filter);
     _timeout = timeout;

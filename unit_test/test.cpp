@@ -26,12 +26,17 @@ TEST(RuntimeSystem, pingPong) {
   create_actor.set_attr("node_id", "node_1");
   create_actor.set_attr("actor_type", "lua_runtime");
   create_actor.set_attr("instance_id", "1");
-  RouterV3::get_instance().publish(std::move(create_actor));
+  PubSub::Router::get_instance().publish(std::move(create_actor));
 
   sleep(1);
 
-  auto root_handle =
-      RouterV3::get_instance().register_master("node_1", "root", "1");
+  auto root_handle = PubSub::Router::get_instance().new_subscriber();
+  PubSub::Filter primary_filter{
+      PubSub::Constraint(std::string("node_id"), "node_1"),
+      PubSub::Constraint(std::string("actor_type"), "root"),
+      PubSub::Constraint(std::string("instance_id"), "1")};
+  size_t root_subscription_id = root_handle.subscribe(primary_filter);
+
   ASSERT_FALSE(root_handle.receive(0));
 
   Publication ping = Publication("node_1", "root", "1");
@@ -40,7 +45,7 @@ TEST(RuntimeSystem, pingPong) {
   ping.set_attr("actor_type", "actor");
   ping.set_attr("tag", std::to_string(0));
   ping.set_attr("message", "ping");
-  RouterV3::get_instance().publish(std::move(ping));
+  PubSub::Router::get_instance().publish(std::move(ping));
   sleep(1);
   auto result = root_handle.receive(0);
   ASSERT_TRUE(result);
@@ -53,7 +58,7 @@ TEST(RuntimeSystem, pingPong) {
   exit.set_attr("instance_id", "1");
   exit.set_attr("actor_type", "lua_runtime");
   exit.set_attr("tag", std::to_string(Tags::WELL_KNOWN_TAGS::EXIT));
-  RouterV3::get_instance().publish(std::move(exit));
+  PubSub::Router::get_instance().publish(std::move(exit));
   printf("join\n");
   runtime.join();
   EXPECT_EQ(0, 0);
@@ -185,10 +190,16 @@ TEST(ROUTER, wildcard_path_creation) {
   ASSERT_STREQ(result2->receiver(), "foo/bar/baz/1");
 }
 
+namespace PubSub {
 TEST(ROUTERV3, base) {
-  RouterV3 router{};
-  auto r =
-      router.register_master("master_node", "master_type", "master_instance");
+  Router router{};
+  auto r = router.new_subscriber();
+
+  Filter primary_filter{
+      Constraint(std::string("node_id"), "master_node"),
+      Constraint(std::string("actor_type"), "master_type"),
+      Constraint(std::string("instance_id"), "master_instance")};
+  size_t master_subscription_id = r.subscribe(primary_filter);
 
   auto result0 = r.receive(0);
   ASSERT_FALSE(result0);
@@ -201,7 +212,7 @@ TEST(ROUTERV3, base) {
 
   auto result1 = r.receive(0);
   ASSERT_TRUE(result1);
-  ASSERT_EQ(result1->subscription_id, r.master_subscription_id());
+  ASSERT_EQ(result1->subscription_id, master_subscription_id);
   ASSERT_STREQ((result1->publication.get_attr("sender_node_id"))->data(),
                "sender_node");
   ASSERT_STREQ((result1->publication.get_attr("node_id"))->data(),
@@ -209,9 +220,8 @@ TEST(ROUTERV3, base) {
 }
 
 TEST(ROUTERV3, alias) {
-  RouterV3 router{};
-  auto r =
-      router.register_master("master_node", "master_type", "master_instance");
+  Router router{};
+  auto r = router.new_subscriber();
   size_t sub_id = r.subscribe(
       Filter{Constraint{"foo", "bar"}, Constraint{"?asdf", "ghjkl"}});
 
@@ -231,9 +241,8 @@ TEST(ROUTERV3, alias) {
 }
 
 TEST(ROUTERV3, valid_optional) {
-  RouterV3 router{};
-  auto r =
-      router.register_master("master_node", "master_type", "master_instance");
+  Router router{};
+  auto r = router.new_subscriber();
   r.subscribe(Filter{Constraint{"?opt", "ional"}});
 
   auto result0 = r.receive(0);
@@ -251,9 +260,8 @@ TEST(ROUTERV3, valid_optional) {
 }
 
 TEST(ROUTERV3, invalid_optional) {
-  RouterV3 router{};
-  auto r =
-      router.register_master("master_node", "master_type", "master_instance");
+  Router router{};
+  auto r = router.new_subscriber();
   r.subscribe(Filter{Constraint{"?opt", "ional"}});
 
   auto result0 = r.receive(0);
@@ -268,9 +276,8 @@ TEST(ROUTERV3, invalid_optional) {
 }
 
 TEST(ROUTERV3, unsubscribe) {
-  RouterV3 router{};
-  auto r =
-      router.register_master("master_node", "master_type", "master_instance");
+  Router router{};
+  auto r = router.new_subscriber();
 
   r.subscribe(Filter{Constraint{"foo", "bar"}});
   r.unsubscribe(Filter{Constraint{"foo", "bar"}});
@@ -284,10 +291,9 @@ TEST(ROUTERV3, unsubscribe) {
 }
 
 TEST(ROUTERV3, queue_deleted_when_reference_out_of_scope) {
-  RouterV3 router{};
+  Router router{};
   {
-    auto r =
-        router.register_master("master_node", "master_type", "master_instance");
+    auto r = router.new_subscriber();
 
     Publication p =
         Publication("sender_node", "sender_type", "sender_instance");
@@ -297,19 +303,16 @@ TEST(ROUTERV3, queue_deleted_when_reference_out_of_scope) {
     router.publish(std::move(p));
   }
   {
-    auto r =
-        router.register_master("master_node", "master_type", "master_instance");
+    auto r = router.new_subscriber();
     auto result1 = r.receive(0);
     ASSERT_FALSE(result1);
   }
 }
 
 TEST(ROUTERV3, subscription_ids) {
-  RouterV3 router{};
-  auto r =
-      router.register_master("master_node", "master_type", "master_instance");
-  auto r2 =
-      router.register_master("master_node", "master_type", "master_instance");
+  Router router{};
+  auto r = router.new_subscriber();
+  auto r2 = router.new_subscriber();
 
   size_t r11 = r.subscribe(Filter{Constraint{"foo", "bar"}});
   size_t r21 = r.subscribe(Filter{Constraint{"foo", "bar"}});
@@ -319,3 +322,4 @@ TEST(ROUTERV3, subscription_ids) {
   ASSERT_LT(r11, r12);
   ASSERT_LT(r21, r22);
 }
+}  // namespace PubSub

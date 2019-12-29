@@ -10,7 +10,7 @@
 
 class LuaRuntime : public ActorRuntime<ManagedLuaActor, LuaRuntime> {
  public:
-  LuaRuntime(RouterV3* router, const char* node_id, const char* id)
+  LuaRuntime(PubSub::Router* router, const char* node_id, const char* id)
       : ActorRuntime<ManagedLuaActor, LuaRuntime>(router, node_id,
                                                   "lua_runtime", id) {
     state = create_lua_state();

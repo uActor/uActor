@@ -12,6 +12,8 @@
 
 #include "publication.hpp"
 
+namespace PubSub {
+
 class Constraint {
  public:
   Constraint(std::string attribute, std::string operand) : operand(operand) {
@@ -118,70 +120,21 @@ class Filter {
   std::list<Constraint> optional;
 };
 
-class RouterV3 {
+struct MatchedPublication {
+  MatchedPublication(Publication&& p, size_t subscription_id)
+      : publication(p), subscription_id(subscription_id) {}
+
+  MatchedPublication() : publication(), subscription_id(0) {}
+  Publication publication;
+  size_t subscription_id;
+};
+
+class SubscriptionHandle;
+
+class Router {
  public:
-  struct MatchedPublication {
-    MatchedPublication(Publication&& p, size_t subscription_id)
-        : publication(p), subscription_id(subscription_id) {}
-
-    MatchedPublication() : publication(), subscription_id(0) {}
-    Publication publication;
-    size_t subscription_id;
-  };
-
-  class Receiver {
-   public:
-    class Queue;
-    Receiver(RouterV3* router, std::string node_id, std::string actor_type,
-             std::string instance_id);
-    std::optional<MatchedPublication> receive(size_t wait_time = 0);
-    size_t subscribe(Filter f) {
-      size_t id = router->next_sub_id++;
-      filters.push_back(std::make_pair(id, std::move(f)));
-      return id;
-    }
-    void unsubscribe(Filter f) {
-      filters.remove_if([&](const auto& filter) { return filter.second == f; });
-    }
-    void publish(MatchedPublication&& publication);
-
-    size_t primary_subscription_id() { return _primary_subscription_id; }
-
-    ~Receiver();
-
-   private:
-    RouterV3* router;
-    std::list<std::pair<size_t, Filter>> filters;
-    std::unique_ptr<Queue> queue;
-    size_t _primary_subscription_id;
-    friend RouterV3;
-  };
-
-  class ReceiverHandle {
-   public:
-    ReceiverHandle(RouterV3* router, std::string node_id, std::string actor_type,
-                 std::string instance_id)
-        : receiver(std::make_unique<Receiver>(router, node_id, actor_type,
-                                              instance_id)) {}
-
-    size_t subscribe(Filter f) { return receiver->subscribe(std::move(f)); }
-
-    void unsubscribe(Filter f) { receiver->unsubscribe(std::move(f)); }
-
-    size_t master_subscription_id() {
-      return receiver->primary_subscription_id();
-    }
-
-    std::optional<MatchedPublication> receive(size_t wait_time) {
-      return receiver->receive(wait_time);
-    }
-
-   private:
-    std::unique_ptr<Receiver> receiver;
-  };
-
-  static RouterV3& get_instance() {
-    static RouterV3 instance;
+  static Router& get_instance() {
+    static Router instance;
     return instance;
   }
 
@@ -196,17 +149,59 @@ class RouterV3 {
     }
   }
 
-  ReceiverHandle register_master(std::string node_id, std::string actor_type,
-                               std::string instance_id) {
-    return ReceiverHandle{this, node_id, actor_type, instance_id};
-  }
+  SubscriptionHandle new_subscriber();
 
  private:
+  class Receiver {
+   public:
+    class Queue;
+    explicit Receiver(Router* router);
+    ~Receiver();
+
+   private:
+    std::optional<MatchedPublication> receive(size_t wait_time = 0);
+    size_t subscribe(Filter f) {
+      size_t id = router->next_sub_id++;
+      filters.push_back(std::make_pair(id, std::move(f)));
+      return id;
+    }
+    void unsubscribe(Filter f) {
+      filters.remove_if([&](const auto& filter) { return filter.second == f; });
+    }
+    void publish(MatchedPublication&& publication);
+
+   private:
+    Router* router;
+    std::list<std::pair<size_t, Filter>> filters;
+    std::unique_ptr<Queue> queue;
+    friend SubscriptionHandle;
+    friend Router;
+  };
+
   std::list<Receiver*> receivers;
   std::atomic<size_t> next_sub_id{0};
 
   void deregister_receiver(Receiver* r) { receivers.remove(r); }
   void register_receiver(Receiver* r) { receivers.push_back(r); }
+  friend SubscriptionHandle;
 };
+
+class SubscriptionHandle {
+ public:
+  explicit SubscriptionHandle(Router* router)
+      : receiver(std::make_unique<Router::Receiver>(router)) {}
+
+  size_t subscribe(Filter f) { return receiver->subscribe(std::move(f)); }
+
+  void unsubscribe(Filter f) { receiver->unsubscribe(std::move(f)); }
+
+  std::optional<MatchedPublication> receive(size_t wait_time) {
+    return receiver->receive(wait_time);
+  }
+
+ private:
+  std::unique_ptr<Router::Receiver> receiver;
+};
+}  // namespace PubSub
 
 #endif  //  MAIN_INCLUDE_SUBSCRIPTION_HPP_
