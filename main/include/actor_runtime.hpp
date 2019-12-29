@@ -6,9 +6,11 @@
 #include <functional>
 #include <list>
 #include <map>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <utility>
+#include <set>
 
 #include "board_functions.hpp"
 #include "message.hpp"
@@ -19,8 +21,15 @@ struct Params {
   const char* instance_id;
 };
 
+struct RuntimeApi {
+  virtual uint32_t add_subscription(uint32_t local_id,
+                                    PubSub::Filter&& filter) = 0;
+  virtual void remove_subscription(uint32_t local_id, uint32_t sub_id) = 0;
+  virtual ~RuntimeApi(){}
+};
+
 template <typename ActorType, typename RuntimeType>
-class ActorRuntime {
+class ActorRuntime : public RuntimeApi {
  public:
   static void os_task(void* params) {
     PubSub::Router* router = &PubSub::Router::get_instance();
@@ -52,32 +61,44 @@ class ActorRuntime {
     const char* instance_id = publication.get_attr("spawn_instance_id")->data();
     const char* code = publication.get_attr("spawn_code")->data();
 
-    size_t local_id = next_id++;
+    uint32_t local_id = next_id++;
 
-    actors.try_emplace(local_id, local_id, node_id, actor_type, instance_id,
-                       code, std::forward<Args>(args)...);
-    size_t sub_id = router_handle.subscribe(PubSub::Filter{
-        PubSub::Constraint(std::string("node_id"), node_id),
-        PubSub::Constraint(std::string("actor_type"), actor_type),
-        PubSub::Constraint(std::string("?instance_id"), instance_id)});
+    actors.try_emplace(local_id, this, local_id, node_id, actor_type,
+                       instance_id, code, std::forward<Args>(args)...);
+  }
+
+  uint32_t add_subscription(uint32_t local_id, PubSub::Filter&& filter) {
+    uint32_t sub_id = router_handle.subscribe(filter);
     auto entry = subscription_mapping.find(sub_id);
     if (entry != subscription_mapping.end()) {
-      entry->second.emplace_back(local_id);
+      entry->second.insert(local_id);
     } else {
-      subscription_mapping.emplace(sub_id, std::list<size_t>{local_id});
+      subscription_mapping.emplace(sub_id, std::set<uint32_t>{local_id});
+    }
+    return sub_id;
+  }
+
+  void remove_subscription(uint32_t local_id, uint32_t sub_id) {
+    auto it = subscription_mapping.find(sub_id);
+    if (it != subscription_mapping.end()) {
+      it->second.erase(local_id);
+      if (it->second.empty()) {
+        router_handle.unsubscribe(sub_id);
+        subscription_mapping.erase(it);
+      }
     }
   }
 
  protected:
-  std::map<size_t, ActorType> actors;
+  std::map<uint32_t, ActorType> actors;
 
  private:
   PubSub::SubscriptionHandle router_handle;
-  size_t next_id = 1;
-  std::map<size_t, std::list<size_t>> subscription_mapping;
-  std::list<size_t> ready_queue;
-  std::list<std::pair<uint32_t, size_t>> timeouts;
-  size_t runtime_subscription_id;
+  uint32_t next_id = 1;
+  std::map<uint32_t, std::set<uint32_t>> subscription_mapping;
+  std::list<uint32_t> ready_queue;
+  std::list<std::pair<uint32_t, uint32_t>> timeouts;
+  uint32_t runtime_subscription_id;
 
   void event_loop() {
     while (true) {
@@ -103,7 +124,7 @@ class ActorRuntime {
           auto receivers =
               subscription_mapping.find(publication->subscription_id);
           if (receivers != subscription_mapping.end()) {
-            for (size_t receiver_id : receivers->second) {
+            for (uint32_t receiver_id : receivers->second) {
               auto actor = actors.find(receiver_id);
               if (actor != actors.end()) {
                 if (actor->second.enqueue(
@@ -144,7 +165,7 @@ class ActorRuntime {
 
       // Process one message
       if (ready_queue.size() > 0) {
-        size_t task = ready_queue.front();
+        uint32_t task = ready_queue.front();
         ready_queue.pop_front();
         ActorType& actor = actors.at(task);
         uint32_t wait_time = actor.receive_next_internal();

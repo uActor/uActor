@@ -279,8 +279,8 @@ TEST(ROUTERV3, unsubscribe) {
   Router router{};
   auto r = router.new_subscriber();
 
-  r.subscribe(Filter{Constraint{"foo", "bar"}});
-  r.unsubscribe(Filter{Constraint{"foo", "bar"}});
+  uint32_t sub_id = r.subscribe(Filter{Constraint{"foo", "bar"}});
+  r.unsubscribe(sub_id);
 
   Publication p = Publication("sender_node", "sender_type", "sender_instance");
   p.set_attr("foo", "bar");

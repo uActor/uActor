@@ -105,12 +105,13 @@ const char receive_fun[] = R"(
 function receive(message)
   print(message.sender_node_id.."."..message.sender_actor_type.."."..message.sender_instance_id.." -> "..node_id.."."..actor_type.."."..instance_id);
   if(instance_id == "1") then
-    if(message.command == "init") then
-      deferred_block_for({sender_instance_id="32", _optional_foo="bar"}, 2000);
-      --delayed_send(1000, {node_id=node_id, actor_type=actor_type, instance_id=instance_id}); TODO implement (drop sleep)
+    sub_id = subscribe({node_id=node_id, instance_id="foo", actor_type=actor_type})
+    if(message.command == "init" and message.sender_actor_type == "root") then
       send({node_id=node_id, actor_type=actor_type, message="ping"});
     end
+    --unsubscribe(sub_id)
   elseif(instance_id=="2") then
+    send({node_id=node_id, instance_id="foo", actor_type=actor_type, message="pong"})
     deferred_block_for({foo="bar"}, 5000);
   else
     send({node_id=message.sender_node_id, instance_id=message.sender_instance_id, actor_type=message.sender_actor_type, message="pong"})

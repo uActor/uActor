@@ -5,6 +5,7 @@
 #include <atomic>
 #include <cstdio>
 #include <list>
+#include <map>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -121,12 +122,12 @@ class Filter {
 };
 
 struct MatchedPublication {
-  MatchedPublication(Publication&& p, size_t subscription_id)
+  MatchedPublication(Publication&& p, uint32_t subscription_id)
       : publication(p), subscription_id(subscription_id) {}
 
   MatchedPublication() : publication(), subscription_id(0) {}
   Publication publication;
-  size_t subscription_id;
+  uint32_t subscription_id;
 };
 
 class SubscriptionHandle;
@@ -140,7 +141,7 @@ class Router {
 
   void publish(Publication&& publication) {
     for (Receiver* receiver : receivers) {
-      for (const std::pair<size_t, Filter>& filter : receiver->filters) {
+      for (const std::pair<uint32_t, Filter>& filter : receiver->filters) {
         if (filter.second.matches(publication)) {
           receiver->publish(
               MatchedPublication(Publication(publication), filter.first));
@@ -159,27 +160,34 @@ class Router {
     ~Receiver();
 
    private:
-    std::optional<MatchedPublication> receive(size_t wait_time = 0);
-    size_t subscribe(Filter f) {
-      size_t id = router->next_sub_id++;
-      filters.push_back(std::make_pair(id, std::move(f)));
-      return id;
+    std::optional<MatchedPublication> receive(uint32_t wait_time = 0);
+    uint32_t subscribe(Filter&& f) {
+      auto it =
+          std::find_if(filters.begin(), filters.end(),
+                       [&f](const auto& value) { return f == value.second; });
+      if (it != filters.end()) {
+        return it->first;
+      } else {
+        uint32_t id = router->next_sub_id++;
+        filters.emplace(id, std::move(f));
+        return id;
+      }
     }
-    void unsubscribe(Filter f) {
-      filters.remove_if([&](const auto& filter) { return filter.second == f; });
-    }
+
+    void unsubscribe(uint32_t sub_id) { filters.erase(sub_id); }
+
     void publish(MatchedPublication&& publication);
 
    private:
     Router* router;
-    std::list<std::pair<size_t, Filter>> filters;
+    std::map<uint32_t, Filter> filters;
     std::unique_ptr<Queue> queue;
     friend SubscriptionHandle;
     friend Router;
   };
 
   std::list<Receiver*> receivers;
-  std::atomic<size_t> next_sub_id{0};
+  std::atomic<uint32_t> next_sub_id{0};
 
   void deregister_receiver(Receiver* r) { receivers.remove(r); }
   void register_receiver(Receiver* r) { receivers.push_back(r); }
@@ -191,11 +199,11 @@ class SubscriptionHandle {
   explicit SubscriptionHandle(Router* router)
       : receiver(std::make_unique<Router::Receiver>(router)) {}
 
-  size_t subscribe(Filter f) { return receiver->subscribe(std::move(f)); }
+  uint32_t subscribe(Filter f) { return receiver->subscribe(std::move(f)); }
 
-  void unsubscribe(Filter f) { receiver->unsubscribe(std::move(f)); }
+  void unsubscribe(uint32_t sub_id) { receiver->unsubscribe(sub_id); }
 
-  std::optional<MatchedPublication> receive(size_t wait_time) {
+  std::optional<MatchedPublication> receive(uint32_t wait_time) {
     return receiver->receive(wait_time);
   }
 

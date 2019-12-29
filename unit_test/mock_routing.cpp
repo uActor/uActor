@@ -30,7 +30,7 @@ Router::Receiver::Receiver(Router* router) : router(router) {
 
 Router::Receiver::~Receiver() { router->deregister_receiver(this); }
 
-std::optional<MatchedPublication> Router::Receiver::receive(size_t timeout) {
+std::optional<MatchedPublication> Router::Receiver::receive(uint32_t timeout) {
   return queue->receive_message(timeout);
 }
 

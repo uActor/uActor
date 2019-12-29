@@ -11,6 +11,7 @@
 #include <string>
 #include <utility>
 
+#include "actor_runtime.hpp"
 #include "message.hpp"
 #include "publication.hpp"
 #include "subscription.hpp"
@@ -30,15 +31,24 @@ class ManagedActor {
  public:
   ManagedActor(const ManagedActor&) = delete;
 
-  ManagedActor(size_t local_id, const char* node_id, const char* actor_type,
-               const char* instance_id, const char* code)
-      : _id(local_id),
+  ManagedActor(RuntimeApi* api, uint32_t unique_id, const char* node_id,
+               const char* actor_type, const char* instance_id,
+               const char* code)
+      : _id(unique_id),
         waiting(false),
         _timeout(UINT32_MAX),
         _node_id(node_id),
         _actor_type(actor_type),
         _instance_id(instance_id),
-        _code(code) {}
+        _code(code),
+        api(api) {
+    api->add_subscription(
+        unique_id,
+        PubSub::Filter{
+            PubSub::Constraint(std::string("node_id"), node_id),
+            PubSub::Constraint(std::string("actor_type"), actor_type),
+            PubSub::Constraint(std::string("?instance_id"), instance_id)});
+  }
 
   virtual void receive(const Publication& p) = 0;
 
@@ -53,9 +63,15 @@ class ManagedActor {
     message_queue.emplace_front(std::move(p));
   }
 
-  const char* code() { return _code.c_str(); }
+  uint32_t subscribe(PubSub::Filter&& f) {
+    return api->add_subscription(_id, std::move(f));
+  }
 
-  size_t id() { return _id; }
+  void unsubscribe(uint32_t sub_id) { api->remove_subscription(_id, sub_id); }
+
+  uint32_t id() { return _id; }
+
+  const char* code() { return _code.c_str(); }
 
   const char* node_id() const { return _node_id.c_str(); }
 
@@ -83,7 +99,7 @@ class ManagedActor {
   }
 
  private:
-  size_t _id;
+  uint32_t _id;
   bool waiting;
   Pattern pattern;
   uint32_t _timeout;
@@ -92,5 +108,6 @@ class ManagedActor {
   std::string _instance_id;
   std::string _code;
   std::deque<Publication> message_queue;
+  RuntimeApi* api;
 };
 #endif  //  MAIN_INCLUDE_MANAGED_ACTOR_HPP_

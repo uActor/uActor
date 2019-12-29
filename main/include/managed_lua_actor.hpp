@@ -12,10 +12,10 @@
 
 class ManagedLuaActor : public ManagedActor {
  public:
-  ManagedLuaActor(size_t local_id, const char* node_id, const char* actor_type,
-                  const char* instance_id, const char* code,
-                  lua_State* global_state)
-      : ManagedActor(local_id, node_id, actor_type, instance_id, code),
+  ManagedLuaActor(RuntimeApi* api, uint32_t unique_id, const char* node_id,
+                  const char* actor_type, const char* instance_id,
+                  const char* code, lua_State* global_state)
+      : ManagedActor(api, unique_id, node_id, actor_type, instance_id, code),
         state(global_state) {
     createActorEnvironment(code);
   }
@@ -85,27 +85,26 @@ class ManagedLuaActor : public ManagedActor {
     ManagedLuaActor* actor = reinterpret_cast<ManagedLuaActor*>(
         lua_touserdata(state, lua_upvalueindex(1)));
 
-    std::list<PubSub::Constraint> filter_list;
-    luaL_checktype(state, 1, LUA_TTABLE);
-    lua_pushvalue(state, 1);
-    lua_pushnil(state);
-
-    while (lua_next(state, -2)) {
-      lua_pushvalue(state, -2);
-      std::string key(lua_tostring(state, -1));
-      std::string value(lua_tostring(state, -2));
-      if (key.rfind("_optional_") == 0) {
-        key = std::string("?") + key.substr(10);
-      }
-      filter_list.emplace_back(std::move(key), std::move(value));
-      lua_pop(state, 2);
-    }
-    lua_pop(state, 1);
-
-    PubSub::Filter f(std::move(filter_list));
-
     uint32_t timeout = lua_tointeger(state, 2);
-    actor->deffered_block_for(std::move(f), timeout);
+    actor->deffered_block_for(std::move(parse_filters(state, 1)), timeout);
+    return 0;
+  }
+
+  static int subscribe_wrapper(lua_State* state) {
+    ManagedLuaActor* actor = reinterpret_cast<ManagedLuaActor*>(
+        lua_touserdata(state, lua_upvalueindex(1)));
+
+    uint32_t id = actor->subscribe(parse_filters(state, 1));
+    lua_pushinteger(state, id);
+    return 1;
+  }
+
+  static int unsubscribe_wrapper(lua_State* state) {
+    ManagedLuaActor* actor = reinterpret_cast<ManagedLuaActor*>(
+        lua_touserdata(state, lua_upvalueindex(1)));
+
+    uint32_t sub_id = lua_tointeger(state, 1);
+    actor->unsubscribe(sub_id);
     return 0;
   }
 
@@ -113,6 +112,8 @@ class ManagedLuaActor : public ManagedActor {
       {"send", &send_wrapper},
       {"deferred_sleep", &deferred_sleep_wrapper},
       {"deferred_block_for", &deferred_block_for_wrapper},
+      {"subscribe", &subscribe_wrapper},
+      {"unsubscribe", &unsubscribe_wrapper},
       {NULL, NULL}};
 
   void createActorEnvironment(const char* receive_function) {
@@ -164,6 +165,27 @@ class ManagedLuaActor : public ManagedActor {
       printf("%s\n", lua_tostring(state, 1));
       lua_pop(state, 1);
     }
+  }
+
+  static PubSub::Filter parse_filters(lua_State* state, size_t index) {
+    std::list<PubSub::Constraint> filter_list;
+    luaL_checktype(state, index, LUA_TTABLE);
+    lua_pushvalue(state, index);
+    lua_pushnil(state);
+
+    while (lua_next(state, -2)) {
+      lua_pushvalue(state, -2);
+      std::string key(lua_tostring(state, -1));
+      std::string value(lua_tostring(state, -2));
+      if (key.rfind("_optional_") == 0) {
+        key = std::string("?") + key.substr(strlen("_optional_"));
+      }
+      filter_list.emplace_back(std::move(key), std::move(value));
+      lua_pop(state, 2);
+    }
+    lua_pop(state, 1);
+
+    return PubSub::Filter(std::move(filter_list));
   }
 };
 
