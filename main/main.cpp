@@ -107,6 +107,7 @@ function receive(message)
   if(instance_id == "1") then
     sub_id = subscribe({node_id=node_id, instance_id="foo", actor_type=actor_type})
     if(message.command == "init" and message.sender_actor_type == "root") then
+      delayed_publish({node_id=node_id, actor_type=actor_type, instance_id="3", is_delayed="true"}, 2000);
       send({node_id=node_id, actor_type=actor_type, message="ping"});
     end
     --unsubscribe(sub_id)

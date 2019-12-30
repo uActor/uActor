@@ -10,7 +10,6 @@
 #include <string>
 #include <unordered_map>
 #include <utility>
-#include <set>
 
 #include "board_functions.hpp"
 #include "message.hpp"
@@ -25,7 +24,8 @@ struct RuntimeApi {
   virtual uint32_t add_subscription(uint32_t local_id,
                                     PubSub::Filter&& filter) = 0;
   virtual void remove_subscription(uint32_t local_id, uint32_t sub_id) = 0;
-  virtual ~RuntimeApi(){}
+  virtual void delayed_publish(Publication&& publication, uint32_t delay) = 0;
+  virtual ~RuntimeApi() {}
 };
 
 template <typename ActorType, typename RuntimeType>
@@ -89,6 +89,11 @@ class ActorRuntime : public RuntimeApi {
     }
   }
 
+  void delayed_publish(Publication&& publication, uint32_t delay) {
+    delayed_messages.push_back(std::make_pair(
+        BoardFunctions::timestamp() + delay, std::move(publication)));
+  }
+
  protected:
   std::map<uint32_t, ActorType> actors;
 
@@ -98,6 +103,7 @@ class ActorRuntime : public RuntimeApi {
   std::map<uint32_t, std::set<uint32_t>> subscription_mapping;
   std::list<uint32_t> ready_queue;
   std::list<std::pair<uint32_t, uint32_t>> timeouts;
+  std::list<std::pair<uint32_t, Publication>> delayed_messages;
   uint32_t runtime_subscription_id;
 
   void event_loop() {
@@ -108,6 +114,12 @@ class ActorRuntime : public RuntimeApi {
         wait_time =
             std::max(0, static_cast<int32_t>(timeouts.begin()->first -
                                              BoardFunctions::timestamp()));
+      }
+      if (delayed_messages.size() > 0) {
+        wait_time = std::min(
+            wait_time,
+            std::max(0, static_cast<int32_t>(delayed_messages.begin()->first -
+                                             BoardFunctions::timestamp())));
       }
       if (ready_queue.size() > 0) {
         wait_time = 0;
@@ -149,6 +161,13 @@ class ActorRuntime : public RuntimeApi {
             printf("not_found\n");
           }
         }
+      }
+
+      while (delayed_messages.begin() != delayed_messages.end() &&
+             delayed_messages.begin()->first < BoardFunctions::timestamp()) {
+        PubSub::Router::get_instance().publish(
+            std::move(delayed_messages.front().second));
+        delayed_messages.pop_front();
       }
 
       // Enqueue from timeouts

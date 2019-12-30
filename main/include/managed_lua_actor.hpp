@@ -55,29 +55,18 @@ class ManagedLuaActor : public ManagedActor {
   static int send_wrapper(lua_State* state) {
     ManagedLuaActor* actor = reinterpret_cast<ManagedLuaActor*>(
         lua_touserdata(state, lua_upvalueindex(1)));
-    Publication p = Publication(actor->node_id(), actor->actor_type(),
-                                actor->instance_id());
-    luaL_checktype(state, 1, LUA_TTABLE);
-    lua_pushvalue(state, 1);
-    lua_pushnil(state);
 
-    while (lua_next(state, -2)) {
-      lua_pushvalue(state, -2);
-      std::string key(lua_tostring(state, -1));
-      std::string value(lua_tostring(state, -2));
-      p.set_attr(std::move(key), std::move(value));
-      lua_pop(state, 2);
-    }
-    lua_pop(state, 1);
-    actor->send(std::move(p));
+    actor->send(parse_publication(actor, state, 1));
     return 0;
   }
 
-  static int deferred_sleep_wrapper(lua_State* state) {
+  static int delayed_publish_wrapper(lua_State* state) {
     ManagedLuaActor* actor = reinterpret_cast<ManagedLuaActor*>(
         lua_touserdata(state, lua_upvalueindex(1)));
-    uint32_t timeout = lua_tointeger(state, 1);
-    actor->deferred_sleep(timeout);
+
+    uint32_t delay = lua_tointeger(state, 2);
+
+    actor->delayed_publish(parse_publication(actor, state, 1), delay);
     return 0;
   }
 
@@ -110,7 +99,7 @@ class ManagedLuaActor : public ManagedActor {
 
   static constexpr luaL_Reg core[] = {
       {"send", &send_wrapper},
-      {"deferred_sleep", &deferred_sleep_wrapper},
+      {"delayed_publish", &delayed_publish_wrapper},
       {"deferred_block_for", &deferred_block_for_wrapper},
       {"subscribe", &subscribe_wrapper},
       {"unsubscribe", &unsubscribe_wrapper},
@@ -186,6 +175,26 @@ class ManagedLuaActor : public ManagedActor {
     lua_pop(state, 1);
 
     return PubSub::Filter(std::move(filter_list));
+  }
+
+  static Publication parse_publication(ManagedLuaActor* actor, lua_State* state,
+                                       size_t index) {
+    Publication p = Publication(actor->node_id(), actor->actor_type(),
+                                actor->instance_id());
+
+    luaL_checktype(state, index, LUA_TTABLE);
+    lua_pushvalue(state, index);
+    lua_pushnil(state);
+
+    while (lua_next(state, -2)) {
+      lua_pushvalue(state, -2);
+      std::string key(lua_tostring(state, -1));
+      std::string value(lua_tostring(state, -2));
+      p.set_attr(std::move(key), std::move(value));
+      lua_pop(state, 2);
+    }
+    lua_pop(state, 1);
+    return std::move(p);
   }
 };
 

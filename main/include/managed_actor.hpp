@@ -84,12 +84,8 @@ class ManagedActor {
     PubSub::Router::get_instance().publish(std::move(p));
   }
 
-  void deferred_sleep(uint32_t timeout) {
-    waiting = true;
-    pattern.filter.clear();
-    pattern.filter = PubSub::Filter{
-        PubSub::Constraint{"internal_timeout", "internal_timeout"}};
-    _timeout = timeout;
+  void delayed_publish(Publication&& p, uint32_t delay) {
+    api->delayed_publish(std::move(p), delay);
   }
 
   void deffered_block_for(PubSub::Filter&& filter, uint32_t timeout) {
