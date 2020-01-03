@@ -9,6 +9,7 @@
 #include "lua.hpp"
 #include "managed_actor.hpp"
 #include "message.hpp"
+#include "subscription.hpp"
 
 class ManagedLuaActor : public ManagedActor {
  public:
@@ -36,7 +37,13 @@ class ManagedLuaActor : public ManagedActor {
 
     lua_newtable(state);
     for (const auto& value : m) {
-      lua_pushstring(state, value.second.c_str());
+      if (std::holds_alternative<std::string>(value.second)) {
+        lua_pushstring(state, std::get<std::string>(value.second).c_str());
+      } else if (std::holds_alternative<int32_t>(value.second)) {
+        lua_pushinteger(state, std::get<int32_t>(value.second));
+      } else if (std::holds_alternative<float>(value.second)) {
+        lua_pushnumber(state, std::get<float>(value.second));
+      }
       lua_setfield(state, -2, value.first.c_str());
     }
 
@@ -129,15 +136,15 @@ class ManagedLuaActor : public ManagedActor {
     lua_getglobal(state, "tonumber");
     lua_setfield(state, -2, "tonumber");
 
-    lua_createtable(state, 0, Tags::WELL_KNOWN_TAGS::FAKE_ITERATOR_END);
-    for (uint32_t i = 1; i < Tags::WELL_KNOWN_TAGS::FAKE_ITERATOR_END; i++) {
-      const char* name = Tags::tag_name(i);
+    lua_createtable(state, 0, PubSub::ConstraintPredicates::MAX_INDEX);
+    for (uint32_t i = 1; i < PubSub::ConstraintPredicates::MAX_INDEX; i++) {
+      const char* name = PubSub::ConstraintPredicates::name(i);
       if (name) {
         lua_pushinteger(state, i);
         lua_setfield(state, -2, name);
       }
     }
-    lua_setfield(state, -2, "well_known_tags");
+    lua_setfield(state, -2, "operators");
 
     lua_seti(state, -2, id());
 
@@ -165,11 +172,37 @@ class ManagedLuaActor : public ManagedActor {
     while (lua_next(state, -2)) {
       lua_pushvalue(state, -2);
       std::string key(lua_tostring(state, -1));
-      std::string value(lua_tostring(state, -2));
       if (key.rfind("_optional_") == 0) {
         key = std::string("?") + key.substr(strlen("_optional_"));
       }
-      filter_list.emplace_back(std::move(key), std::move(value));
+
+      if (lua_type(state, -2) == LUA_TSTRING) {
+        std::string value(lua_tostring(state, -2));
+        filter_list.emplace_back(std::move(key), std::move(value));
+      } else if (lua_isinteger(state, -2)) {
+        int32_t value = lua_tointeger(state, -2);
+        filter_list.emplace_back(std::move(key), value);
+      } else if (lua_isnumber(state, -2)) {
+        float value = lua_tonumber(state, -2);
+        filter_list.emplace_back(std::move(key), value);
+      } else if (lua_type(state, -2) == LUA_TTABLE) {
+        lua_geti(state, -2, 2);
+        PubSub::ConstraintPredicates::Predicate operation =
+            static_cast<PubSub::ConstraintPredicates::Predicate>(
+                lua_tointeger(state, -1));
+        lua_pop(state, 1);
+        lua_geti(state, -2, 1);
+        if (lua_isinteger(state, -1)) {
+          filter_list.emplace_back(
+              std::move(key), static_cast<int32_t>(lua_tointeger(state, -1)),
+              operation);
+        } else if (lua_isnumber(state, -1)) {
+          filter_list.emplace_back(std::move(key),
+                                   static_cast<float>(lua_tonumber(state, -1)),
+                                   operation);
+        }
+        lua_pop(state, 1);
+      }
       lua_pop(state, 2);
     }
     lua_pop(state, 1);
@@ -189,8 +222,17 @@ class ManagedLuaActor : public ManagedActor {
     while (lua_next(state, -2)) {
       lua_pushvalue(state, -2);
       std::string key(lua_tostring(state, -1));
-      std::string value(lua_tostring(state, -2));
-      p.set_attr(std::move(key), std::move(value));
+
+      if (lua_type(state, -2) == LUA_TSTRING) {
+        std::string value(lua_tostring(state, -2));
+        p.set_attr(std::move(key), std::move(value));
+      } else if (lua_isinteger(state, -2)) {
+        int32_t value = lua_tointeger(state, -2);
+        p.set_attr(std::move(key), value);
+      } else if (lua_isnumber(state, -2)) {
+        float value = lua_tonumber(state, -2);
+        p.set_attr(std::move(key), value);
+      }
       lua_pop(state, 2);
     }
     lua_pop(state, 1);

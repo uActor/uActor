@@ -70,7 +70,10 @@ TEST(RuntimeSystem, pingPong) {
 
   auto result = root_handle.receive(100);
   ASSERT_TRUE(result);
-  ASSERT_STREQ(result->publication.get_attr("message")->data(), "pong");
+  ASSERT_STREQ(
+      std::get<std::string_view>(result->publication.get_attr("message"))
+          .data(),
+      "pong");
 
   shutdown_runtime(&runtime_thread);
 }
@@ -97,13 +100,19 @@ TEST(RuntimeSystem, delayedSend) {
   {
     auto result = root_handle.receive(100);
     ASSERT_TRUE(result);
-    ASSERT_STREQ(result->publication.get_attr("message")->data(), "pong2");
+    ASSERT_STREQ(
+        std::get<std::string_view>(result->publication.get_attr("message"))
+            .data(),
+        "pong2");
   }
   usleep(200000);
   {
     auto result = root_handle.receive(100);
     ASSERT_TRUE(result);
-    ASSERT_STREQ(result->publication.get_attr("message")->data(), "pong1");
+    ASSERT_STREQ(
+        std::get<std::string_view>(result->publication.get_attr("message"))
+            .data(),
+        "pong1");
   }
 
   shutdown_runtime(&runtime_thread);
@@ -145,18 +154,26 @@ TEST(RuntimeSystem, block_for) {
   {
     auto result = root_handle.receive(100);
     ASSERT_TRUE(result);
-    ASSERT_STREQ(result->publication.get_attr("message")->data(), "pong1");
+    ASSERT_STREQ(
+        std::get<std::string_view>(result->publication.get_attr("message"))
+            .data(),
+        "pong1");
   }
   {
     auto result = root_handle.receive(300);
     ASSERT_TRUE(result);
-    ASSERT_STREQ(result->publication.get_attr("message")->data(),
-                 "pong_timeout");
+    ASSERT_STREQ(
+        std::get<std::string_view>(result->publication.get_attr("message"))
+            .data(),
+        "pong_timeout");
   }
   {
     auto result = root_handle.receive(100);
     ASSERT_TRUE(result);
-    ASSERT_STREQ(result->publication.get_attr("message")->data(), "pong2");
+    ASSERT_STREQ(
+        std::get<std::string_view>(result->publication.get_attr("message"))
+            .data(),
+        "pong2");
   }
 
   shutdown_runtime(&runtime_thread);
@@ -166,9 +183,9 @@ TEST(RuntimeSystem, sub_unsub) {
   const char block_for_pong[] = R"(function receive(publication)
     if(publication.message == "sub") then
       sub_id = subscribe({foo="bar"})
-      send({instance_id=publication.sender_instance_id, node_id=publication.sender_node_id, actor_type=publication.sender_actor_type, sub_id=tostring(sub_id)});
+      send({instance_id=publication.sender_instance_id, node_id=publication.sender_node_id, actor_type=publication.sender_actor_type, sub_id=sub_id});
     elseif(publication.message == "unsub") then
-      unsubscribe(tonumber(publication.sub_id))
+      unsubscribe(publication.sub_id)
     else
       send({instance_id=publication.sender_instance_id, node_id=publication.sender_node_id, actor_type=publication.sender_actor_type, message="pong"});
     end
@@ -196,12 +213,16 @@ TEST(RuntimeSystem, sub_unsub) {
 
   auto sub_result = root_handle.receive(100);
   ASSERT_TRUE(sub_result);
-  std::string sub_id = sub_result->publication.get_attr("sub_id")->data();
+  int32_t sub_id =
+      std::get<std::int32_t>(sub_result->publication.get_attr("sub_id"));
 
   {
     auto result = root_handle.receive(100);
     ASSERT_TRUE(result);
-    ASSERT_STREQ(result->publication.get_attr("message")->data(), "pong");
+    ASSERT_STREQ(
+        std::get<std::string_view>(result->publication.get_attr("message"))
+            .data(),
+        "pong");
   }
 
   Publication unsub = Publication("node_1", "root", "1");
@@ -213,6 +234,52 @@ TEST(RuntimeSystem, sub_unsub) {
   PubSub::Router::get_instance().publish(std::move(unsub));
 
   ASSERT_FALSE(root_handle.receive(100));
+
+  shutdown_runtime(&runtime_thread);
+}
+
+TEST(RuntimeSystem, complex_subscription) {
+  const char block_for_pong[] = R"(function receive(publication)
+    if(publication.message == "sub") then
+      sub_id = subscribe({foo=1, bar={50.0, operators.LT}})
+      send({instance_id=publication.sender_instance_id, node_id=publication.sender_node_id, actor_type=publication.sender_actor_type, sub_id=sub_id});
+    else
+      send({instance_id=publication.sender_instance_id, node_id=publication.sender_node_id, actor_type=publication.sender_actor_type, message="pong"});
+    end
+  end)";
+
+  auto root_handle = subscription_handle_with_default_subscription();
+  auto runtime_thread = start_runtime_thread();
+
+  spawn_actor(block_for_pong, "1");
+
+  ASSERT_FALSE(root_handle.receive(100));
+
+  Publication sub = Publication("node_1", "root", "1");
+  sub.set_attr("node_id", "node_1");
+  sub.set_attr("instance_id", "1");
+  sub.set_attr("actor_type", "actor");
+  sub.set_attr("message", "sub");
+  PubSub::Router::get_instance().publish(std::move(sub));
+
+  usleep(10000);
+
+  Publication test_message = Publication("node_1", "root", "1");
+  test_message.set_attr("foo", 1);
+  test_message.set_attr("bar", 20.0f);
+  PubSub::Router::get_instance().publish(std::move(test_message));
+
+  auto sub_result = root_handle.receive(100);
+  ASSERT_TRUE(sub_result);
+
+  {
+    auto result = root_handle.receive(100);
+    ASSERT_TRUE(result);
+    ASSERT_STREQ(
+        std::get<std::string_view>(result->publication.get_attr("message"))
+            .data(),
+        "pong");
+  }
 
   shutdown_runtime(&runtime_thread);
 }

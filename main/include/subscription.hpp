@@ -4,20 +4,81 @@
 #include <algorithm>
 #include <atomic>
 #include <cstdio>
+#include <functional>
 #include <list>
 #include <map>
 #include <memory>
 #include <string>
 #include <string_view>
 #include <utility>
+#include <variant>
 
 #include "publication.hpp"
 
 namespace PubSub {
 
+struct ConstraintPredicates {
+  constexpr static const uint32_t MAX_INDEX = 6;
+  enum Predicate : uint32_t { EQ = 1, NE, LT, GT, GE, LE };
+  constexpr static const char* name(uint32_t tag) {
+    switch (tag) {
+      case 1:
+        return "EQ";
+      case 2:
+        return "NE";
+      case 3:
+        return "LT";
+      case 4:
+        return "GT";
+      case 5:
+        return "GE";
+      case 6:
+        return "LE";
+    }
+    return nullptr;
+  }
+};
+
 class Constraint {
+  template <typename T>
+  struct Container {
+    Container(T operand, std::function<bool(const T&, const T&)> operation)
+        : operand(operand), operation(operation) {}
+    T operand;
+    std::function<bool(const T&, const T&)> operation;
+
+    bool operator==(const Container<T>& other) const {
+      return operand == other.operand;
+    }
+  };
+
  public:
-  Constraint(std::string attribute, std::string operand) : operand(operand) {
+  // TODO(raphaelhetzel) combine once we use C++20
+  Constraint(
+      std::string attribute, std::string oper,
+      ConstraintPredicates::Predicate op = ConstraintPredicates::Predicate::EQ) {
+    switch (op) {
+      case ConstraintPredicates::Predicate::EQ:
+        operand = Container<std::string>(oper, std::equal_to<std::string>());
+        break;
+      case ConstraintPredicates::Predicate::LT:
+        operand = Container<std::string>(oper, std::less<std::string>());
+        break;
+      case ConstraintPredicates::Predicate::GT:
+        operand = Container<std::string>(oper, std::greater<std::string>());
+        break;
+      case ConstraintPredicates::Predicate::GE:
+        operand =
+            Container<std::string>(oper, std::greater_equal<std::string>());
+        break;
+      case ConstraintPredicates::Predicate::LE:
+        operand = Container<std::string>(oper, std::less_equal<std::string>());
+        break;
+      case ConstraintPredicates::Predicate::NE:
+        operand =
+            Container<std::string>(oper, std::not_equal_to<std::string>());
+        break;
+    }
     if (attribute.at(0) == '?') {
       _attribute = attribute.substr(1);
       _optional = true;
@@ -27,7 +88,97 @@ class Constraint {
     }
   }
 
-  bool operator()(std::string_view input) const { return operand == input; }
+  Constraint(
+      std::string attribute, int32_t oper,
+      ConstraintPredicates::Predicate op = ConstraintPredicates::Predicate::EQ) {
+    switch (op) {
+      case ConstraintPredicates::Predicate::EQ:
+        operand = Container<int32_t>(oper, std::equal_to<int32_t>());
+        break;
+      case ConstraintPredicates::Predicate::LT:
+        operand = Container<int32_t>(oper, std::less<int32_t>());
+        break;
+      case ConstraintPredicates::Predicate::GT:
+        operand = Container<int32_t>(oper, std::greater<int32_t>());
+        break;
+      case ConstraintPredicates::Predicate::GE:
+        operand = Container<int32_t>(oper, std::greater_equal<int32_t>());
+        break;
+      case ConstraintPredicates::Predicate::LE:
+        operand = Container<int32_t>(oper, std::less_equal<int32_t>());
+        break;
+      case ConstraintPredicates::Predicate::NE:
+        operand = Container<int32_t>(oper, std::not_equal_to<int32_t>());
+        break;
+    }
+    if (attribute.at(0) == '?') {
+      _attribute = attribute.substr(1);
+      _optional = true;
+    } else {
+      _attribute = attribute;
+      _optional = false;
+    }
+  }
+
+  Constraint(
+      std::string attribute, float oper,
+      ConstraintPredicates::Predicate op = ConstraintPredicates::Predicate::EQ) {
+    switch (op) {
+      case ConstraintPredicates::Predicate::EQ:
+        operand = Container<float>(oper, std::equal_to<float>());
+        break;
+      case ConstraintPredicates::Predicate::LT:
+        operand = Container<float>(oper, std::less<float>());
+        break;
+      case ConstraintPredicates::Predicate::GT:
+        operand = Container<float>(oper, std::greater<float>());
+        break;
+      case ConstraintPredicates::Predicate::GE:
+        operand = Container<float>(oper, std::greater_equal<float>());
+        break;
+      case ConstraintPredicates::Predicate::LE:
+        operand = Container<float>(oper, std::less_equal<float>());
+        break;
+      case ConstraintPredicates::Predicate::NE:
+        operand = Container<float>(oper, std::not_equal_to<float>());
+        break;
+    }
+    if (attribute.at(0) == '?') {
+      _attribute = attribute.substr(1);
+      _optional = true;
+    } else {
+      _attribute = attribute;
+      _optional = false;
+    }
+  }
+
+  bool operator()(std::string_view input) const {
+    if (std::holds_alternative<Container<std::string>>(operand)) {
+      return (std::get<Container<std::string>>(operand))
+          .operation(std::string(input),
+                     std::get<Container<std::string>>(operand).operand);
+    } else {
+      return false;
+    }
+  }
+
+  bool operator()(int32_t input) const {
+    if (std::holds_alternative<Container<int32_t>>(operand)) {
+      return (std::get<Container<int32_t>>(operand))
+          .operation(input, std::get<Container<int32_t>>(operand).operand);
+    } else {
+      return false;
+    }
+  }
+
+  bool operator()(float input) const {
+    if (std::holds_alternative<Container<float>>(operand)) {
+      return (std::get<Container<float>>(operand))
+          .operation(input, std::get<Container<float>>(operand).operand);
+    } else {
+      return false;
+    }
+  }
 
   bool operator==(const Constraint& other) const {
     return other._attribute == _attribute && other.operand == operand;
@@ -41,7 +192,9 @@ class Constraint {
 
  private:
   std::string _attribute;
-  std::string operand;
+  std::variant<std::monostate, Container<std::string>, Container<int32_t>,
+               Container<float>>
+      operand;
   bool _optional;
 };
 
@@ -77,8 +230,17 @@ class Filter {
   bool matches(const Publication& publication) const {
     for (const Constraint& constraint : required) {
       auto attr = publication.get_attr(constraint.attribute());
-      if (attr) {
-        if (!constraint(*attr)) {
+      if (!std::holds_alternative<std::monostate>(attr)) {
+        if (std::holds_alternative<std::string_view>(attr) &&
+            !constraint(std::get<std::string_view>(attr))) {
+          return false;
+        }
+        if (std::holds_alternative<int32_t>(attr) &&
+            !constraint(std::get<int32_t>(attr))) {
+          return false;
+        }
+        if (std::holds_alternative<float>(attr) &&
+            !constraint(std::get<float>(attr))) {
           return false;
         }
       } else {
@@ -87,8 +249,17 @@ class Filter {
     }
     for (const Constraint& constraint : optional) {
       auto attr = publication.get_attr(constraint.attribute());
-      if (attr) {
-        if (!constraint(*attr)) {
+      if (!std::holds_alternative<std::monostate>(attr)) {
+        if (std::holds_alternative<std::string_view>(attr) &&
+            !constraint(std::get<std::string_view>(attr))) {
+          return false;
+        }
+        if (std::holds_alternative<int32_t>(attr) &&
+            !constraint(std::get<int32_t>(attr))) {
+          return false;
+        }
+        if (std::holds_alternative<float>(attr) &&
+            !constraint(std::get<float>(attr))) {
           return false;
         }
       }

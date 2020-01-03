@@ -26,10 +26,14 @@ TEST(ROUTERV3, base) {
   auto result1 = r.receive(0);
   ASSERT_TRUE(result1);
   ASSERT_EQ(result1->subscription_id, master_subscription_id);
-  ASSERT_STREQ((result1->publication.get_attr("sender_node_id"))->data(),
+  ASSERT_STREQ(std::get<std::string_view>(
+                   result1->publication.get_attr("sender_node_id"))
+                   .data(),
                "sender_node");
-  ASSERT_STREQ((result1->publication.get_attr("node_id"))->data(),
-               "master_node");
+  ASSERT_STREQ(
+      std::get<std::string_view>(result1->publication.get_attr("node_id"))
+          .data(),
+      "master_node");
 }
 
 TEST(ROUTERV3, alias) {
@@ -48,9 +52,155 @@ TEST(ROUTERV3, alias) {
   auto result1 = r.receive(0);
   ASSERT_TRUE(result1);
   ASSERT_EQ(result1->subscription_id, sub_id);
-  ASSERT_STREQ((result1->publication.get_attr("sender_node_id"))->data(),
+  ASSERT_STREQ(std::get<std::string_view>(
+                   result1->publication.get_attr("sender_node_id"))
+                   .data(),
                "sender_node");
-  ASSERT_STREQ((result1->publication.get_attr("foo"))->data(), "bar");
+  ASSERT_STREQ(
+      std::get<std::string_view>(result1->publication.get_attr("foo")).data(),
+      "bar");
+}
+
+TEST(ROUTERV3, integer_simple) {
+  Router router{};
+  auto r = router.new_subscriber();
+  size_t sub_id = r.subscribe(Filter{Constraint{"test_number", 1}});
+
+  auto result0 = r.receive(0);
+  ASSERT_FALSE(result0);
+
+  Publication p = Publication("sender_node", "sender_type", "sender_instance");
+  p.set_attr("test_number", 1);
+  router.publish(std::move(p));
+
+  auto result1 = r.receive(0);
+  ASSERT_TRUE(result1);
+  ASSERT_EQ(result1->subscription_id, sub_id);
+  ASSERT_STREQ(std::get<std::string_view>(
+                   result1->publication.get_attr("sender_node_id"))
+                   .data(),
+               "sender_node");
+  ASSERT_EQ(std::get<int32_t>(result1->publication.get_attr("test_number")), 1);
+}
+
+TEST(ROUTERV3, integer_advanced) {
+  Router router{};
+  auto r = router.new_subscriber();
+  size_t sub_id = r.subscribe(Filter{
+      Constraint{"test_number_less", 50, ConstraintPredicates::Predicate::LT},
+      Constraint{"test_number_greater", 50, ConstraintPredicates::Predicate::GT},
+      Constraint{"test_number_greater_equal_equal", 50,
+                 ConstraintPredicates::Predicate::GE},
+      Constraint{"test_number_greater_equal_greater", 50,
+                 ConstraintPredicates::Predicate::GE},
+      Constraint{"test_number_less_equal_equal", 50,
+                 ConstraintPredicates::Predicate::LE},
+      Constraint{"test_number_less_equal_less", 50,
+                 ConstraintPredicates::Predicate::LE},
+  });
+
+  auto result0 = r.receive(0);
+  ASSERT_FALSE(result0);
+
+  Publication p = Publication("sender_node", "sender_type", "sender_instance");
+  p.set_attr("test_number_less", 1);
+  p.set_attr("test_number_greater", 60);
+  p.set_attr("test_number_greater_equal_equal", 50);
+  p.set_attr("test_number_greater_equal_greater", 60);
+  p.set_attr("test_number_less_equal_equal", 50);
+  p.set_attr("test_number_less_equal_less", 49);
+  router.publish(std::move(p));
+
+  auto result1 = r.receive(0);
+  ASSERT_TRUE(result1);
+  ASSERT_EQ(result1->subscription_id, sub_id);
+  ASSERT_STREQ(std::get<std::string_view>(
+                   result1->publication.get_attr("sender_node_id"))
+                   .data(),
+               "sender_node");
+  ASSERT_EQ(
+      std::get<int32_t>(result1->publication.get_attr("test_number_less")), 1);
+}
+
+TEST(ROUTERV3, float_simple) {
+  Router router{};
+  auto r = router.new_subscriber();
+  size_t sub_id = r.subscribe(Filter{Constraint{"test_number", 1.0f}});
+
+  auto result0 = r.receive(0);
+  ASSERT_FALSE(result0);
+
+  Publication p = Publication("sender_node", "sender_type", "sender_instance");
+  p.set_attr("test_number", 1.0f);
+  router.publish(std::move(p));
+
+  auto result1 = r.receive(0);
+  ASSERT_TRUE(result1);
+  ASSERT_EQ(result1->subscription_id, sub_id);
+  ASSERT_STREQ(std::get<std::string_view>(
+                   result1->publication.get_attr("sender_node_id"))
+                   .data(),
+               "sender_node");
+  ASSERT_EQ(std::get<float>(result1->publication.get_attr("test_number")),
+            1.0f);
+}
+
+TEST(ROUTERV3, float_advanced) {
+  Router router{};
+  auto r = router.new_subscriber();
+  size_t sub_id = r.subscribe(Filter{
+      Constraint{"test_number_less", 50.0f, ConstraintPredicates::Predicate::LT},
+      Constraint{"test_number_greater", 50.0f,
+                 ConstraintPredicates::Predicate::GT},
+      Constraint{"test_number_greater_equal_equal", 50.0f,
+                 ConstraintPredicates::Predicate::GE},
+      Constraint{"test_number_greater_equal_greater", 50.0f,
+                 ConstraintPredicates::Predicate::GE},
+      Constraint{"test_number_less_equal_equal", 50.0f,
+                 ConstraintPredicates::Predicate::LE},
+      Constraint{"test_number_less_equal_less", 50.0f,
+                 ConstraintPredicates::Predicate::LE},
+  });
+
+  auto result0 = r.receive(0);
+  ASSERT_FALSE(result0);
+
+  Publication p = Publication("sender_node", "sender_type", "sender_instance");
+  p.set_attr("test_number_less", 1.0f);
+  p.set_attr("test_number_greater", 60.0f);
+  p.set_attr("test_number_greater_equal_equal", 50.0f);
+  p.set_attr("test_number_greater_equal_greater", 60.0f);
+  p.set_attr("test_number_less_equal_equal", 50.0f);
+  p.set_attr("test_number_less_equal_less", 49.0f);
+  router.publish(std::move(p));
+
+  auto result1 = r.receive(0);
+  ASSERT_TRUE(result1);
+  ASSERT_EQ(result1->subscription_id, sub_id);
+  ASSERT_STREQ(std::get<std::string_view>(
+                   result1->publication.get_attr("sender_node_id"))
+                   .data(),
+               "sender_node");
+  ASSERT_EQ(std::get<float>(result1->publication.get_attr("test_number_less")),
+            1.0f);
+}
+
+TEST(ROUTERV3, float_negative_match) {
+  Router router{};
+  auto r = router.new_subscriber();
+  size_t sub_id = r.subscribe(Filter{
+      Constraint{"test_number_less", 50.0f, ConstraintPredicates::Predicate::LT},
+  });
+
+  auto result0 = r.receive(0);
+  ASSERT_FALSE(result0);
+
+  Publication p = Publication("sender_node", "sender_type", "sender_instance");
+  p.set_attr("test_number_less", 60.0f);
+  router.publish(std::move(p));
+
+  auto result1 = r.receive(100);
+  ASSERT_FALSE(result1);
 }
 
 TEST(ROUTERV3, valid_optional) {
@@ -67,9 +217,13 @@ TEST(ROUTERV3, valid_optional) {
 
   auto result1 = r.receive(0);
   ASSERT_TRUE(result1);
-  ASSERT_STREQ((result1->publication.get_attr("sender_node_id"))->data(),
+  ASSERT_STREQ(std::get<std::string_view>(
+                   result1->publication.get_attr("sender_node_id"))
+                   .data(),
                "sender_node");
-  ASSERT_STREQ((result1->publication.get_attr("opt"))->data(), "ional");
+  ASSERT_STREQ(
+      std::get<std::string_view>(result1->publication.get_attr("opt")).data(),
+      "ional");
 }
 
 TEST(ROUTERV3, invalid_optional) {

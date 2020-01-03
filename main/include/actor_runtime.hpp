@@ -56,10 +56,17 @@ class ActorRuntime : public RuntimeApi {
  protected:
   template <typename... Args>
   void add_actor_base(const Publication& publication, Args... args) {
-    const char* node_id = publication.get_attr("spawn_node_id")->data();
-    const char* actor_type = publication.get_attr("spawn_actor_type")->data();
-    const char* instance_id = publication.get_attr("spawn_instance_id")->data();
-    const char* code = publication.get_attr("spawn_code")->data();
+    const char* node_id =
+        std::get<std::string_view>(publication.get_attr("spawn_node_id"))
+            .data();
+    const char* actor_type =
+        std::get<std::string_view>(publication.get_attr("spawn_actor_type"))
+            .data();
+    const char* instance_id =
+        std::get<std::string_view>(publication.get_attr("spawn_instance_id"))
+            .data();
+    const char* code =
+        std::get<std::string_view>(publication.get_attr("spawn_code")).data();
 
     uint32_t local_id = next_id++;
 
