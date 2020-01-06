@@ -1,6 +1,5 @@
-// TODO(raphaelhetzel) This is not cleaned up or completed yet,
-// this is deferred until the new attribute based routing is done.
-
+// Basic socket handling (e.g. listen, retransmit) adapted from
+// https://github.com/espressif/esp-idf/blob/a49b934ef895690f2b5e3709340db856e27475e2/examples/protocols/sockets/tcp_server/main/tcp_server.c
 #ifndef MAIN_TCP_FORWARDER_HPP_
 #define MAIN_TCP_FORWARDER_HPP_
 
@@ -22,53 +21,107 @@ extern "C" {
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <map>
+#include <set>
+#include <string>
 #include <utility>
+#include <vector>
 
 #include "include/board_functions.hpp"
-#include "include/router_v2.hpp"
+#include "include/publication.hpp"
+#include "include/remote_connection.hpp"
+#include "include/subscription.hpp"
 
-static const char* TAG = "tcp_forwarder";
-
-class TCPForwarder {
+class TCPForwarder : public ForwarderSubscriptionAPI {
  public:
+  constexpr static const char* TAG = "tcp_forwarder";
+
+  TCPForwarder() : handle(PubSub::Router::get_instance().new_subscriber()) {
+    PubSub::Filter primary_filter{
+        PubSub::Constraint(std::string("node_id"), "node_1"),
+        PubSub::Constraint(std::string("actor_type"), "forwarder"),
+        PubSub::Constraint(std::string("instance_id"), "1")};
+    forwarder_subscription_id = handle.subscribe(primary_filter);
+  }
+
   static TCPForwarder& get_instance() {
     static TCPForwarder instance;
     return instance;
   }
 
-  TCPForwarder() {
-    RouterV2::getInstance().register_actor("core.forwarder.tcp/local/1");
-    RouterV2::getInstance().register_alias("core.forwarder.tcp/local/1", "#");
-  }
-
   static void os_task(void* args) {
     TCPForwarder fwd = TCPForwarder();
-    xTaskCreatePinnedToCore(&receiver_task, "TCP-REC", 6168,
+    xTaskCreatePinnedToCore(&server_task, "TCP-SERVER", 6168,
                             static_cast<void*>(&fwd), 4, nullptr, 1);
     while (true) {
-      auto result = RouterV2::getInstance().receive(
-          "core.forwarder.tcp/local/1", BoardFunctions::SLEEP_FOREVER);
+      auto result = fwd.handle.receive(BoardFunctions::SLEEP_FOREVER);
       if (result) {
         fwd.receive(std::move(*result));
       }
     }
   }
 
-  static void receiver_task(void* args) {
+  static void server_task(void* args) {
     TCPForwarder* fwd = reinterpret_cast<TCPForwarder*>(args);
     fwd->tcp_server();
   }
 
-  void receive(Message&& m) {
-    if (sock > 0) {
-      int size = htonl(m.internal_size());
-      if (write(sock, 4, reinterpret_cast<char*>(&size))) return;
-      if (write(sock, m.internal_size(), m.full_buffer())) return;
+  void receive(PubSub::MatchedPublication&& m) {
+    if (m.subscription_id == forwarder_subscription_id) {
+      ESP_LOGW(TAG, "Forwarder received unhandled message!");
+      return;
+    }
+
+    auto receivers = subscription_mapping.find(m.subscription_id);
+    if (receivers != subscription_mapping.end()) {
+      for (const uint32_t subscriber_id : receivers->second) {
+        auto& remote = remotes.at(subscriber_id);
+        if (remote.sock > 0) {
+          if (!(m.publication.has_attr("_internal_forwarded_by") &&
+                std::get<std::string_view>(m.publication.get_attr(
+                    "_internal_forwarded_by")) == remote.partner_node_id)) {
+            std::string serialized = m.publication.to_msg_pack();
+            int size = htonl(serialized.size());
+            if (write(remote.sock, 4, reinterpret_cast<char*>(&size))) return;
+            write(remote.sock, m.publication.to_msg_pack().size(),
+                  serialized.c_str());
+          }
+        }
+      }
+    }
+  }
+
+  uint32_t add_subscription(uint32_t local_id, PubSub::Filter&& filter) {
+    uint32_t sub_id = handle.subscribe(std::move(filter));
+    auto entry = subscription_mapping.find(sub_id);
+    if (entry != subscription_mapping.end()) {
+      entry->second.insert(local_id);
+    } else {
+      subscription_mapping.emplace(sub_id, std::set<uint32_t>{local_id});
+    }
+    return sub_id;
+  }
+
+  void remove_subscription(uint32_t local_id, uint32_t sub_id) {
+    auto it = subscription_mapping.find(sub_id);
+    if (it != subscription_mapping.end()) {
+      it->second.erase(local_id);
+      if (it->second.empty()) {
+        handle.unsubscribe(sub_id);
+        subscription_mapping.erase(it);
+      }
     }
   }
 
  private:
-  int sock = 0;
+  int forwarder_subscription_id;
+  PubSub::SubscriptionHandle handle;
+
+  uint32_t next_local_id = 0;
+  std::map<uint32_t, RemoteConnection> remotes;
+  std::map<uint32_t, std::set<uint32_t>> subscription_mapping;
+
+  int listen_sock;
 
   bool write(const int sock, const int len, const char* message) {
     int to_write = len;
@@ -84,7 +137,8 @@ class TCPForwarder {
   }
 
   void tcp_server() {
-    char addr_str[128];
+    fd_set rset;
+
     int addr_family;
     int ip_protocol;
 
@@ -92,102 +146,98 @@ class TCPForwarder {
     dest_addr.sin_addr.s_addr = htonl(INADDR_ANY);
     dest_addr.sin_family = AF_INET;
     dest_addr.sin_port = htons(1337);
+
     addr_family = AF_INET;
     ip_protocol = IPPROTO_IP;
+
+    char addr_str[128];
     inet_ntoa_r(dest_addr.sin_addr, addr_str, sizeof(addr_str) - 1);
 
-    int listen_sock = socket(addr_family, SOCK_STREAM, ip_protocol);
+    listen_sock = socket(addr_family, SOCK_STREAM, ip_protocol);
     if (listen_sock < 0) {
       ESP_LOGE(TAG, "Unable to create socket: errno %d", errno);
       vTaskDelete(NULL);
       return;
     }
-    ESP_LOGI(TAG, "Socket created");
 
     int err =
         bind(listen_sock, (struct sockaddr*)&dest_addr, sizeof(dest_addr));
     if (err != 0) {
       ESP_LOGE(TAG, "Socket unable to bind: errno %d", errno);
-      goto CLEAN_UP;
+      close(listen_sock);
+      listen_sock = 0;
     }
-    ESP_LOGI(TAG, "Socket bound, port %d", 1337);
+    ESP_LOGI(TAG, "Socket bound - listen address: %s", addr_str);
 
     err = listen(listen_sock, 1);
     if (err != 0) {
       ESP_LOGE(TAG, "Error occurred during listen: errno %d", errno);
-      goto CLEAN_UP;
+      close(listen_sock);
+      listen_sock = 0;
     }
 
     while (1) {
-      ESP_LOGI(TAG, "Socket listening");
-
-      struct sockaddr_in6 source_addr;  // Large enough for both IPv4 or IPv6
-      uint addr_len = sizeof(source_addr);
-      sock = accept(listen_sock, (struct sockaddr*)&source_addr, &addr_len);
-      if (sock < 0) {
-        ESP_LOGE(TAG, "Unable to accept connection: errno %d", errno);
-        break;
+      FD_ZERO(&rset);
+      FD_SET(listen_sock, &rset);
+      for (const auto& remote_pair : remotes) {
+        FD_SET(remote_pair.second.sock, &rset);
       }
-
-      // Convert ip address to string
-      if (source_addr.sin6_family == PF_INET) {
-        inet_ntoa_r(((struct sockaddr_in*)&source_addr)->sin_addr.s_addr,
-                    addr_str, sizeof(addr_str) - 1);
-      } else if (source_addr.sin6_family == PF_INET6) {
-        inet6_ntoa_r(source_addr.sin6_addr, addr_str, sizeof(addr_str) - 1);
-      }
-      ESP_LOGI(TAG, "Socket accepted ip address: %s", addr_str);
-
-      char rx_buffer[1024];
-      int len = 0;
-      char* buffer = nullptr;
-      int offset = 0;
-      int size_remaining = 0;
-      do {
-        len = recv(sock, rx_buffer, sizeof(rx_buffer), 0);
-        if (len < 0) {
-          ESP_LOGE(TAG, "Error occurred during receiving: errno %d", errno);
-        } else if (len == 0) {
-          ESP_LOGW(TAG, "Connection closed");
-        } else {
-          ESP_LOGI(TAG, "Received %d bytes: %s", len, rx_buffer);
-          if (buffer == nullptr) {
-            if (len > 4) {
-              size_remaining = ntohl(*reinterpret_cast<size_t*>(rx_buffer));
-              buffer = new char[size_remaining];
-              std::memcpy(buffer, rx_buffer + 4,
-                          std::min(len - 4, size_remaining));
-              offset += std::min(len - 4, size_remaining);
-              size_remaining -= std::min(len - 4, size_remaining);
-            }
-            // TODO(raphaelhetzel) this part is untested && poentially
-            // incomplete
-          } else if (buffer) {
-            std::memcpy(buffer, rx_buffer, std::min(len, size_remaining));
-            offset += std::min(len - 4, size_remaining);
-            size_remaining -= std::min(len - 4, size_remaining);
-          }
-          if (size_remaining == 0) {
-            printf("complete\n");
-            Message m = Message("actor/local/45", "actor/local/2", 1237, 1500);
-            std::memcpy(m.full_buffer(), buffer, 50);
-            RouterV2::getInstance().send(std::move(m));
-
-            delete buffer;
-            buffer = nullptr;
-          }
+      int num_ready = select(FD_SETSIZE, &rset, NULL, NULL, NULL);
+      for (const auto& remote_pair : remotes) {
+        RemoteConnection& remote =
+            const_cast<RemoteConnection&>(remote_pair.second);
+        if (FD_ISSET(remote.sock, &rset)) {
+          connection_handler(&remote);
         }
-      } while (len > 0);
+      }
+      if (FD_ISSET(listen_sock, &rset)) {
+        listen_handler();
+      }
+    }
+  }
 
-      shutdown(sock, 0);
-      close(sock);
-      sock = 0;
+  void listen_handler() {
+    int sock_id = 0;
+
+    struct sockaddr_in6 source_addr;
+    uint addr_len = sizeof(source_addr);
+    sock_id = accept(listen_sock, (struct sockaddr*)&source_addr, &addr_len);
+
+    if (sock_id < 0) {
+      ESP_LOGE(TAG, "Unable to accept connection: errno %d", errno);
+      return;
     }
 
-  CLEAN_UP:
-    printf("clean up called\n");
-    close(sock);
-    sock = 0;
+    uint32_t remote_id = next_local_id++;
+    remotes.try_emplace(remote_id, remote_id, this).first->second;
+    RemoteConnection& remote = remotes.at(remote_id);
+    remote.sock = sock_id;
+
+    char addr_str[128];
+    if (source_addr.sin6_family == PF_INET) {
+      inet_ntoa_r(((struct sockaddr_in*)&source_addr)->sin_addr.s_addr,
+                  addr_str, sizeof(addr_str) - 1);
+    } else if (source_addr.sin6_family == PF_INET6) {
+      inet6_ntoa_r(source_addr.sin6_addr, addr_str, sizeof(addr_str) - 1);
+    }
+    ESP_LOGI(TAG, "Connection accepted - remote IP: %s", addr_str);
+  }
+
+  void connection_handler(RemoteConnection* remote) {
+    remote->len = recv(remote->sock, remote->rx_buffer.data(),
+                       remote->rx_buffer.size(), 0);
+    if (remote->len < 0) {
+      ESP_LOGE(TAG, "Error occurred during receive: %d", errno);
+    } else if (remote->len == 0) {
+      ESP_LOGI(TAG, "Connection closed");
+    } else {
+      remote->process_data(remote->len, remote->rx_buffer.data());
+      return;
+    }
+
+    shutdown(remote->sock, 0);
+    close(remote->sock);
+    remotes.erase(remote->local_id);
   }
 };
 

@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include <iostream>
+
 #include "publication.hpp"
 #include "subscription.hpp"
 
@@ -88,7 +90,8 @@ TEST(ROUTERV3, integer_advanced) {
   auto r = router.new_subscriber();
   size_t sub_id = r.subscribe(Filter{
       Constraint{"test_number_less", 50, ConstraintPredicates::Predicate::LT},
-      Constraint{"test_number_greater", 50, ConstraintPredicates::Predicate::GT},
+      Constraint{"test_number_greater", 50,
+                 ConstraintPredicates::Predicate::GT},
       Constraint{"test_number_greater_equal_equal", 50,
                  ConstraintPredicates::Predicate::GE},
       Constraint{"test_number_greater_equal_greater", 50,
@@ -149,7 +152,8 @@ TEST(ROUTERV3, float_advanced) {
   Router router{};
   auto r = router.new_subscriber();
   size_t sub_id = r.subscribe(Filter{
-      Constraint{"test_number_less", 50.0f, ConstraintPredicates::Predicate::LT},
+      Constraint{"test_number_less", 50.0f,
+                 ConstraintPredicates::Predicate::LT},
       Constraint{"test_number_greater", 50.0f,
                  ConstraintPredicates::Predicate::GT},
       Constraint{"test_number_greater_equal_equal", 50.0f,
@@ -189,7 +193,8 @@ TEST(ROUTERV3, float_negative_match) {
   Router router{};
   auto r = router.new_subscriber();
   size_t sub_id = r.subscribe(Filter{
-      Constraint{"test_number_less", 50.0f, ConstraintPredicates::Predicate::LT},
+      Constraint{"test_number_less", 50.0f,
+                 ConstraintPredicates::Predicate::LT},
   });
 
   auto result0 = r.receive(0);
@@ -288,5 +293,18 @@ TEST(ROUTERV3, subscription_ids) {
 
   ASSERT_LT(r11, r12);
   ASSERT_LT(r21, r22);
+}
+
+TEST(Publication, msgpack) {
+  Publication p{"sender_node", "sender_actor_type", "sender_instance"};
+  p.set_attr("string", "string");
+  p.set_attr("integer", 1);
+  p.set_attr("float", 2.0f);
+
+  std::string serialized = p.to_msg_pack();
+
+  Publication decoded = *Publication::from_msg_pack(serialized);
+
+  ASSERT_TRUE(p == decoded);
 }
 }  // namespace PubSub

@@ -54,9 +54,9 @@ class Constraint {
 
  public:
   // TODO(raphaelhetzel) combine once we use C++20
-  Constraint(
-      std::string attribute, std::string oper,
-      ConstraintPredicates::Predicate op = ConstraintPredicates::Predicate::EQ) {
+  Constraint(std::string attribute, std::string oper,
+             ConstraintPredicates::Predicate op =
+                 ConstraintPredicates::Predicate::EQ) {
     switch (op) {
       case ConstraintPredicates::Predicate::EQ:
         operand = Container<std::string>(oper, std::equal_to<std::string>());
@@ -88,9 +88,9 @@ class Constraint {
     }
   }
 
-  Constraint(
-      std::string attribute, int32_t oper,
-      ConstraintPredicates::Predicate op = ConstraintPredicates::Predicate::EQ) {
+  Constraint(std::string attribute, int32_t oper,
+             ConstraintPredicates::Predicate op =
+                 ConstraintPredicates::Predicate::EQ) {
     switch (op) {
       case ConstraintPredicates::Predicate::EQ:
         operand = Container<int32_t>(oper, std::equal_to<int32_t>());
@@ -120,9 +120,9 @@ class Constraint {
     }
   }
 
-  Constraint(
-      std::string attribute, float oper,
-      ConstraintPredicates::Predicate op = ConstraintPredicates::Predicate::EQ) {
+  Constraint(std::string attribute, float oper,
+             ConstraintPredicates::Predicate op =
+                 ConstraintPredicates::Predicate::EQ) {
     switch (op) {
       case ConstraintPredicates::Predicate::EQ:
         operand = Container<float>(oper, std::equal_to<float>());

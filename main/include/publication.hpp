@@ -6,6 +6,7 @@
 #include <string_view>
 #include <unordered_map>
 #include <variant>
+
 class Publication {
  public:
   using variant_type = std::variant<std::string, int32_t, float>;
@@ -29,7 +30,8 @@ class Publication {
                         std::string(sender_actor_type));
   }
 
-  Publication() : attributes(nullptr) {}
+  Publication()
+      : attributes(new std::unordered_map<std::string, variant_type>()) {}
 
   ~Publication() {
     if (attributes) {
@@ -37,6 +39,9 @@ class Publication {
       delete attributes;
     }
   }
+
+  std::string to_msg_pack();
+  static std::optional<Publication> from_msg_pack(std::string_view message);
 
   // Required for using the freeRTOS queues
   void moved() { attributes = nullptr; }
@@ -70,6 +75,13 @@ class Publication {
     attributes = old.attributes;
     old.attributes = nullptr;
     return *this;
+  }
+
+  bool operator==(const Publication& other) {
+    if (attributes != nullptr && other.attributes != nullptr) {
+      return *attributes == *other.attributes;
+    }
+    return false;
   }
 
   bool has_attr(std::string_view name) const {

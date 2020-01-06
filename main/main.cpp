@@ -106,13 +106,15 @@ function receive(message)
   print(message.sender_node_id.."."..message.sender_actor_type.."."..message.sender_instance_id.." -> "..node_id.."."..actor_type.."."..instance_id);
   if(instance_id == "1") then
     sub_id = subscribe({node_id=node_id, instance_id="foo", actor_type=actor_type})
-    if(message.command == "init" and message.sender_actor_type == "root") then
+    if(message.sender_node_id == node_id and message.command == "init" and message.sender_actor_type == "root") then
       delayed_publish({node_id=node_id, actor_type=actor_type, instance_id="3", is_delayed="true"}, 2000);
       send({node_id=node_id, actor_type=actor_type, message="ping"});
     end
     --unsubscribe(sub_id)
-  elseif(instance_id=="2") then
+  elseif(instance_id=="2" and message.sender_node_id == node_id) then
     send({node_id=node_id, instance_id="foo", actor_type=actor_type, message="pong"})
+    send({node_id="node_2", actor_type=actor_type, message="ping"});
+    send({node_id="node_3", actor_type=actor_type, message="ping"});
     deferred_block_for({foo="bar"}, 5000);
   else
     send({node_id=message.sender_node_id, instance_id=message.sender_instance_id, actor_type=message.sender_actor_type, message="pong"})
@@ -169,13 +171,11 @@ void app_main(void) {
   ESP_ERROR_CHECK(ret);
 
   xTaskCreatePinnedToCore(&main_task, "MAIN", 6168, nullptr, 5, nullptr, 1);
-  /* Network forwarding experiments
   xTaskCreatePinnedToCore(&WifiStack::os_task, "FORWARDER", 6168, nullptr, 4,
                           nullptr, 1);
   vTaskDelay(5000 / portTICK_PERIOD_MS);
   xTaskCreatePinnedToCore(&TCPForwarder::os_task, "TCP", 6168, nullptr, 4,
                           nullptr, 1);
-  */
 }
 
 #endif

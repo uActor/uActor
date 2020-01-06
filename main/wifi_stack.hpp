@@ -1,3 +1,6 @@
+// Adapted from
+// https://github.com/espressif/esp-idf/blob/204492bd7838d3687719473a7de30876f3d1ee7e/examples/wifi/getting_started/station/main/station_example_main.c
+
 #ifndef MAIN_WIFI_STACK_HPP_
 #define MAIN_WIFI_STACK_HPP_
 
