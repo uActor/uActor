@@ -105,18 +105,16 @@ const char receive_fun[] = R"(
 function receive(message)
   print(message.sender_node_id.."."..message.sender_actor_type.."."..message.sender_instance_id.." -> "..node_id.."."..actor_type.."."..instance_id);
   if(instance_id == "1") then
-    sub_id = subscribe({node_id=node_id, instance_id="foo", actor_type=actor_type})
-    if(message.sender_node_id == node_id and message.command == "init" and message.sender_actor_type == "root") then
-      delayed_publish({node_id=node_id, actor_type=actor_type, instance_id="3", is_delayed="true"}, 2000);
+    if(message.type == "init") then
+      sub_id = subscribe({node_id=node_id, instance_id="foo", actor_type=actor_type})
+      delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="delayed_publish"}, 2000);
+    elseif(message.type == "delayed_publish") then
       send({node_id=node_id, actor_type=actor_type, message="ping"});
     end
-    --unsubscribe(sub_id)
-  elseif(instance_id=="2" and message.sender_node_id == node_id) then
+  elseif(instance_id=="2" and (not (message.type == "init"))) then
     send({node_id=node_id, instance_id="foo", actor_type=actor_type, message="pong"})
-    send({node_id="node_2", actor_type=actor_type, message="ping"});
-    send({node_id="node_3", actor_type=actor_type, message="ping"});
-    deferred_block_for({foo="bar"}, 5000);
-  else
+    deferred_block_for({foo="bar"}, 20000);
+  elseif(not (message.type == "init")) then
     send({node_id=message.sender_node_id, instance_id=message.sender_instance_id, actor_type=message.sender_actor_type, message="pong"})
   end
 end
@@ -144,15 +142,9 @@ void main_task(void*) {
     create_actor.set_attr("actor_type", "lua_runtime");
     create_actor.set_attr("instance_id", "1");
     PubSub::Router::get_instance().publish(std::move(create_actor));
+    vTaskDelay(10 / portTICK_PERIOD_MS);
   }
   vTaskDelay(1000 / portTICK_PERIOD_MS);
-
-  Publication start = Publication("node_1", "root", "1");
-  start.set_attr("node_id", "node_1");
-  start.set_attr("instance_id", "1");
-  start.set_attr("actor_type", "actor");
-  start.set_attr("command", "init");
-  PubSub::Router::get_instance().publish(std::move(start));
 
   printf("StaticHeap: %d \n", xPortGetFreeHeapSize());
   while (true) {

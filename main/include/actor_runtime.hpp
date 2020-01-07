@@ -43,9 +43,12 @@ class ActorRuntime : public RuntimeApi {
     BoardFunctions::exit_thread();
   }
 
-  explicit ActorRuntime(PubSub::Router* router, const char* node_id,
-                        const char* actor_type, const char* instance_id)
-      : router_handle(router->new_subscriber()) {
+  ActorRuntime(PubSub::Router* router, const char* node_id,
+               const char* actor_type, const char* instance_id)
+      : _node_id(node_id),
+        _actor_type(actor_type),
+        _instance_id(instance_id),
+        router_handle(router->new_subscriber()) {
     PubSub::Filter primary_filter{
         PubSub::Constraint(std::string("node_id"), node_id),
         PubSub::Constraint(std::string("actor_type"), actor_type),
@@ -72,6 +75,13 @@ class ActorRuntime : public RuntimeApi {
 
     actors.try_emplace(local_id, this, local_id, node_id, actor_type,
                        instance_id, code, std::forward<Args>(args)...);
+
+    Publication init_message = Publication(_node_id, _actor_type, _instance_id);
+    init_message.set_attr("node_id", node_id);
+    init_message.set_attr("actor_type", actor_type);
+    init_message.set_attr("instance_id", instance_id);
+    init_message.set_attr("type", "init");
+    PubSub::Router::get_instance().publish(std::move(init_message));
   }
 
   uint32_t add_subscription(uint32_t local_id, PubSub::Filter&& filter) {
@@ -105,6 +115,9 @@ class ActorRuntime : public RuntimeApi {
   std::map<uint32_t, ActorType> actors;
 
  private:
+  std::string _node_id;
+  std::string _actor_type;
+  std::string _instance_id;
   PubSub::SubscriptionHandle router_handle;
   uint32_t next_id = 1;
   std::map<uint32_t, std::set<uint32_t>> subscription_mapping;
@@ -116,7 +129,7 @@ class ActorRuntime : public RuntimeApi {
   void event_loop() {
     while (true) {
       // Enqueue from threads master queue
-      int32_t wait_time = BoardFunctions::SLEEP_FOREVER;
+      uint32_t wait_time = BoardFunctions::SLEEP_FOREVER;
       if (timeouts.size() > 0) {
         wait_time =
             std::max(0, static_cast<int32_t>(timeouts.begin()->first -
@@ -125,8 +138,9 @@ class ActorRuntime : public RuntimeApi {
       if (delayed_messages.size() > 0) {
         wait_time = std::min(
             wait_time,
-            std::max(0, static_cast<int32_t>(delayed_messages.begin()->first -
-                                             BoardFunctions::timestamp())));
+            static_cast<uint32_t>(std::max(
+                0, static_cast<int32_t>(delayed_messages.begin()->first -
+                                        BoardFunctions::timestamp()))));
       }
       if (ready_queue.size() > 0) {
         wait_time = 0;
