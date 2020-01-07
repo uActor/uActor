@@ -1,12 +1,18 @@
 #include "include/managed_actor.hpp"
 
 #include "benchmark_configuration.hpp"
-uint32_t ManagedActor::receive_next_internal() {
+ManagedActor::ReceiveResult ManagedActor::receive_next_internal() {
   waiting = false;
   _timeout = UINT32_MAX;
   pattern.filter.clear();
 
-  this->receive(message_queue.front());
+  auto& next_message = message_queue.front();
+  this->receive(next_message);  // Exit message is processed to allow for any
+                                // necessary cleanup
+  if (next_message.has_attr("type") &&
+      std::get<std::string_view>(next_message.get_attr("type")) == "exit") {
+    return ManagedActor::ReceiveResult(true, 0);
+  }
   message_queue.pop_front();
   if (waiting) {
     auto it = std::find_if(
@@ -16,12 +22,12 @@ uint32_t ManagedActor::receive_next_internal() {
       Publication message = std::move(*it);
       message_queue.erase(it);
       message_queue.push_front(std::move(message));
-      return 0;
+      return ManagedActor::ReceiveResult(false, _timeout);
     }
   } else if (message_queue.size() > 0) {
-    return 0;
+    return ManagedActor::ReceiveResult(false, _timeout);
   }
-  return _timeout;
+  return ManagedActor::ReceiveResult(false, _timeout);
 }
 
 bool ManagedActor::enqueue(Publication&& pub) {

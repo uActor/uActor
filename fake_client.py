@@ -35,6 +35,12 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 send({{node_id="{arguments.node_id}", actor_type="test_actor", instance_id="1", message="ping"}});
                 delayed_publish({{node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="periodic_timer"}}, 5000);
             end
+            if(message["type"] == "init") then
+                delayed_publish({{node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="exit"}}, 20000);
+            end
+            if(message["type"] == "exit") then
+                send({{node_id="{arguments.node_id}", actor_type="test_actor", instance_id="1", message="goodbye"}});
+            end 
         end"""
     spawn_message["node_id"] = "node_1"
     spawn_message["instance_id"] = "1"

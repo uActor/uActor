@@ -25,6 +25,7 @@ class ManagedLuaActor : public ManagedActor {
     lua_pushglobaltable(state);
     lua_pushnil(state);
     lua_seti(state, -2, id());
+    lua_pop(state, 1);
     lua_gc(state, LUA_GCCOLLECT, 0);
   }
 

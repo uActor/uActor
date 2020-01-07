@@ -114,6 +114,10 @@ function receive(message)
   elseif(instance_id=="2" and (not (message.type == "init"))) then
     send({node_id=node_id, instance_id="foo", actor_type=actor_type, message="pong"})
     deferred_block_for({foo="bar"}, 20000);
+  elseif(instance_id=="3") then
+    print("call")
+    send({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="exit"})
+    print("after_call")
   elseif(not (message.type == "init")) then
     send({node_id=message.sender_node_id, instance_id=message.sender_instance_id, actor_type=message.sender_actor_type, message="pong"})
   end

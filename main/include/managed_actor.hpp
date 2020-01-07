@@ -8,12 +8,13 @@
 #include <deque>
 #include <memory>
 #include <queue>
+#include <set>
 #include <string>
 #include <utility>
 
-#include "actor_runtime.hpp"
 #include "message.hpp"
 #include "publication.hpp"
+#include "runtime_api.hpp"
 #include "subscription.hpp"
 
 class Pattern {
@@ -29,6 +30,13 @@ class Pattern {
 
 class ManagedActor {
  public:
+  struct ReceiveResult {
+    ReceiveResult(bool exit, uint32_t next_timeout)
+        : exit(exit), next_timeout(next_timeout) {}
+    bool exit;
+    uint32_t next_timeout;
+  };
+
   ManagedActor(const ManagedActor&) = delete;
 
   ManagedActor(RuntimeApi* api, uint32_t unique_id, const char* node_id,
@@ -42,17 +50,24 @@ class ManagedActor {
         _instance_id(instance_id),
         _code(code),
         api(api) {
-    api->add_subscription(
+    uint32_t sub_id = api->add_subscription(
         unique_id,
         PubSub::Filter{
             PubSub::Constraint(std::string("node_id"), node_id),
             PubSub::Constraint(std::string("actor_type"), actor_type),
             PubSub::Constraint(std::string("?instance_id"), instance_id)});
+    subscriptions.insert(sub_id);
+  }
+
+  ~ManagedActor() {
+    for (uint32_t sub_id : subscriptions) {
+      api->remove_subscription(_id, sub_id);
+    }
   }
 
   virtual void receive(const Publication& p) = 0;
 
-  uint32_t receive_next_internal();
+  ReceiveResult receive_next_internal();
 
   bool enqueue(Publication&& message);
 
@@ -64,10 +79,15 @@ class ManagedActor {
   }
 
   uint32_t subscribe(PubSub::Filter&& f) {
-    return api->add_subscription(_id, std::move(f));
+    uint32_t sub_id = api->add_subscription(_id, std::move(f));
+    subscriptions.insert(sub_id);
+    return sub_id;
   }
 
-  void unsubscribe(uint32_t sub_id) { api->remove_subscription(_id, sub_id); }
+  void unsubscribe(uint32_t sub_id) {
+    subscriptions.erase(sub_id);
+    api->remove_subscription(_id, sub_id);
+  }
 
   uint32_t id() { return _id; }
 
@@ -105,5 +125,6 @@ class ManagedActor {
   std::string _code;
   std::deque<Publication> message_queue;
   RuntimeApi* api;
+  std::set<uint32_t> subscriptions;
 };
 #endif  //  MAIN_INCLUDE_MANAGED_ACTOR_HPP_

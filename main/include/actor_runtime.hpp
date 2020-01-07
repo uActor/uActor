@@ -12,20 +12,14 @@
 #include <utility>
 
 #include "board_functions.hpp"
+#include "managed_actor.hpp"
 #include "message.hpp"
+#include "runtime_api.hpp"
 #include "subscription.hpp"
 
 struct Params {
   const char* node_id;
   const char* instance_id;
-};
-
-struct RuntimeApi {
-  virtual uint32_t add_subscription(uint32_t local_id,
-                                    PubSub::Filter&& filter) = 0;
-  virtual void remove_subscription(uint32_t local_id, uint32_t sub_id) = 0;
-  virtual void delayed_publish(Publication&& publication, uint32_t delay) = 0;
-  virtual ~RuntimeApi() {}
 };
 
 template <typename ActorType, typename RuntimeType>
@@ -107,8 +101,8 @@ class ActorRuntime : public RuntimeApi {
   }
 
   void delayed_publish(Publication&& publication, uint32_t delay) {
-    delayed_messages.push_back(std::make_pair(
-        BoardFunctions::timestamp() + delay, std::move(publication)));
+    delayed_messages.emplace(BoardFunctions::timestamp() + delay,
+                             std::move(publication));
   }
 
  protected:
@@ -123,7 +117,7 @@ class ActorRuntime : public RuntimeApi {
   std::map<uint32_t, std::set<uint32_t>> subscription_mapping;
   std::list<uint32_t> ready_queue;
   std::list<std::pair<uint32_t, uint32_t>> timeouts;
-  std::list<std::pair<uint32_t, Publication>> delayed_messages;
+  std::multimap<uint32_t, Publication> delayed_messages;
   uint32_t runtime_subscription_id;
 
   void event_loop() {
@@ -179,7 +173,8 @@ class ActorRuntime : public RuntimeApi {
               }
             }
           } else {
-            printf("not_found\n");
+            // Message got published before the actor was deleted.
+            // NO-OP
           }
         }
       }
@@ -187,8 +182,8 @@ class ActorRuntime : public RuntimeApi {
       while (delayed_messages.begin() != delayed_messages.end() &&
              delayed_messages.begin()->first < BoardFunctions::timestamp()) {
         PubSub::Router::get_instance().publish(
-            std::move(delayed_messages.front().second));
-        delayed_messages.pop_front();
+            std::move(delayed_messages.begin()->second));
+        delayed_messages.erase(delayed_messages.begin());
       }
 
       // Enqueue from timeouts
@@ -202,18 +197,19 @@ class ActorRuntime : public RuntimeApi {
           timeouts.pop_front();
         }
       }
-
       // Process one message
       if (ready_queue.size() > 0) {
         uint32_t task = ready_queue.front();
         ready_queue.pop_front();
         ActorType& actor = actors.at(task);
-        uint32_t wait_time = actor.receive_next_internal();
-        if (wait_time == 0) {
+        ManagedActor::ReceiveResult result = actor.receive_next_internal();
+        if (result.exit) {
+          actors.erase(task);
+        } else if (result.next_timeout == 0) {
           ready_queue.push_back(task);
-        } else if (wait_time < UINT32_MAX) {
-          timeouts.push_back(
-              std::make_pair(BoardFunctions::timestamp() + wait_time, task));
+        } else if (result.next_timeout < UINT32_MAX) {
+          timeouts.push_back(std::make_pair(
+              BoardFunctions::timestamp() + result.next_timeout, task));
         }
       }
     }
