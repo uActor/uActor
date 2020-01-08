@@ -6,8 +6,8 @@ ManagedActor::ReceiveResult ManagedActor::receive_next_internal() {
   _timeout = UINT32_MAX;
   pattern.filter.clear();
 
-  auto& next_message = message_queue.front();
-  this->receive(next_message);  // Exit message is processed to allow for any
+  const auto& next_message = message_queue.front();
+  this->receive(message_queue.front());  // Exit message is processed to allow for any
                                 // necessary cleanup
   if (next_message.has_attr("type") &&
       std::get<std::string_view>(next_message.get_attr("type")) == "exit") {
@@ -22,10 +22,10 @@ ManagedActor::ReceiveResult ManagedActor::receive_next_internal() {
       Publication message = std::move(*it);
       message_queue.erase(it);
       message_queue.push_front(std::move(message));
-      return ManagedActor::ReceiveResult(false, _timeout);
+      return ManagedActor::ReceiveResult(false, 0);
     }
   } else if (message_queue.size() > 0) {
-    return ManagedActor::ReceiveResult(false, _timeout);
+    return ManagedActor::ReceiveResult(false, 0);
   }
   return ManagedActor::ReceiveResult(false, _timeout);
 }

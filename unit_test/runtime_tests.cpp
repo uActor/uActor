@@ -38,7 +38,7 @@ PubSub::SubscriptionHandle subscription_handle_with_default_subscription() {
       PubSub::Constraint(std::string("node_id"), "node_1"),
       PubSub::Constraint(std::string("actor_type"), "root"),
       PubSub::Constraint(std::string("instance_id"), "1")};
-  size_t root_subscription_id = root_handle.subscribe(primary_filter);
+  uint32_t root_subscription_id = root_handle.subscribe(primary_filter);
   return std::move(root_handle);
 }
 
@@ -51,7 +51,9 @@ std::thread start_runtime_thread() {
 
 TEST(RuntimeSystem, pingPong) {
   const char test_pong[] = R"(function receive(publication)
-    send({instance_id=publication.sender_instance_id, node_id=publication.sender_node_id, actor_type=publication.sender_actor_type, message="pong"});
+    if(publication.sender_actor_type == "root") then
+      send({instance_id=publication.sender_instance_id, node_id=publication.sender_node_id, actor_type=publication.sender_actor_type, message="pong"});
+    end
   end)";
 
   auto root_handle = subscription_handle_with_default_subscription();
@@ -80,8 +82,10 @@ TEST(RuntimeSystem, pingPong) {
 
 TEST(RuntimeSystem, delayedSend) {
   const char delayed_pong[] = R"(function receive(publication)
-    delayed_publish({instance_id=publication.sender_instance_id, node_id=publication.sender_node_id, actor_type=publication.sender_actor_type, message="pong1"}, 100);
-    send({instance_id=publication.sender_instance_id, node_id=publication.sender_node_id, actor_type=publication.sender_actor_type, message="pong2"});
+    if(publication.sender_actor_type == "root") then 
+      delayed_publish({instance_id=publication.sender_instance_id, node_id=publication.sender_node_id, actor_type=publication.sender_actor_type, message="pong1"}, 100);
+      send({instance_id=publication.sender_instance_id, node_id=publication.sender_node_id, actor_type=publication.sender_actor_type, message="pong2"});
+    end
   end)";
 
   auto root_handle = subscription_handle_with_default_subscription();
@@ -120,13 +124,15 @@ TEST(RuntimeSystem, delayedSend) {
 
 TEST(RuntimeSystem, block_for) {
   const char block_for_pong[] = R"(function receive(publication)
-    if(publication["_internal_timeout"] == "_timeout") then
-      send({instance_id="1", node_id=node_id, actor_type="root", message="pong_timeout"});
-    elseif(publication.message == "ping1") then
-      deferred_block_for({foo="bar"}, 100)
-      send({instance_id=publication.sender_instance_id, node_id=publication.sender_node_id, actor_type=publication.sender_actor_type, message="pong1"});
-    elseif(publication.message == "ping2") then
-      send({instance_id=publication.sender_instance_id, node_id=publication.sender_node_id, actor_type=publication.sender_actor_type, message="pong2"});
+    if(not(publication.sender_actor_type == "lua_runtime")) then
+      if(publication["_internal_timeout"] == "_timeout") then
+        send({instance_id="1", node_id=node_id, actor_type="root", message="pong_timeout"});
+      elseif(publication.message == "ping1") then
+        deferred_block_for({foo="bar"}, 100)
+        send({instance_id=publication.sender_instance_id, node_id=publication.sender_node_id, actor_type=publication.sender_actor_type, message="pong1"});
+      elseif(publication.message == "ping2") then
+        send({instance_id=publication.sender_instance_id, node_id=publication.sender_node_id, actor_type=publication.sender_actor_type, message="pong2"});
+      end
     end
   end)";
 
@@ -181,13 +187,15 @@ TEST(RuntimeSystem, block_for) {
 
 TEST(RuntimeSystem, sub_unsub) {
   const char block_for_pong[] = R"(function receive(publication)
-    if(publication.message == "sub") then
-      sub_id = subscribe({foo="bar"})
-      send({instance_id=publication.sender_instance_id, node_id=publication.sender_node_id, actor_type=publication.sender_actor_type, sub_id=sub_id});
-    elseif(publication.message == "unsub") then
-      unsubscribe(publication.sub_id)
-    else
-      send({instance_id=publication.sender_instance_id, node_id=publication.sender_node_id, actor_type=publication.sender_actor_type, message="pong"});
+    if(publication.sender_actor_type == "root") then
+      if(publication.message == "sub") then
+        sub_id = subscribe({foo="bar"})
+        send({instance_id=publication.sender_instance_id, node_id=publication.sender_node_id, actor_type=publication.sender_actor_type, sub_id=sub_id});
+      elseif(publication.message == "unsub") then
+        unsubscribe(publication.sub_id)
+      else
+        send({instance_id=publication.sender_instance_id, node_id=publication.sender_node_id, actor_type=publication.sender_actor_type, message="pong"});
+      end
     end
   end)";
 
@@ -240,11 +248,13 @@ TEST(RuntimeSystem, sub_unsub) {
 
 TEST(RuntimeSystem, complex_subscription) {
   const char block_for_pong[] = R"(function receive(publication)
-    if(publication.message == "sub") then
-      sub_id = subscribe({foo=1, bar={50.0, operators.LT}})
-      send({instance_id=publication.sender_instance_id, node_id=publication.sender_node_id, actor_type=publication.sender_actor_type, sub_id=sub_id});
-    else
-      send({instance_id=publication.sender_instance_id, node_id=publication.sender_node_id, actor_type=publication.sender_actor_type, message="pong"});
+    if(publication.sender_actor_type == "root") then
+      if(publication.message == "sub") then
+        sub_id = subscribe({foo=1, bar={50.0, operators.LT}})
+        send({instance_id=publication.sender_instance_id, node_id=publication.sender_node_id, actor_type=publication.sender_actor_type, sub_id=sub_id});
+      else
+        send({instance_id=publication.sender_instance_id, node_id=publication.sender_node_id, actor_type=publication.sender_actor_type, message="pong"});
+      end
     end
   end)";
 
