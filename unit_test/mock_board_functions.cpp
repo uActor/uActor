@@ -12,3 +12,5 @@ uint32_t BoardFunctions::timestamp() {
 }
 
 void BoardFunctions::exit_thread() {}
+
+const char* BoardFunctions::NODE_ID = "node_1";

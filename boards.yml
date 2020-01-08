@@ -1,0 +1,9 @@
+boards:
+  node_1:
+    serial_device: "/dev/ttyUSB0"
+    sdkconfig: sdkconfig
+    sdkconfig_overrides: sdkconfig.overrides.1
+  node_2:
+    serial_device: "/dev/ttyUSB1"
+    sdkconfig: sdkconfig
+    sdkconfig_overrides: sdkconfig.overrides.2

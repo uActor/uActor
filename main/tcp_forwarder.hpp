@@ -1,5 +1,6 @@
 // Basic socket handling (e.g. listen, retransmit) adapted from
 // https://github.com/espressif/esp-idf/blob/a49b934ef895690f2b5e3709340db856e27475e2/examples/protocols/sockets/tcp_server/main/tcp_server.c
+// https://github.com/espressif/esp-idf/blob/204492bd7838d3687719473a7de30876f3d1ee7e/examples/protocols/sockets/tcp_client/main/tcp_client.c
 #ifndef MAIN_TCP_FORWARDER_HPP_
 #define MAIN_TCP_FORWARDER_HPP_
 
@@ -38,10 +39,14 @@ class TCPForwarder : public ForwarderSubscriptionAPI {
 
   TCPForwarder() : handle(PubSub::Router::get_instance().new_subscriber()) {
     PubSub::Filter primary_filter{
-        PubSub::Constraint(std::string("node_id"), "node_1"),
+        PubSub::Constraint(std::string("node_id"), BoardFunctions::NODE_ID),
         PubSub::Constraint(std::string("actor_type"), "forwarder"),
         PubSub::Constraint(std::string("instance_id"), "1")};
     forwarder_subscription_id = handle.subscribe(primary_filter);
+
+    PubSub::Filter peer_announcements{
+        PubSub::Constraint(std::string("type"), "ip_peer_announcement")};
+    peer_announcement_subscription_id = handle.subscribe(peer_announcements);
   }
 
   static TCPForwarder& get_instance() {
@@ -51,7 +56,7 @@ class TCPForwarder : public ForwarderSubscriptionAPI {
 
   static void os_task(void* args) {
     TCPForwarder fwd = TCPForwarder();
-    xTaskCreatePinnedToCore(&server_task, "TCP-SERVER", 6168,
+    xTaskCreatePinnedToCore(&tcp_reader_task, "TCP-SERVER", 6168,
                             static_cast<void*>(&fwd), 4, nullptr, 1);
     while (true) {
       auto result = fwd.handle.receive(BoardFunctions::SLEEP_FOREVER);
@@ -61,15 +66,30 @@ class TCPForwarder : public ForwarderSubscriptionAPI {
     }
   }
 
-  static void server_task(void* args) {
+  static void tcp_reader_task(void* args) {
     TCPForwarder* fwd = reinterpret_cast<TCPForwarder*>(args);
-    fwd->tcp_server();
+    fwd->tcp_reader();
   }
 
   void receive(PubSub::MatchedPublication&& m) {
     if (m.subscription_id == forwarder_subscription_id) {
       ESP_LOGW(TAG, "Forwarder received unhandled message!");
       return;
+    }
+
+    if (m.subscription_id == peer_announcement_subscription_id) {
+      if (m.publication.has_attr("type") &&
+          std::get<std::string_view>(m.publication.get_attr("type")) ==
+              "ip_peer_announcement") {
+        if (std::get<std::string_view>(m.publication.get_attr("peer_node_id")) <
+            std::string_view(BoardFunctions::NODE_ID)) {
+          std::string peer_ip = std::string(
+              std::get<std::string_view>(m.publication.get_attr("peer_ip")));
+          uint32_t peer_port =
+              std::get<int32_t>(m.publication.get_attr("peer_port"));
+          create_tcp_client(peer_ip, peer_port);
+        }
+      }
     }
 
     auto receivers = subscription_mapping.find(m.subscription_id);
@@ -115,6 +135,7 @@ class TCPForwarder : public ForwarderSubscriptionAPI {
 
  private:
   int forwarder_subscription_id;
+  int peer_announcement_subscription_id;
   PubSub::SubscriptionHandle handle;
 
   uint32_t next_local_id = 0;
@@ -123,7 +144,7 @@ class TCPForwarder : public ForwarderSubscriptionAPI {
 
   int listen_sock;
 
-  bool write(const int sock, const int len, const char* message) {
+  bool write(int sock, int len, const char* message) {
     int to_write = len;
     while (to_write > 0) {
       int written = send(sock, message + (len - to_write), to_write, 0);
@@ -136,22 +157,16 @@ class TCPForwarder : public ForwarderSubscriptionAPI {
     return false;
   }
 
-  void tcp_server() {
-    fd_set rset;
+  void tcp_reader() {
+    fd_set sockets_to_read;
 
-    int addr_family;
-    int ip_protocol;
+    int addr_family = AF_INET;
+    int ip_protocol = IPPROTO_IP;
 
-    struct sockaddr_in dest_addr;
+    sockaddr_in dest_addr;
     dest_addr.sin_addr.s_addr = htonl(INADDR_ANY);
     dest_addr.sin_family = AF_INET;
     dest_addr.sin_port = htons(1337);
-
-    addr_family = AF_INET;
-    ip_protocol = IPPROTO_IP;
-
-    char addr_str[128];
-    inet_ntoa_r(dest_addr.sin_addr, addr_str, sizeof(addr_str) - 1);
 
     listen_sock = socket(addr_family, SOCK_STREAM, ip_protocol);
     if (listen_sock < 0) {
@@ -167,6 +182,9 @@ class TCPForwarder : public ForwarderSubscriptionAPI {
       close(listen_sock);
       listen_sock = 0;
     }
+
+    char addr_str[128];
+    inet_ntoa_r(dest_addr.sin_addr, addr_str, sizeof(addr_str) - 1);
     ESP_LOGI(TAG, "Socket bound - listen address: %s", addr_str);
 
     err = listen(listen_sock, 1);
@@ -177,23 +195,63 @@ class TCPForwarder : public ForwarderSubscriptionAPI {
     }
 
     while (1) {
-      FD_ZERO(&rset);
-      FD_SET(listen_sock, &rset);
+      FD_ZERO(&sockets_to_read);
+      FD_SET(listen_sock, &sockets_to_read);
       for (const auto& remote_pair : remotes) {
-        FD_SET(remote_pair.second.sock, &rset);
+        FD_SET(remote_pair.second.sock, &sockets_to_read);
       }
-      int num_ready = select(FD_SETSIZE, &rset, NULL, NULL, NULL);
-      for (const auto& remote_pair : remotes) {
-        RemoteConnection& remote =
-            const_cast<RemoteConnection&>(remote_pair.second);
-        if (FD_ISSET(remote.sock, &rset)) {
-          connection_handler(&remote);
+      timeval timeout;  // We need to set a timeout to allow for new connections
+      timeout.tv_sec = 5;  // to be added by other threads
+      int num_ready =
+          select(FD_SETSIZE, &sockets_to_read, NULL, NULL, &timeout);
+      if (num_ready > 0) {
+        for (const auto& remote_pair : remotes) {
+          RemoteConnection& remote =
+              const_cast<RemoteConnection&>(remote_pair.second);
+          if (FD_ISSET(remote.sock, &sockets_to_read)) {
+            data_handler(&remote);
+          }
+        }
+        if (FD_ISSET(listen_sock, &sockets_to_read)) {
+          listen_handler();
         }
       }
-      if (FD_ISSET(listen_sock, &rset)) {
-        listen_handler();
-      }
     }
+  }
+
+  void create_tcp_client(std::string_view peer_ip, uint32_t port) {
+    int addr_family = AF_INET;
+    int ip_protocol = IPPROTO_IP;
+
+    sockaddr_in dest_addr;
+    dest_addr.sin_addr.s_addr = inet_addr(peer_ip.data());
+    dest_addr.sin_family = AF_INET;
+    dest_addr.sin_port = htons(port);
+
+    char addr_str[128];
+    inet_ntoa_r(dest_addr.sin_addr, addr_str, sizeof(addr_str) - 1);
+
+    int sock = socket(addr_family, SOCK_STREAM, ip_protocol);
+    if (sock < 0) {
+      ESP_LOGE(TAG, "Unable to create socket: errno %d", errno);
+      return;
+    }
+    ESP_LOGI(TAG, "Socket created, connecting to %s:%d", peer_ip.data(),
+             ntohs(dest_addr.sin_port));
+
+    int err = connect(sock, (struct sockaddr*)&dest_addr, sizeof(dest_addr));
+    if (err != 0) {
+      ESP_LOGE(TAG, "Socket unable to connect: errno %d", errno);
+      return;
+    }
+    ESP_LOGI(TAG, "Successfully connected");
+
+    uint32_t remote_id = next_local_id++;
+    remotes.try_emplace(remote_id, remote_id, this).first->second;
+    RemoteConnection& remote = remotes.at(remote_id);
+    remote.sock = sock;
+
+    remote.send_routing_info();
   }
 
   void listen_handler() {
@@ -212,6 +270,7 @@ class TCPForwarder : public ForwarderSubscriptionAPI {
     remotes.try_emplace(remote_id, remote_id, this).first->second;
     RemoteConnection& remote = remotes.at(remote_id);
     remote.sock = sock_id;
+    remote.send_routing_info();
 
     char addr_str[128];
     if (source_addr.sin6_family == PF_INET) {
@@ -223,7 +282,7 @@ class TCPForwarder : public ForwarderSubscriptionAPI {
     ESP_LOGI(TAG, "Connection accepted - remote IP: %s", addr_str);
   }
 
-  void connection_handler(RemoteConnection* remote) {
+  void data_handler(RemoteConnection* remote) {
     remote->len = recv(remote->sock, remote->rx_buffer.data(),
                        remote->rx_buffer.size(), 0);
     if (remote->len < 0) {

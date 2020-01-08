@@ -7,11 +7,12 @@
 #include "remote_connection.hpp"
 #include "subscription.hpp"
 
-class FakeForwarder : public ForwarderSubscriptionAPI {
+struct FakeForwarder : public ForwarderSubscriptionAPI {
   uint32_t add_subscription(uint32_t local_id, PubSub::Filter&& filter) {
     return 0;
   }
   void remove_subscription(uint32_t local_id, uint32_t sub_id) {}
+  bool write(int sock, int len, const char* message) { return false; }
 };
 
 TEST(FORWARDING, data_handling_base) {

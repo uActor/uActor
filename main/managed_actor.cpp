@@ -7,8 +7,8 @@ ManagedActor::ReceiveResult ManagedActor::receive_next_internal() {
   pattern.filter.clear();
 
   const auto& next_message = message_queue.front();
-  this->receive(message_queue.front());  // Exit message is processed to allow for any
-                                // necessary cleanup
+  this->receive(message_queue.front());  // Exit message is processed to allow
+                                         // for any necessary cleanup
   if (next_message.has_attr("type") &&
       std::get<std::string_view>(next_message.get_attr("type")) == "exit") {
     return ManagedActor::ReceiveResult(true, 0);

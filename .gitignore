@@ -1,7 +1,7 @@
-build/
+build*/
 .idea/
 cmake-build-debug/
 .vscode/
 sdkconfig
 sdkconfig.old
-.python_version
+.python-version

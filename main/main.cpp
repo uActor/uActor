@@ -111,9 +111,16 @@ function receive(message)
     elseif(message.type == "delayed_publish") then
       send({node_id=node_id, actor_type=actor_type, message="ping"});
     end
-  elseif(instance_id=="2" and (not (message.type == "init"))) then
-    send({node_id=node_id, instance_id="foo", actor_type=actor_type, message="pong"})
-    deferred_block_for({foo="bar"}, 20000);
+  elseif(instance_id=="2") then
+    if(message.sender_node_id == node_id and (not (message.type == "init"))) then
+      -- send({node_id=node_id, instance_id="foo", actor_type=actor_type, message="pong"})
+      if(node_id == "node_1") then
+        send({node_id="node_2", instance_id="2", actor_type=actor_type, message="remote_hello"})
+      else
+        send({node_id="node_1", instance_id="2", actor_type=actor_type, message="remote_hello"}) 
+      end
+      delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="delayed_publish"}, 6000);
+    end
   elseif(instance_id=="3") then
     print("call")
     send({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="exit"})
@@ -128,21 +135,22 @@ void main_task(void*) {
   printf("InitialHeap: %d \n", xPortGetFreeHeapSize());
   TaskHandle_t handle = {NULL};
 
-  Params params = {.node_id = "node_1", .instance_id = "1"};
+  Params params = {.node_id = BoardFunctions::NODE_ID, .instance_id = "1"};
 
   xTaskCreatePinnedToCore(&LuaRuntime::os_task, "TEST", 6168, &params, 4,
                           &handle, 1);
   vTaskDelay(1000 / portTICK_PERIOD_MS);
   char name[128];
-  for (int i = 0; i < ACTORS_PER_THREAD; i++) {
+  for (int i = 0; i < 8; i++) {
     snprintf(name, sizeof(name), "%d", i + 1);
-    Publication create_actor = Publication("node_1", "root", "1");
+    Publication create_actor =
+        Publication(BoardFunctions::NODE_ID, "root", "1");
     create_actor.set_attr("command", "spawn_lua_actor");
     create_actor.set_attr("spawn_code", receive_fun);
-    create_actor.set_attr("spawn_node_id", "node_1");
+    create_actor.set_attr("spawn_node_id", BoardFunctions::NODE_ID);
     create_actor.set_attr("spawn_actor_type", "actor");
     create_actor.set_attr("spawn_instance_id", name);
-    create_actor.set_attr("node_id", "node_1");
+    create_actor.set_attr("node_id", BoardFunctions::NODE_ID);
     create_actor.set_attr("actor_type", "lua_runtime");
     create_actor.set_attr("instance_id", "1");
     PubSub::Router::get_instance().publish(std::move(create_actor));

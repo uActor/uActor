@@ -20,6 +20,7 @@ extern "C" {
 #include <utility>
 #include <vector>
 
+#include "board_functions.hpp"
 #include "subscription.hpp"
 
 class TCPForwarder;
@@ -28,6 +29,7 @@ struct ForwarderSubscriptionAPI {
   virtual uint32_t add_subscription(uint32_t local_id,
                                     PubSub::Filter&& filter) = 0;
   virtual void remove_subscription(uint32_t local_id, uint32_t sub_id) = 0;
+  virtual bool write(int sock, int len, const char* message) = 0;
   virtual ~ForwarderSubscriptionAPI() {}
 };
 
@@ -53,6 +55,17 @@ class RemoteConnection {
     waiting_for_size,
     waiting_for_data,
   };
+
+  void send_routing_info() {
+    Publication p{BoardFunctions::NODE_ID, "tcp_forwarder", "1"};
+    p.set_attr("type", "subscription_update");
+    p.set_attr("subscription_node_id", BoardFunctions::NODE_ID);
+
+    std::string serialized = p.to_msg_pack();
+    uint32_t size = htonl(serialized.size());
+    handle->write(sock, 4, reinterpret_cast<char*>(&size));
+    handle->write(sock, serialized.size(), serialized.data());
+  }
 
   void process_data(uint32_t len, char* data) {
     uint32_t bytes_remaining = len;

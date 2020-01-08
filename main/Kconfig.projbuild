@@ -11,3 +11,11 @@ menu "Wifi Configuration"
         help
             WiFi password
 endmenu
+menu "Board Configuration"
+    config NODE_ID
+        string "Unique Node ID"
+        default "node_1"
+        help
+            Unique Node ID
+endmenu
+            
