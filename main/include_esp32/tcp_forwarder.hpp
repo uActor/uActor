@@ -1,8 +1,8 @@
 // Basic socket handling (e.g. listen, retransmit) adapted from
 // https://github.com/espressif/esp-idf/blob/a49b934ef895690f2b5e3709340db856e27475e2/examples/protocols/sockets/tcp_server/main/tcp_server.c
 // https://github.com/espressif/esp-idf/blob/204492bd7838d3687719473a7de30876f3d1ee7e/examples/protocols/sockets/tcp_client/main/tcp_client.c
-#ifndef MAIN_TCP_FORWARDER_HPP_
-#define MAIN_TCP_FORWARDER_HPP_
+#ifndef MAIN_INCLUDE_ESP32_TCP_FORWARDER_HPP_
+#define MAIN_INCLUDE_ESP32_TCP_FORWARDER_HPP_
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -28,10 +28,10 @@ extern "C" {
 #include <utility>
 #include <vector>
 
-#include "include/board_functions.hpp"
-#include "include/publication.hpp"
-#include "include/remote_connection.hpp"
-#include "include/subscription.hpp"
+#include "board_functions.hpp"
+#include "publication.hpp"
+#include "remote_connection.hpp"
+#include "subscription.hpp"
 
 class TCPForwarder : public ForwarderSubscriptionAPI {
  public:
@@ -300,4 +300,4 @@ class TCPForwarder : public ForwarderSubscriptionAPI {
   }
 };
 
-#endif  //  MAIN_TCP_FORWARDER_HPP_
+#endif  //  MAIN_INCLUDE_ESP32_TCP_FORWARDER_HPP_

@@ -1,4 +1,4 @@
-#include "include/board_functions.hpp"
+#include "board_functions.hpp"
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>

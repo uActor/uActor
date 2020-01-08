@@ -5,13 +5,10 @@
 
 #include "lua_runtime.hpp"
 #include "publication.hpp"
-#include "router_v2.hpp"
 #include "subscription.hpp"
 
 void spawn_actor(std::string_view code, std::string_view instance_id) {
   Publication create_actor = Publication("node_1", "root", "1");
-  create_actor.set_attr("tag",
-                        std::to_string(Tags::WELL_KNOWN_TAGS::SPAWN_LUA_ACTOR));
   create_actor.set_attr("spawn_code", code);
   create_actor.set_attr("spawn_node_id", "node_1");
   create_actor.set_attr("spawn_actor_type", "actor");
@@ -27,7 +24,6 @@ void shutdown_runtime(std::thread* runtime_thread) {
   exit.set_attr("node_id", "node_1");
   exit.set_attr("instance_id", "1");
   exit.set_attr("actor_type", "lua_runtime");
-  exit.set_attr("tag", std::to_string(Tags::WELL_KNOWN_TAGS::EXIT));
   PubSub::Router::get_instance().publish(std::move(exit));
   runtime_thread->join();
 }

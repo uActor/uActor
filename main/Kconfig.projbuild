@@ -18,4 +18,11 @@ menu "Board Configuration"
         help
             Unique Node ID
 endmenu
+menu "Benchmark Configuration"
+    config BENCHMARK_ENABLED
+        bool "Legacy Benchmark"
+        default n
+        help
+            Legacy Benchmark Mode
+endmenu
             

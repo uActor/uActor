@@ -13,7 +13,6 @@
 
 #include "board_functions.hpp"
 #include "managed_actor.hpp"
-#include "message.hpp"
 #include "runtime_api.hpp"
 #include "subscription.hpp"
 

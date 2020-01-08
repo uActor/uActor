@@ -1,11 +1,11 @@
-#ifndef MAIN_INCLUDE_MESSAGE_HPP_
-#define MAIN_INCLUDE_MESSAGE_HPP_
+#ifndef MAIN_LEGACY_INCLUDE_MESSAGE_HPP_
+#define MAIN_LEGACY_INCLUDE_MESSAGE_HPP_
 
 #include <cassert>
 #include <cstdint>
 #include <cstring>
 
-#include "../benchmark_configuration.hpp"
+#include "../../legacy/benchmark_configuration.hpp"
 
 struct Tags {
   enum WELL_KNOWN_TAGS : uint32_t {
@@ -146,4 +146,4 @@ class Message {
   InternalDataStructure* _data;
 };
 
-#endif  // MAIN_INCLUDE_MESSAGE_HPP_
+#endif  // MAIN_LEGACY_INCLUDE_MESSAGE_HPP_

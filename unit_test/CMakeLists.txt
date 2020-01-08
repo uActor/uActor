@@ -26,8 +26,9 @@ if (CMAKE_VERSION VERSION_LESS 2.8.11)
 endif()
 include_directories(../components/lua/include)
 include_directories(../main/include)
+include_directories(../main/legacy/include)
 
 # Now simply link against gtest or gtest_main as needed. Eg
-add_executable(runtime_system_test ${lua_SRC} ../main/managed_actor.cpp ../main/publication.cpp mock_board_functions.cpp mock_router.cpp mock_routing.cpp legacy_routing_tests.cpp pubsub_tests.cpp runtime_tests.cpp forwarding_tests.cpp)
+add_executable(runtime_system_test ${lua_SRC} ../main/src/managed_actor.cpp ../main/src/publication.cpp mock_board_functions.cpp mock_router.cpp mock_routing.cpp legacy_routing_tests.cpp pubsub_tests.cpp runtime_tests.cpp forwarding_tests.cpp)
 target_link_libraries(runtime_system_test gtest_main)
 add_test(NAME runtime_system_unit_test COMMAND runtime_system_test)

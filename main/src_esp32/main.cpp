@@ -12,13 +12,10 @@ extern "C" {
 #include <cstring>
 #include <utility>
 
-#include "benchmark_configuration.hpp"
-#include "include/board_functions.hpp"
-#include "include/lua_runtime.hpp"
-#include "include/managed_actor.hpp"
-#include "include/message.hpp"
-#include "include/router_v2.hpp"
+#include "board_functions.hpp"
 #include "lua.hpp"
+#include "lua_runtime.hpp"
+#include "managed_actor.hpp"
 #include "tcp_forwarder.hpp"
 #include "wifi_stack.hpp"
 
@@ -26,11 +23,14 @@ extern "C" {
 void app_main(void);
 }
 
-#if BENCHMARK
+#if CONFIG_BENCHMARK_ENABLED
 
-#include "benchmark_actor.hpp"
-#include "benchmark_lua_actor.hpp"
-// #include "router.hpp"
+#include "../legacy/benchmark_actor.hpp"
+#include "../legacy/benchmark_configuration.hpp"
+#include "../legacy/benchmark_lua_actor.hpp"
+#include "../legacy/include/message.hpp"
+#include "../legacy/include/router_v2.hpp"
+// #include "../legacy/router.hpp"
 
 struct BenchmarkParams {
   uint64_t id;
@@ -122,9 +122,7 @@ function receive(message)
       delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="delayed_publish"}, 6000);
     end
   elseif(instance_id=="3") then
-    print("call")
     send({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="exit"})
-    print("after_call")
   elseif(not (message.type == "init")) then
     send({node_id=message.sender_node_id, instance_id=message.sender_instance_id, actor_type=message.sender_actor_type, message="pong"})
   end

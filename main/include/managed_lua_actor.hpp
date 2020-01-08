@@ -8,7 +8,7 @@
 
 #include "lua.hpp"
 #include "managed_actor.hpp"
-#include "message.hpp"
+#include "publication.hpp"
 #include "subscription.hpp"
 
 class ManagedLuaActor : public ManagedActor {

@@ -1,6 +1,7 @@
-#include "include/managed_actor.hpp"
+#include "managed_actor.hpp"
 
-#include "benchmark_configuration.hpp"
+#define ACTOR_QUEUE_SOFTLIMIT 100
+
 ManagedActor::ReceiveResult ManagedActor::receive_next_internal() {
   waiting = false;
   _timeout = UINT32_MAX;
@@ -31,8 +32,8 @@ ManagedActor::ReceiveResult ManagedActor::receive_next_internal() {
 }
 
 bool ManagedActor::enqueue(Publication&& pub) {
-  if (message_queue.size() >= QUEUE_SIZE) {
-    printf("Warning: Actor queue size excedes configured maximum.");
+  if (message_queue.size() >= ACTOR_QUEUE_SOFTLIMIT) {
+    printf("Warning: Actor queue size excedes configured limit.");
   }
   if (waiting) {
     if (pattern.matches(pub)) {

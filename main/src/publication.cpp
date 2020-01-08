@@ -1,4 +1,4 @@
-#include "include/publication.hpp"
+#include "publication.hpp"
 
 #include "msgpack.hpp"
 

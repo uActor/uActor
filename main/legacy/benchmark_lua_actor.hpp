@@ -1,5 +1,5 @@
-#ifndef MAIN_BENCHMARK_LUA_ACTOR_HPP_
-#define MAIN_BENCHMARK_LUA_ACTOR_HPP_
+#ifndef MAIN_LEGACY_BENCHMARK_LUA_ACTOR_HPP_
+#define MAIN_LEGACY_BENCHMARK_LUA_ACTOR_HPP_
 
 #include <utility>
 
@@ -219,4 +219,4 @@ class LuaActor {
     return 0;
   }
 };
-#endif  // MAIN_BENCHMARK_LUA_ACTOR_HPP_
+#endif  // MAIN_LEGACY_BENCHMARK_LUA_ACTOR_HPP_

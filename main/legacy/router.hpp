@@ -1,5 +1,5 @@
-#ifndef MAIN_ROUTER_HPP_
-#define MAIN_ROUTER_HPP_
+#ifndef MAIN_LEGACY_ROUTER_HPP_
+#define MAIN_LEGACY_ROUTER_HPP_
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
@@ -63,4 +63,4 @@ class Router {
 #endif
 };
 
-#endif  // MAIN_ROUTER_HPP_
+#endif  // MAIN_LEGACY_ROUTER_HPP_

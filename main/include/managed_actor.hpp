@@ -12,7 +12,6 @@
 #include <string>
 #include <utility>
 
-#include "message.hpp"
 #include "publication.hpp"
 #include "runtime_api.hpp"
 #include "subscription.hpp"

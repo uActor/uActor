@@ -1,5 +1,5 @@
-#ifndef MAIN_BENCHMARK_ACTOR_HPP_
-#define MAIN_BENCHMARK_ACTOR_HPP_
+#ifndef MAIN_LEGACY_BENCHMARK_ACTOR_HPP_
+#define MAIN_LEGACY_BENCHMARK_ACTOR_HPP_
 
 #include <utility>
 
@@ -70,4 +70,4 @@ class Actor {
   uint32_t round;
 };
 
-#endif  // MAIN_BENCHMARK_ACTOR_HPP_
+#endif  // MAIN_LEGACY_BENCHMARK_ACTOR_HPP_

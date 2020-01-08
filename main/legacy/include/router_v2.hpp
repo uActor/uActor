@@ -1,5 +1,5 @@
-#ifndef MAIN_INCLUDE_ROUTER_V2_HPP_
-#define MAIN_INCLUDE_ROUTER_V2_HPP_
+#ifndef MAIN_LEGACY_INCLUDE_ROUTER_V2_HPP_
+#define MAIN_LEGACY_INCLUDE_ROUTER_V2_HPP_
 
 #include <list>
 #include <mutex>
@@ -357,4 +357,4 @@ class RouterV2 {
   std::mutex mutex;
 };
 
-#endif  // MAIN_INCLUDE_ROUTER_V2_HPP_
+#endif  // MAIN_LEGACY_INCLUDE_ROUTER_V2_HPP_

@@ -1,15 +1,20 @@
+#define RECEIVER_QUEUE_HARD_LIMIT 100
+
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 
 #include <list>
 
-#include "benchmark_configuration.hpp"
-#include "include/publication.hpp"
-#include "include/subscription.hpp"
+#include "publication.hpp"
+#include "subscription.hpp"
+
 namespace PubSub {
 class Router::Receiver::Queue {
  public:
-  Queue() { queue = xQueueCreate(QUEUE_SIZE, sizeof(MatchedPublication*)); }
+  Queue() {
+    queue =
+        xQueueCreate(RECEIVER_QUEUE_HARD_LIMIT, sizeof(MatchedPublication*));
+  }
 
   ~Queue() { vQueueDelete(queue); }
 
