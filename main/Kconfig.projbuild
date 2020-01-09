@@ -1,9 +1,23 @@
 menu "Wifi Configuration"
     config WIFI_SSID
         string "WiFi SSID"
-        default "HETZEL-IOT"
+        default "eduroam"
         help
             SSID
+    config WIFI_USE_EDUROAM
+        bool "Use eduroam"
+        default y
+        help
+            Use eduroam instead pf WPA personal.
+            Uses username + password,
+            validatates server using the key in binary folder.
+            SSID needs to be set to eduroam.
+
+    config WIFI_USERNAME
+        string "Eduroam username"
+        default "foobar"
+        help
+            WiFi WPA enterprise username used in eduroam mode.
 
     config WIFI_PASSWORD
         string "WiFi Password"

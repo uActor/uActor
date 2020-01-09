@@ -14,6 +14,7 @@ extern "C" {
 #include <esp_netif.h>
 #include <esp_system.h>
 #include <esp_wifi.h>
+#include <esp_wpa2.h>
 #include <lwip/err.h>
 #include <lwip/sys.h>
 }
@@ -32,8 +33,10 @@ class WifiStack {
     s_wifi_event_group = xEventGroupCreate();
     strncpy(reinterpret_cast<char*>(wifi_config.sta.ssid), CONFIG_WIFI_SSID,
             sizeof(wifi_config.sta.ssid));
+#if !(CONFIG_WIFI_USE_EDUROAM)
     strncpy(reinterpret_cast<char*>(wifi_config.sta.password),
             CONFIG_WIFI_PASSWORD, sizeof(wifi_config.sta.password));
+#endif
   }
 
   void init(void) {
@@ -51,7 +54,24 @@ class WifiStack {
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config));
+
+#if CONFIG_WIFI_USE_EDUROAM
+    extern uint8_t ca_pem_start[] asm("_binary_eduroam_pem_start");
+    extern uint8_t ca_pem_end[] asm("_binary_eduroam_pem_end");
+    uint32_t ca_pem_bytes = ca_pem_end - ca_pem_start;
+    ESP_ERROR_CHECK(
+        esp_wifi_sta_wpa2_ent_set_ca_cert(ca_pem_start, ca_pem_bytes));
+    ESP_ERROR_CHECK(esp_wifi_sta_wpa2_ent_set_username(
+        reinterpret_cast<uint8_t*>(const_cast<char*>(CONFIG_WIFI_USERNAME)),
+        strlen(CONFIG_WIFI_USERNAME)));
+    ESP_ERROR_CHECK(esp_wifi_sta_wpa2_ent_set_password(
+        reinterpret_cast<uint8_t*>(const_cast<char*>(CONFIG_WIFI_PASSWORD)),
+        strlen(CONFIG_WIFI_PASSWORD)));
+    ESP_ERROR_CHECK(esp_wifi_sta_wpa2_ent_enable());
+#endif
+
     ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
+
     ESP_ERROR_CHECK(esp_wifi_start());
 
     ESP_LOGI(TAG, "wifi_init_sta finished.");
