@@ -7,6 +7,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/event_groups.h>
 #include <freertos/task.h>
+#include <testbed.h>
 
 extern "C" {
 #include <esp_event.h>
@@ -108,7 +109,11 @@ class WifiStack {
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
       ip_event_got_ip_t* event =
           reinterpret_cast<ip_event_got_ip_t*>(event_data);
-      ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
+      //  ESP_LOGI(TAG, "got ip: " IPSTR, IP2STR(&event->ip_info.ip));
+      testbed_log_ipv4_address(event->ip_info.ip);
+      testbed_log_ipv4_netmask(event->ip_info.netmask);
+      testbed_log_ipv4_gateway(event->ip_info.gw);
+
       retry_count = 0;
       xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
     }

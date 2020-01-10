@@ -1,0 +1,7 @@
+menu "Testbed Configuration"
+    config TESTBED_NETWORK_UTILS
+        bool "Testbed Network Utils"
+        default y
+        help
+          Enable loggers for values related to networking.
+endmenu
