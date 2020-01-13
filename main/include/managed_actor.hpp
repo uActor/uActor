@@ -40,23 +40,7 @@ class ManagedActor {
 
   ManagedActor(RuntimeApi* api, uint32_t unique_id, const char* node_id,
                const char* actor_type, const char* instance_id,
-               const char* code)
-      : _id(unique_id),
-        waiting(false),
-        _timeout(UINT32_MAX),
-        _node_id(node_id),
-        _actor_type(actor_type),
-        _instance_id(instance_id),
-        _code(code),
-        api(api) {
-    uint32_t sub_id = api->add_subscription(
-        unique_id,
-        PubSub::Filter{
-            PubSub::Constraint(std::string("node_id"), node_id),
-            PubSub::Constraint(std::string("actor_type"), actor_type),
-            PubSub::Constraint(std::string("?instance_id"), instance_id)});
-    subscriptions.insert(sub_id);
-  }
+               const char* code);
 
   ~ManagedActor() {
     for (uint32_t sub_id : subscriptions) {
@@ -64,7 +48,9 @@ class ManagedActor {
     }
   }
 
-  virtual void receive(const Publication& p) = 0;
+  virtual bool receive(const Publication& p) = 0;
+
+  bool initialize();
 
   ReceiveResult receive_next_internal();
 
@@ -98,7 +84,11 @@ class ManagedActor {
 
   const char* instance_id() const { return _instance_id.c_str(); }
 
+  bool initialized() const { return _initialized; }
+
  protected:
+  virtual bool internal_initialize() = 0;
+
   void send(Publication&& p) {
     PubSub::Router::get_instance().publish(std::move(p));
   }
@@ -115,15 +105,24 @@ class ManagedActor {
 
  private:
   uint32_t _id;
-  bool waiting;
+
+  bool waiting = false;
   Pattern pattern;
-  uint32_t _timeout;
+  uint32_t _timeout = UINT32_MAX;
+
   std::string _node_id;
   std::string _actor_type;
   std::string _instance_id;
   std::string _code;
+
   std::deque<Publication> message_queue;
-  RuntimeApi* api;
   std::set<uint32_t> subscriptions;
+  RuntimeApi* api;
+
+  bool _initialized = false;
+
+  void send_exit_message(std::string exit_reason);
+  void send_creation_message();
+  void add_default_subscription();
 };
 #endif  //  MAIN_INCLUDE_MANAGED_ACTOR_HPP_

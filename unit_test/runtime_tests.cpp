@@ -289,3 +289,141 @@ TEST(RuntimeSystem, complex_subscription) {
 
   shutdown_runtime(&runtime_thread);
 }
+
+TEST(RuntimeSystem, lifetime_messages) {
+  const char test_pong[] = R"(function receive(publication)
+end)";
+
+  auto lifetime_handle = PubSub::Router::get_instance().new_subscriber();
+  PubSub::Filter primary_filter{
+      PubSub::Constraint("category", "actor_lifetime")};
+  lifetime_handle.subscribe(primary_filter);
+
+  auto runtime_thread = start_runtime_thread();
+
+  spawn_actor(test_pong, "1");
+
+  auto spawn_result = lifetime_handle.receive(100);
+  ASSERT_TRUE(spawn_result);
+  ASSERT_STREQ(
+      std::get<std::string_view>(spawn_result->publication.get_attr("type"))
+          .data(),
+      "actor_creation");
+
+  Publication exit = Publication("node_1", "root", "1");
+  exit.set_attr("node_id", "node_1");
+  exit.set_attr("instance_id", "1");
+  exit.set_attr("actor_type", "actor");
+  exit.set_attr("type", "exit");
+  PubSub::Router::get_instance().publish(std::move(exit));
+
+  auto exit_result = lifetime_handle.receive(100);
+  ASSERT_TRUE(exit_result);
+  ASSERT_STREQ(
+      std::get<std::string_view>(exit_result->publication.get_attr("type"))
+          .data(),
+      "actor_exit");
+  ASSERT_STREQ(std::get<std::string_view>(
+                   exit_result->publication.get_attr("exit_reason"))
+                   .data(),
+               "clean_exit");
+
+  shutdown_runtime(&runtime_thread);
+}
+
+TEST(RuntimeSystem, spawn_failure_syntax) {
+  const char test_spawn_failure[] = R"(
+    function receive(publication)
+    asdf += 1
+  end)";
+
+  auto root_handle = subscription_handle_with_default_subscription();
+  root_handle.subscribe(
+      PubSub::Filter{PubSub::Constraint{"type", "actor_exit"}});
+
+  auto runtime_thread = start_runtime_thread();
+
+  spawn_actor(test_spawn_failure, "1");
+
+  auto result = root_handle.receive(100);
+  ASSERT_TRUE(result);
+  ASSERT_STREQ(
+      std::get<std::string_view>(result->publication.get_attr("exit_reason"))
+          .data(),
+      "initialization_failure");
+
+  shutdown_runtime(&runtime_thread);
+}
+
+TEST(RuntimeSystem, spawn_failure_no_receive) {
+  const char test_spawn_failure[] = R"(
+    function foo(publication)
+    asdf = 1
+  end)";
+
+  auto root_handle = subscription_handle_with_default_subscription();
+  root_handle.subscribe(
+      PubSub::Filter{PubSub::Constraint{"type", "actor_exit"}});
+
+  auto runtime_thread = start_runtime_thread();
+
+  spawn_actor(test_spawn_failure, "1");
+
+  auto result = root_handle.receive(100);
+  ASSERT_TRUE(result);
+  ASSERT_STREQ(
+      std::get<std::string_view>(result->publication.get_attr("exit_reason"))
+          .data(),
+      "initialization_failure");
+
+  shutdown_runtime(&runtime_thread);
+}
+
+TEST(RuntimeSystem, spawn_failure_bad_call) {
+  const char test_spawn_failure[] = R"(
+    foo("bar")
+    function receive(publication)
+    asdf = 1
+  end)";
+
+  auto root_handle = subscription_handle_with_default_subscription();
+  root_handle.subscribe(
+      PubSub::Filter{PubSub::Constraint{"type", "actor_exit"}});
+
+  auto runtime_thread = start_runtime_thread();
+
+  spawn_actor(test_spawn_failure, "1");
+
+  auto result = root_handle.receive(100);
+  ASSERT_TRUE(result);
+  ASSERT_STREQ(
+      std::get<std::string_view>(result->publication.get_attr("exit_reason"))
+          .data(),
+      "initialization_failure");
+
+  shutdown_runtime(&runtime_thread);
+}
+
+TEST(RuntimeSystem, runtime_failure) {
+  const char test_spawn_failure[] = R"(
+  function receive(publication)
+    asdf()
+  end)";
+
+  auto root_handle = subscription_handle_with_default_subscription();
+  root_handle.subscribe(
+      PubSub::Filter{PubSub::Constraint{"type", "actor_exit"}});
+
+  auto runtime_thread = start_runtime_thread();
+
+  spawn_actor(test_spawn_failure, "1");
+
+  auto result = root_handle.receive(100);
+  ASSERT_TRUE(result);
+  ASSERT_STREQ(
+      std::get<std::string_view>(result->publication.get_attr("exit_reason"))
+          .data(),
+      "runtime_failure");
+
+  shutdown_runtime(&runtime_thread);
+}

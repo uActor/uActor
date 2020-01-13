@@ -17,19 +17,24 @@ class ManagedLuaActor : public ManagedActor {
                   const char* actor_type, const char* instance_id,
                   const char* code, lua_State* global_state)
       : ManagedActor(api, unique_id, node_id, actor_type, instance_id, code),
-        state(global_state) {
-    createActorEnvironment(code);
-  }
+        state(global_state) {}
 
   ~ManagedLuaActor() {
-    lua_pushglobaltable(state);
-    lua_pushnil(state);
-    lua_seti(state, -2, id());
-    lua_pop(state, 1);
-    lua_gc(state, LUA_GCCOLLECT, 0);
+    if (initialized()) {
+      lua_pushglobaltable(state);
+      lua_pushnil(state);
+      lua_seti(state, -2, id());
+      lua_pop(state, 1);
+      lua_gc(state, LUA_GCCOLLECT, 0);
+    }
   }
 
-  void receive(const Publication& m) {
+  bool receive(const Publication& m) {
+    if (!initialized()) {
+      printf("Actor not initialized, can't process message\n");
+      return false;
+    }
+
     lua_pushglobaltable(state);
     lua_geti(state, -1, id());
     lua_getfield(state, -1, "receive");
@@ -48,14 +53,23 @@ class ManagedLuaActor : public ManagedActor {
       lua_setfield(state, -2, value.first.c_str());
     }
 
-    if (lua_pcall(state, 1, 0, 0)) {
-      printf("LUA ERROR!\n");
-      printf("%s\n", lua_tostring(state, 1));
-      lua_pop(state, 1);
+    int error_code = lua_pcall(state, 1, 0, 0);
+    if (error_code) {
+      printf("LUA ERROR for actor %s.%s.%s\n", node_id(), actor_type(),
+             instance_id());
+      if (error_code == LUA_ERRRUN) {
+        printf("ERROR: %s\n", lua_tostring(state, -1));
+        lua_pop(state, 1);
+      }
+      return false;
     }
 
     lua_gc(state, LUA_GCCOLLECT, 0);
+    return true;
   }
+
+ protected:
+  bool internal_initialize() { return createActorEnvironment(code()); }
 
  private:
   lua_State* state;
@@ -113,7 +127,7 @@ class ManagedLuaActor : public ManagedActor {
       {"unsubscribe", &unsubscribe_wrapper},
       {NULL, NULL}};
 
-  void createActorEnvironment(const char* receive_function) {
+  bool createActorEnvironment(const char* receive_function) {
     lua_pushglobaltable(state);
     luaL_newlibtable(state, core);
     lua_pushlightuserdata(state, this);
@@ -147,21 +161,52 @@ class ManagedLuaActor : public ManagedActor {
     }
     lua_setfield(state, -2, "operators");
 
-    lua_seti(state, -2, id());
+    lua_newtable(state);
+    lua_pushvalue(state, -1);
+    lua_setfield(state, -3, "state");
 
-    luaL_loadstring(state, receive_function);
+    lua_newtable(state);
+    lua_pushvalue(state, -2);
+    lua_setfield(state, -2, "__index");
+    lua_pushvalue(state, -2);
+    lua_setfield(state, -2, "__newindex");
+    lua_setmetatable(state, -3);
+    lua_pop(state, 1);
+
+    if (luaL_loadstring(state, receive_function)) {
+      printf("LUA LOAD ERROR for actor %s.%s.%s\n", node_id(), actor_type(),
+             instance_id());
+      printf("ERROR: %s\n", lua_tostring(state, -1));
+      lua_pop(state, 1);
+      return false;
+    }
 
     // Sandbox the function by settings its
     // global environment to the table created above
-    lua_geti(state, -2, id());
+    lua_pushvalue(state, -2);
     lua_setupvalue(state, -2, 1);
-    lua_replace(state, -2);
 
-    if (lua_pcall(state, 0, 0, 0)) {
-      printf("LUA LOAD ERROR!\n");
-      printf("%s\n", lua_tostring(state, 1));
-      lua_pop(state, 1);
+    int error_code = lua_pcall(state, 0, 0, 0);
+    if (error_code) {
+      printf("LUA LOAD ERROR for actor %s.%s.%s\n", node_id(), actor_type(),
+             instance_id());
+      if (error_code == LUA_ERRRUN) {
+        printf("ERROR: %s\n", lua_tostring(state, -1));
+        lua_pop(state, 3);
+      }
+      return false;
     }
+
+    lua_getfield(state, -1, "receive");
+    if (!lua_isfunction(state, -1)) {
+      lua_pop(state, 3);
+      return false;
+    }
+    lua_pop(state, 1);
+
+    lua_seti(state, -2, id());
+    lua_pop(state, 1);
+    return true;
   }
 
   static PubSub::Filter parse_filters(lua_State* state, size_t index) {

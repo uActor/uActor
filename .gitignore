@@ -5,3 +5,4 @@ cmake-build-debug/
 sdkconfig
 sdkconfig.old
 .python-version
+experiments/

@@ -66,15 +66,22 @@ class ActorRuntime : public RuntimeApi {
 
     uint32_t local_id = next_id++;
 
-    actors.try_emplace(local_id, this, local_id, node_id, actor_type,
-                       instance_id, code, std::forward<Args>(args)...);
-
-    Publication init_message = Publication(_node_id, _actor_type, _instance_id);
-    init_message.set_attr("node_id", node_id);
-    init_message.set_attr("actor_type", actor_type);
-    init_message.set_attr("instance_id", instance_id);
-    init_message.set_attr("type", "init");
-    PubSub::Router::get_instance().publish(std::move(init_message));
+    if (auto [actor_it, success] =
+            actors.try_emplace(local_id, this, local_id, node_id, actor_type,
+                               instance_id, code, std::forward<Args>(args)...);
+        success) {
+      if (actor_it->second.initialize()) {
+        Publication init_message =
+            Publication(_node_id, _actor_type, _instance_id);
+        init_message.set_attr("node_id", node_id);
+        init_message.set_attr("actor_type", actor_type);
+        init_message.set_attr("instance_id", instance_id);
+        init_message.set_attr("type", "init");
+        PubSub::Router::get_instance().publish(std::move(init_message));
+      } else {
+        actors.erase(actor_it);
+      }
+    }
   }
 
   uint32_t add_subscription(uint32_t local_id, PubSub::Filter&& filter) {
