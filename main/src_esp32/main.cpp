@@ -16,6 +16,7 @@ extern "C" {
 #include "lua.hpp"
 #include "lua_runtime.hpp"
 #include "managed_actor.hpp"
+#include "native_runtime.hpp"
 #include "tcp_forwarder.hpp"
 #include "wifi_stack.hpp"
 
@@ -103,29 +104,13 @@ void app_main(void) {
 
 const char receive_fun[] = R"(
 function receive(message)
-  print(message.sender_node_id.."."..message.sender_actor_type.."."..message.sender_instance_id.." -> "..node_id.."."..actor_type.."."..instance_id);
-  if(instance_id == "1") then
-    if(message.type == "init") then
-      sub_id = subscribe({node_id=node_id, instance_id="foo", actor_type=actor_type})
-      delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="delayed_publish"}, 2000);
-    elseif(message.type == "delayed_publish") then
-      send({node_id=node_id, actor_type=actor_type, message="ping"});
-    end
-  elseif(instance_id=="2") then
-    if(message.sender_node_id == node_id and (not (message.type == "init"))) then
-      -- send({node_id=node_id, instance_id="foo", actor_type=actor_type, message="pong"})
-      if(node_id == "node_1") then
-        send({node_id="node_2", instance_id="2", actor_type=actor_type, message="remote_hello"})
-      else
-        send({node_id="node_1", instance_id="2", actor_type=actor_type, message="remote_hello"}) 
-      end
-      delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="delayed_publish"}, 6000);
-    end
-  elseif(instance_id=="3") then
-    send({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="exit"})
-  elseif(not (message.type == "init")) then
-    send({node_id=message.sender_node_id, instance_id=message.sender_instance_id, actor_type=message.sender_actor_type, message="pong"})
+  if(foo == nil) then
+    foo = 0
+  else
+    foo = foo + 1
   end
+  print(foo);
+  delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="delayed_publish"}, 2000);
 end
 )";
 
@@ -135,26 +120,42 @@ void main_task(void*) {
 
   Params params = {.node_id = BoardFunctions::NODE_ID, .instance_id = "1"};
 
-  xTaskCreatePinnedToCore(&LuaRuntime::os_task, "TEST", 6168, &params, 4,
+  xTaskCreatePinnedToCore(&LuaRuntime::os_task, "LUA_RUNTIME", 6168, &params, 4,
                           &handle, 1);
+  xTaskCreatePinnedToCore(&NativeRuntime::os_task, "BASIC_RUNTIME", 6168,
+                          &params, 4, &handle, 0);
   vTaskDelay(1000 / portTICK_PERIOD_MS);
-  char name[128];
-  for (int i = 0; i < 8; i++) {
-    snprintf(name, sizeof(name), "%d", i + 1);
-    Publication create_actor =
-        Publication(BoardFunctions::NODE_ID, "root", "1");
-    create_actor.set_attr("command", "spawn_lua_actor");
-    create_actor.set_attr("spawn_code", receive_fun);
-    create_actor.set_attr("spawn_node_id", BoardFunctions::NODE_ID);
-    create_actor.set_attr("spawn_actor_type", "actor");
-    create_actor.set_attr("spawn_instance_id", name);
-    create_actor.set_attr("node_id", BoardFunctions::NODE_ID);
-    create_actor.set_attr("actor_type", "lua_runtime");
-    create_actor.set_attr("instance_id", "1");
-    PubSub::Router::get_instance().publish(std::move(create_actor));
-    vTaskDelay(10 / portTICK_PERIOD_MS);
-  }
-  vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+  Publication create_deployment_manager =
+      Publication(BoardFunctions::NODE_ID, "root", "1");
+  create_deployment_manager.set_attr("command", "spawn_native_actor");
+  create_deployment_manager.set_attr("spawn_code", "");
+  create_deployment_manager.set_attr("spawn_node_id", BoardFunctions::NODE_ID);
+  create_deployment_manager.set_attr("spawn_actor_type", "deployment_manager");
+  create_deployment_manager.set_attr("spawn_instance_id", "1");
+  create_deployment_manager.set_attr("node_id", BoardFunctions::NODE_ID);
+  create_deployment_manager.set_attr("actor_type", "native_runtime");
+  create_deployment_manager.set_attr("instance_id", "1");
+  PubSub::Router::get_instance().publish(std::move(create_deployment_manager));
+
+  // vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+  // char name[128];
+  // for (int i = 0; i < 8; i++) {
+  //   snprintf(name, sizeof(name), "%d", i + 1);
+  //   Publication create_actor =
+  //       Publication(BoardFunctions::NODE_ID, "root", "1");
+  //   create_actor.set_attr("type", "deployment");
+  //   create_actor.set_attr("deployment_name", "test.foo");
+  //   create_actor.set_attr("deployment_actor_code", receive_fun);
+  //   create_actor.set_attr("deployment_actor_type", "actor");
+  //   create_actor.set_attr("deployment_actor_version", "0.1");
+  //   create_actor.set_attr("deployment_actor_runtime_type", "lua");
+  //   create_actor.set_attr("deployment_ttl", 20000);
+  //   create_actor.set_attr("deployment_required_actors", "");
+  //   PubSub::Router::get_instance().publish(std::move(create_actor));
+  //   vTaskDelay(10 / portTICK_PERIOD_MS);
+  // }
 
   printf("StaticHeap: %d \n", xPortGetFreeHeapSize());
   while (true) {

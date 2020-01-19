@@ -358,7 +358,7 @@ class Router {
   };
 
   std::list<Receiver*> receivers;
-  std::atomic<uint32_t> next_sub_id{0};
+  std::atomic<uint32_t> next_sub_id{1};
 
   void deregister_receiver(Receiver* r) { receivers.remove(r); }
   void register_receiver(Receiver* r) { receivers.push_back(r); }
