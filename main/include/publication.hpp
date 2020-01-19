@@ -103,6 +103,27 @@ class Publication {
     return std::variant<std::monostate, std::string_view, int32_t, float>();
   }
 
+  std::optional<const std::string_view> get_str_attr(
+      std::string_view name) const {
+    auto result = attributes->find(std::string(name));
+    if (result != attributes->end()) {
+      if (std::holds_alternative<std::string>(result->second)) {
+        return std::string_view(std::get<std::string>(result->second));
+      }
+    }
+    return std::nullopt;
+  }
+
+  std::optional<int32_t> get_int_attr(std::string_view name) const {
+    auto result = attributes->find(std::string(name));
+    if (result != attributes->end()) {
+      if (std::holds_alternative<int32_t>(result->second)) {
+        return std::get<int32_t>(result->second);
+      }
+    }
+    return std::nullopt;
+  }
+
   void set_attr(std::string_view name, std::string_view value) {
     attributes->insert_or_assign(std::string(name), std::string(value));
   }

@@ -247,11 +247,11 @@ class TCPForwarder : public ForwarderSubscriptionAPI {
     ESP_LOGI(TAG, "Successfully connected");
 
     uint32_t remote_id = next_local_id++;
-    remotes.try_emplace(remote_id, remote_id, this).first->second;
-    RemoteConnection& remote = remotes.at(remote_id);
-    remote.sock = sock;
-
-    remote.send_routing_info();
+    if (auto [remote_it, inserted] =
+            remotes.try_emplace(remote_id, remote_id, sock, this);
+        inserted) {
+      remote_it->second.send_routing_info();
+    }
   }
 
   void listen_handler() {
@@ -267,10 +267,11 @@ class TCPForwarder : public ForwarderSubscriptionAPI {
     }
 
     uint32_t remote_id = next_local_id++;
-    remotes.try_emplace(remote_id, remote_id, this).first->second;
-    RemoteConnection& remote = remotes.at(remote_id);
-    remote.sock = sock_id;
-    remote.send_routing_info();
+    if (auto [remote_it, inserted] =
+            remotes.try_emplace(remote_id, remote_id, sock_id, this);
+        inserted) {
+      remote_it->second.send_routing_info();
+    }
 
     char addr_str[128];
     if (source_addr.sin6_family == PF_INET) {

@@ -40,8 +40,9 @@ class RemoteConnection {
   RemoteConnection(RemoteConnection&&) = default;
   RemoteConnection& operator=(RemoteConnection&&) = default;
 
-  RemoteConnection(uint32_t local_id, ForwarderSubscriptionAPI* handle)
-      : local_id(local_id), handle(handle) {}
+  RemoteConnection(uint32_t local_id, int32_t sock,
+                   ForwarderSubscriptionAPI* handle)
+      : sock(sock), local_id(local_id), handle(handle) {}
 
   ~RemoteConnection() {
     for (const auto& subscription_id : subscription_ids) {
@@ -57,7 +58,8 @@ class RemoteConnection {
   };
 
   void send_routing_info() {
-    Publication p{BoardFunctions::NODE_ID, "tcp_forwarder", "1"};
+    Publication p{BoardFunctions::NODE_ID, "remote_connection",
+                  std::to_string(local_id)};
     p.set_attr("type", "subscription_update");
     p.set_attr("subscription_node_id", BoardFunctions::NODE_ID);
 
@@ -69,7 +71,6 @@ class RemoteConnection {
 
   void process_data(uint32_t len, char* data) {
     uint32_t bytes_remaining = len;
-
     while (bytes_remaining > 0) {
       if (state == empty) {
         if (bytes_remaining >= 4) {
@@ -114,8 +115,8 @@ class RemoteConnection {
         bytes_remaining -= to_move;
         publicaton_remaining_bytes -= to_move;
         if (publicaton_remaining_bytes == 0) {
-          auto p = Publication::from_msg_pack(
-              std::string_view(publication_buffer.data()));
+          auto p = Publication::from_msg_pack(std::string_view(
+              publication_buffer.data(), publicaton_full_size));
           if (p) {
             if (p->has_attr("type") && std::get<std::string_view>(p->get_attr(
                                            "type")) == "subscription_update") {
@@ -170,9 +171,8 @@ class RemoteConnection {
     subscription_ids.clear();
     partner_node_id = std::string(
         std::get<std::string_view>(p.get_attr("subscription_node_id")));
-    subscription_ids.push_back(handle->add_subscription(
-        local_id,
-        PubSub::Filter{PubSub::Constraint{"node_id", partner_node_id}}));
+    subscription_ids.push_back(
+        handle->add_subscription(local_id, PubSub::Filter{}));
   }
   friend TCPForwarder;
 };

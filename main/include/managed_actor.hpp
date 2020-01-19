@@ -63,17 +63,6 @@ class ManagedActor {
     message_queue.emplace_front(std::move(p));
   }
 
-  uint32_t subscribe(PubSub::Filter&& f) {
-    uint32_t sub_id = api->add_subscription(_id, std::move(f));
-    subscriptions.insert(sub_id);
-    return sub_id;
-  }
-
-  void unsubscribe(uint32_t sub_id) {
-    subscriptions.erase(sub_id);
-    api->remove_subscription(_id, sub_id);
-  }
-
   uint32_t id() { return _id; }
 
   const char* code() { return _code.c_str(); }
@@ -88,6 +77,17 @@ class ManagedActor {
 
  protected:
   virtual bool internal_initialize() = 0;
+
+  uint32_t subscribe(PubSub::Filter&& f) {
+    uint32_t sub_id = api->add_subscription(_id, std::move(f));
+    subscriptions.insert(sub_id);
+    return sub_id;
+  }
+
+  void unsubscribe(uint32_t sub_id) {
+    subscriptions.erase(sub_id);
+    api->remove_subscription(_id, sub_id);
+  }
 
   void send(Publication&& p) {
     PubSub::Router::get_instance().publish(std::move(p));

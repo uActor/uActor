@@ -23,7 +23,7 @@ TEST(FORWARDING, data_handling_base) {
   subscription_handle.subscribe(primary_filter);
 
   FakeForwarder f;
-  RemoteConnection connection{0, &f};
+  RemoteConnection connection{0, 0, &f};
 
   Publication sub_update{"sender_node", "sender_type", "sender_id"};
   sub_update.set_attr("type", "subscription_update");
@@ -61,7 +61,7 @@ TEST(FORWARDING, data_handling_split_data) {
   subscription_handle.subscribe(primary_filter);
 
   FakeForwarder f;
-  RemoteConnection connection{0, &f};
+  RemoteConnection connection{0, 0, &f};
 
   Publication p{"sender_node", "sender_type", "sender_id"};
   p.set_attr("foo", "bar");
@@ -86,7 +86,7 @@ TEST(FORWARDING, data_handling_split_message_size) {
   subscription_handle.subscribe(primary_filter);
 
   FakeForwarder f;
-  RemoteConnection connection{0, &f};
+  RemoteConnection connection{0, 0, &f};
 
   Publication p{"sender_node", "sender_type", "sender_id"};
   p.set_attr("foo", "bar");
@@ -110,7 +110,7 @@ TEST(FORWARDING, mixed_data) {
   subscription_handle.subscribe(primary_filter);
 
   FakeForwarder f;
-  RemoteConnection connection{0, &f};
+  RemoteConnection connection{0, 0, &f};
 
   Publication p{"sender_node", "sender_type", "sender_id"};
   p.set_attr("foo", "bar");

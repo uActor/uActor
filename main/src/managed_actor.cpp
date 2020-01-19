@@ -85,9 +85,9 @@ void ManagedActor::send_exit_message(std::string exit_reason) {
   exit_message.set_attr("category", "actor_lifetime");
   exit_message.set_attr("type", "actor_exit");
   exit_message.set_attr("exit_reason", exit_reason);
-  exit_message.set_attr("exit_node_id", _node_id);
-  exit_message.set_attr("exit_actor_type", _actor_type);
-  exit_message.set_attr("exit_instance_id", _instance_id);
+  exit_message.set_attr("lifetime_node_id", _node_id);
+  exit_message.set_attr("lifetime_actor_type", _actor_type);
+  exit_message.set_attr("lifetime_instance_id", _instance_id);
   PubSub::Router::get_instance().publish(std::move(exit_message));
 }
 
@@ -95,9 +95,9 @@ void ManagedActor::send_creation_message() {
   Publication create_message = Publication(_node_id, _actor_type, _instance_id);
   create_message.set_attr("category", "actor_lifetime");
   create_message.set_attr("type", "actor_creation");
-  create_message.set_attr("creation_node_id", _node_id);
-  create_message.set_attr("creation_actor_type", _actor_type);
-  create_message.set_attr("creation_instance_id", _instance_id);
+  create_message.set_attr("lifetime_node_id", _node_id);
+  create_message.set_attr("lifetime_actor_type", _actor_type);
+  create_message.set_attr("lifetime_instance_id", _instance_id);
   PubSub::Router::get_instance().publish(std::move(create_message));
 }
 
