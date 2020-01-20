@@ -5,7 +5,6 @@ actor_type:  xyz.hetzel.actor.example
 actor_runtime_type:  lua
 actor_version:  "0.1"
 actor_code_file:  "counting_actor.lua"
-required_actors:  ""
 ---
 type: deployment
 name: xyz.hetzel.deployment.example2
@@ -14,4 +13,3 @@ actor_type:  xyz.hetzel.actor.example
 actor_runtime_type:  lua
 actor_version:  "0.1"
 actor_code_file:  "counting_actor.lua"
-required_actors:  ""

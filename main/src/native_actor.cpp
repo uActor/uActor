@@ -27,6 +27,4 @@ void NativeActor::unsubscribe(uint32_t subscription_id) {
   actor_wrapper->unsubscribe(subscription_id);
 }
 
-uint32_t NativeActor::now() {
-  return BoardFunctions::timestamp();
-}
+uint32_t NativeActor::now() { return BoardFunctions::timestamp(); }

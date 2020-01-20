@@ -1,0 +1,19 @@
+type: deployment
+name: xyz.hetzel.deployment.ping
+ttl:  20000
+actor_type:  xyz.hetzel.actor.example
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "ping.lua"
+required_actors:
+  - "fake.node_id.node_1"
+---
+type: deployment
+name: xyz.hetzel.deployment.pong
+ttl:  20000
+actor_type:  xyz.hetzel.actor.pong
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "pong.lua"
+required_actors:
+  - "fake.node_id.node_2"

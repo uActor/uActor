@@ -57,8 +57,15 @@ def _parse_deployment(configuration_file_path, raw_deployment):
         return None
 
     if not {"name", "actor_type", "actor_version", "actor_runtime_type",
-            "actor_code_file", "required_actors", "ttl"} <= set(raw_deployment):
+            "actor_code_file", "ttl"} <= set(raw_deployment):
         return None
+
+    required_actors = ""
+    if "required_actors" in raw_deployment:
+        if isinstance(raw_deployment["required_actors"], list):
+            required_actors = ",".join(raw_deployment["required_actors"])
+        else:
+            raise SystemExit("required actors is not a list")
 
     configuration_dir = os.path.dirname(configuration_file_path)
     code_file = os.path.join(configuration_dir, raw_deployment["actor_code_file"])
@@ -76,7 +83,7 @@ def _parse_deployment(configuration_file_path, raw_deployment):
         "deployment_actor_runtime_type": raw_deployment["actor_runtime_type"],
         "deployment_actor_version": raw_deployment["actor_version"],
         "deployment_actor_code": code,
-        "deployment_required_actors": raw_deployment["required_actors"],
+        "deployment_required_actors": required_actors,
         "deployment_ttl": raw_deployment["ttl"]
     }
 

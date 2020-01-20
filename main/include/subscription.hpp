@@ -8,6 +8,7 @@
 #include <list>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -311,6 +312,7 @@ class Router {
   }
 
   void publish(Publication&& publication) {
+    std::unique_lock lock(mtx);
     for (Receiver* receiver : receivers) {
       for (const std::pair<uint32_t, Filter>& filter : receiver->filters) {
         if (filter.second.matches(publication)) {
@@ -333,6 +335,7 @@ class Router {
    private:
     std::optional<MatchedPublication> receive(uint32_t wait_time = 0);
     uint32_t subscribe(Filter&& f) {
+      std::unique_lock(router->mtx);
       auto it =
           std::find_if(filters.begin(), filters.end(),
                        [&f](const auto& value) { return f == value.second; });
@@ -345,7 +348,10 @@ class Router {
       }
     }
 
-    void unsubscribe(uint32_t sub_id) { filters.erase(sub_id); }
+    void unsubscribe(uint32_t sub_id) {
+      std::unique_lock(router->mtx);
+      filters.erase(sub_id);
+    }
 
     void publish(MatchedPublication&& publication);
 
@@ -359,9 +365,16 @@ class Router {
 
   std::list<Receiver*> receivers;
   std::atomic<uint32_t> next_sub_id{1};
+  std::mutex mtx;
 
-  void deregister_receiver(Receiver* r) { receivers.remove(r); }
-  void register_receiver(Receiver* r) { receivers.push_back(r); }
+  void deregister_receiver(Receiver* r) {
+    std::unique_lock lock(mtx);
+    receivers.remove(r);
+  }
+  void register_receiver(Receiver* r) {
+    std::unique_lock lock(mtx);
+    receivers.push_back(r);
+  }
   friend SubscriptionHandle;
 };
 
