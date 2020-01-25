@@ -1,0 +1,19 @@
+type: deployment
+name: xyz.hetzel.deployment.lightbulb
+ttl:  20000
+actor_type:  xyz.hetzel.actor.lightbulb
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "lightbulb.lua"
+required_actors:
+  - "fake.node_id.node_2"
+---
+type: deployment
+name: xyz.hetzel.deployment.lightswitch
+ttl:  20000
+actor_type:  xyz.hetzel.actor.lightswitch
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "lightswitch.lua"
+required_actors:
+  - "fake.node_id.node_1"

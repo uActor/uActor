@@ -1,0 +1,7 @@
+type: deployment
+name: xyz.hetzel.deployment.io_test
+ttl:  20000
+actor_type:  xyz.hetzel.actor.io_test
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "io_reader.lua"

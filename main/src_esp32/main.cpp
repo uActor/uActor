@@ -13,6 +13,7 @@ extern "C" {
 #include <utility>
 
 #include "board_functions.hpp"
+#include "gpio_actor.hpp"
 #include "lua.hpp"
 #include "lua_runtime.hpp"
 #include "managed_actor.hpp"
@@ -118,8 +119,10 @@ void main_task(void*) {
   printf("InitialHeap: %d \n", xPortGetFreeHeapSize());
   TaskHandle_t handle = {NULL};
 
-  Params params = {.node_id = BoardFunctions::NODE_ID, .instance_id = "1"};
+  xTaskCreatePinnedToCore(&GPIOActor::os_task, "GPIO_ACTOR", 4048, nullptr, 4,
+                          nullptr, 1);
 
+  Params params = {.node_id = BoardFunctions::NODE_ID, .instance_id = "1"};
   xTaskCreatePinnedToCore(&LuaRuntime::os_task, "LUA_RUNTIME", 6168, &params, 4,
                           &handle, 1);
   xTaskCreatePinnedToCore(&NativeRuntime::os_task, "BASIC_RUNTIME", 6168,
@@ -138,7 +141,7 @@ void main_task(void*) {
   create_deployment_manager.set_attr("instance_id", "1");
   PubSub::Router::get_instance().publish(std::move(create_deployment_manager));
 
-  // vTaskDelay(1000 / portTICK_PERIOD_MS);
+  //vTaskDelay(1000 / portTICK_PERIOD_MS);
 
   // char name[128];
   // for (int i = 0; i < 8; i++) {
@@ -157,6 +160,12 @@ void main_task(void*) {
   //   vTaskDelay(10 / portTICK_PERIOD_MS);
   // }
 
+  xTaskCreatePinnedToCore(&WifiStack::os_task, "FORWARDER", 6168, nullptr, 4,
+                          nullptr, 1);
+  vTaskDelay(2000 / portTICK_PERIOD_MS);
+  xTaskCreatePinnedToCore(&TCPForwarder::os_task, "TCP", 6168, nullptr, 4,
+                          nullptr, 1);
+
   printf("StaticHeap: %d \n", xPortGetFreeHeapSize());
   while (true) {
     vTaskDelay(5000 / portTICK_PERIOD_MS);
@@ -174,11 +183,6 @@ void app_main(void) {
   ESP_ERROR_CHECK(ret);
 
   xTaskCreatePinnedToCore(&main_task, "MAIN", 6168, nullptr, 5, nullptr, 1);
-  xTaskCreatePinnedToCore(&WifiStack::os_task, "FORWARDER", 6168, nullptr, 4,
-                          nullptr, 1);
-  vTaskDelay(5000 / portTICK_PERIOD_MS);
-  xTaskCreatePinnedToCore(&TCPForwarder::os_task, "TCP", 6168, nullptr, 4,
-                          nullptr, 1);
 }
 
 #endif
