@@ -4,6 +4,6 @@ function receive(message)
   end
   if(message.message == "ping") then
     print("ping")
-    send({node_id=message.sender_node_id, actor_type=message.sender_actor_type, instance_id=message.sender_instance_id, message="pong"})
+    publish({node_id=message.publisher_node_id, actor_type=message.publisher_actor_type, instance_id=message.publisher_instance_id, message="pong"})
   end
 end

@@ -12,7 +12,7 @@ NativeActor::NativeActor(ManagedNativeActor* actor_wrapper,
       _instance_id(instance_id) {}
 
 void NativeActor::publish(Publication&& p) {
-  actor_wrapper->send(std::move(p));
+  actor_wrapper->publish(std::move(p));
 }
 
 void NativeActor::delayed_publish(Publication&& publication, uint32_t delay) {

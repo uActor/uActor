@@ -1,0 +1,7 @@
+type: deployment
+name: xyz.hetzel.deployment.subscription_example
+ttl:  20000
+actor_type:  xyz.hetzel.actor.subscription
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "subscription.lua"

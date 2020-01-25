@@ -47,8 +47,8 @@ std::thread start_runtime_thread() {
 
 TEST(RuntimeSystem, pingPong) {
   const char test_pong[] = R"(function receive(publication)
-    if(publication.sender_actor_type == "root") then
-      send({instance_id=publication.sender_instance_id, node_id=publication.sender_node_id, actor_type=publication.sender_actor_type, message="pong"});
+    if(publication.publisher_actor_type == "root") then
+      publish({instance_id=publication.publisher_instance_id, node_id=publication.publisher_node_id, actor_type=publication.publisher_actor_type, message="pong"});
     end
   end)";
 
@@ -78,9 +78,9 @@ TEST(RuntimeSystem, pingPong) {
 
 TEST(RuntimeSystem, delayedSend) {
   const char delayed_pong[] = R"(function receive(publication)
-    if(publication.sender_actor_type == "root") then 
-      delayed_publish({instance_id=publication.sender_instance_id, node_id=publication.sender_node_id, actor_type=publication.sender_actor_type, message="pong1"}, 100);
-      send({instance_id=publication.sender_instance_id, node_id=publication.sender_node_id, actor_type=publication.sender_actor_type, message="pong2"});
+    if(publication.publisher_actor_type == "root") then 
+      delayed_publish({instance_id=publication.publisher_instance_id, node_id=publication.publisher_node_id, actor_type=publication.publisher_actor_type, message="pong1"}, 100);
+      publish({instance_id=publication.publisher_instance_id, node_id=publication.publisher_node_id, actor_type=publication.publisher_actor_type, message="pong2"});
     end
   end)";
 
@@ -120,14 +120,14 @@ TEST(RuntimeSystem, delayedSend) {
 
 TEST(RuntimeSystem, block_for) {
   const char block_for_pong[] = R"(function receive(publication)
-    if(not(publication.sender_actor_type == "lua_runtime")) then
+    if(not(publication.publisher_actor_type == "lua_runtime")) then
       if(publication["_internal_timeout"] == "_timeout") then
-        send({instance_id="1", node_id=node_id, actor_type="root", message="pong_timeout"});
+        publish({instance_id="1", node_id=node_id, actor_type="root", message="pong_timeout"});
       elseif(publication.message == "ping1") then
         deferred_block_for({foo="bar"}, 100)
-        send({instance_id=publication.sender_instance_id, node_id=publication.sender_node_id, actor_type=publication.sender_actor_type, message="pong1"});
+        publish({instance_id=publication.publisher_instance_id, node_id=publication.publisher_node_id, actor_type=publication.publisher_actor_type, message="pong1"});
       elseif(publication.message == "ping2") then
-        send({instance_id=publication.sender_instance_id, node_id=publication.sender_node_id, actor_type=publication.sender_actor_type, message="pong2"});
+        publish({instance_id=publication.publisher_instance_id, node_id=publication.publisher_node_id, actor_type=publication.publisher_actor_type, message="pong2"});
       end
     end
   end)";
@@ -183,14 +183,14 @@ TEST(RuntimeSystem, block_for) {
 
 TEST(RuntimeSystem, sub_unsub) {
   const char block_for_pong[] = R"(function receive(publication)
-    if(publication.sender_actor_type == "root") then
+    if(publication.publisher_actor_type == "root") then
       if(publication.message == "sub") then
         sub_id = subscribe({foo="bar"})
-        send({instance_id=publication.sender_instance_id, node_id=publication.sender_node_id, actor_type=publication.sender_actor_type, sub_id=sub_id});
+        publish({instance_id=publication.publisher_instance_id, node_id=publication.publisher_node_id, actor_type=publication.publisher_actor_type, sub_id=sub_id});
       elseif(publication.message == "unsub") then
         unsubscribe(publication.sub_id)
       else
-        send({instance_id=publication.sender_instance_id, node_id=publication.sender_node_id, actor_type=publication.sender_actor_type, message="pong"});
+        publish({instance_id=publication.publisher_instance_id, node_id=publication.publisher_node_id, actor_type=publication.publisher_actor_type, message="pong"});
       end
     end
   end)";
@@ -244,12 +244,12 @@ TEST(RuntimeSystem, sub_unsub) {
 
 TEST(RuntimeSystem, complex_subscription) {
   const char block_for_pong[] = R"(function receive(publication)
-    if(publication.sender_actor_type == "root") then
+    if(publication.publisher_actor_type == "root") then
       if(publication.message == "sub") then
-        sub_id = subscribe({foo=1, bar={50.0, operators.LT}})
-        send({instance_id=publication.sender_instance_id, node_id=publication.sender_node_id, actor_type=publication.sender_actor_type, sub_id=sub_id});
+        sub_id = subscribe({foo=1, bar={LT, 50.0}})
+        publish({instance_id=publication.publisher_instance_id, node_id=publication.publisher_node_id, actor_type=publication.publisher_actor_type, sub_id=sub_id});
       else
-        send({instance_id=publication.sender_instance_id, node_id=publication.sender_node_id, actor_type=publication.sender_actor_type, message="pong"});
+        publish({instance_id=publication.publisher_instance_id, node_id=publication.publisher_node_id, actor_type=publication.publisher_actor_type, message="pong"});
       end
     end
   end)";
@@ -409,7 +409,6 @@ TEST(RuntimeSystem, runtime_failure) {
   function receive(publication)
     asdf()
   end)";
-
   auto root_handle = subscription_handle_with_default_subscription();
   root_handle.subscribe(
       PubSub::Filter{PubSub::Constraint{"type", "actor_exit"}});

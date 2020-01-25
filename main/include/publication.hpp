@@ -18,16 +18,16 @@ class Publication {
   const_iterator begin() const { return attributes->begin(); }
   const_iterator end() const { return attributes->end(); }
 
-  Publication(std::string_view sender_node_id,
-              std::string_view sender_actor_type,
-              std::string_view sender_instance_id) {
+  Publication(std::string_view publisher_node_id,
+              std::string_view publisher_actor_type,
+              std::string_view publisher_instance_id) {
     attributes = new std::unordered_map<std::string, variant_type>();
-    attributes->emplace(std::string("sender_node_id"),
-                        std::string(sender_node_id));
-    attributes->emplace(std::string("sender_instance_id"),
-                        std::string(sender_instance_id));
-    attributes->emplace(std::string("sender_actor_type"),
-                        std::string(sender_actor_type));
+    attributes->emplace(std::string("publisher_node_id"),
+                        std::string(publisher_node_id));
+    attributes->emplace(std::string("publisher_instance_id"),
+                        std::string(publisher_instance_id));
+    attributes->emplace(std::string("publisher_actor_type"),
+                        std::string(publisher_actor_type));
   }
 
   Publication()

@@ -55,93 +55,48 @@ class Constraint {
 
  public:
   // TODO(raphaelhetzel) combine once we use C++20
-  Constraint(std::string attribute, std::string oper,
-             ConstraintPredicates::Predicate op =
-                 ConstraintPredicates::Predicate::EQ) {
-    switch (op) {
-      case ConstraintPredicates::Predicate::EQ:
-        operand = Container<std::string>(oper, std::equal_to<std::string>());
-        break;
-      case ConstraintPredicates::Predicate::LT:
-        operand = Container<std::string>(oper, std::less<std::string>());
-        break;
-      case ConstraintPredicates::Predicate::GT:
-        operand = Container<std::string>(oper, std::greater<std::string>());
-        break;
-      case ConstraintPredicates::Predicate::GE:
-        operand =
-            Container<std::string>(oper, std::greater_equal<std::string>());
-        break;
-      case ConstraintPredicates::Predicate::LE:
-        operand = Container<std::string>(oper, std::less_equal<std::string>());
-        break;
-      case ConstraintPredicates::Predicate::NE:
-        operand =
-            Container<std::string>(oper, std::not_equal_to<std::string>());
-        break;
-    }
-    if (attribute.at(0) == '?') {
-      _attribute = attribute.substr(1);
-      _optional = true;
-    } else {
-      _attribute = attribute;
-      _optional = false;
-    }
+  Constraint(
+      std::string attribute, std::string oper,
+      ConstraintPredicates::Predicate op = ConstraintPredicates::Predicate::EQ,
+      bool optional = false) {
+    setup(attribute, oper, op, optional);
   }
 
-  Constraint(std::string attribute, int32_t oper,
-             ConstraintPredicates::Predicate op =
-                 ConstraintPredicates::Predicate::EQ) {
-    switch (op) {
-      case ConstraintPredicates::Predicate::EQ:
-        operand = Container<int32_t>(oper, std::equal_to<int32_t>());
-        break;
-      case ConstraintPredicates::Predicate::LT:
-        operand = Container<int32_t>(oper, std::less<int32_t>());
-        break;
-      case ConstraintPredicates::Predicate::GT:
-        operand = Container<int32_t>(oper, std::greater<int32_t>());
-        break;
-      case ConstraintPredicates::Predicate::GE:
-        operand = Container<int32_t>(oper, std::greater_equal<int32_t>());
-        break;
-      case ConstraintPredicates::Predicate::LE:
-        operand = Container<int32_t>(oper, std::less_equal<int32_t>());
-        break;
-      case ConstraintPredicates::Predicate::NE:
-        operand = Container<int32_t>(oper, std::not_equal_to<int32_t>());
-        break;
-    }
-    if (attribute.at(0) == '?') {
-      _attribute = attribute.substr(1);
-      _optional = true;
-    } else {
-      _attribute = attribute;
-      _optional = false;
-    }
+  Constraint(
+      std::string attribute, int32_t oper,
+      ConstraintPredicates::Predicate op = ConstraintPredicates::Predicate::EQ,
+      bool optional = false) {
+    setup(attribute, oper, op, optional);
   }
 
-  Constraint(std::string attribute, float oper,
-             ConstraintPredicates::Predicate op =
-                 ConstraintPredicates::Predicate::EQ) {
-    switch (op) {
+  Constraint(
+      std::string attribute, float oper,
+      ConstraintPredicates::Predicate op = ConstraintPredicates::Predicate::EQ,
+      bool optional = false) {
+    setup(attribute, oper, op, optional);
+  }
+
+  template <typename T>
+  void setup(std::string attribute, T operand,
+             ConstraintPredicates::Predicate predicate, bool optional) {
+    switch (predicate) {
       case ConstraintPredicates::Predicate::EQ:
-        operand = Container<float>(oper, std::equal_to<float>());
+        _operand = Container<T>(operand, std::equal_to<T>());
         break;
       case ConstraintPredicates::Predicate::LT:
-        operand = Container<float>(oper, std::less<float>());
+        _operand = Container<T>(operand, std::less<T>());
         break;
       case ConstraintPredicates::Predicate::GT:
-        operand = Container<float>(oper, std::greater<float>());
+        _operand = Container<T>(operand, std::greater<T>());
         break;
       case ConstraintPredicates::Predicate::GE:
-        operand = Container<float>(oper, std::greater_equal<float>());
+        _operand = Container<T>(operand, std::greater_equal<T>());
         break;
       case ConstraintPredicates::Predicate::LE:
-        operand = Container<float>(oper, std::less_equal<float>());
+        _operand = Container<T>(operand, std::less_equal<T>());
         break;
       case ConstraintPredicates::Predicate::NE:
-        operand = Container<float>(oper, std::not_equal_to<float>());
+        _operand = Container<T>(operand, std::not_equal_to<T>());
         break;
     }
     if (attribute.at(0) == '?') {
@@ -149,40 +104,40 @@ class Constraint {
       _optional = true;
     } else {
       _attribute = attribute;
-      _optional = false;
+      _optional = optional;
     }
   }
 
   bool operator()(std::string_view input) const {
-    if (std::holds_alternative<Container<std::string>>(operand)) {
-      return (std::get<Container<std::string>>(operand))
+    if (std::holds_alternative<Container<std::string>>(_operand)) {
+      return (std::get<Container<std::string>>(_operand))
           .operation(std::string(input),
-                     std::get<Container<std::string>>(operand).operand);
+                     std::get<Container<std::string>>(_operand).operand);
     } else {
       return false;
     }
   }
 
   bool operator()(int32_t input) const {
-    if (std::holds_alternative<Container<int32_t>>(operand)) {
-      return (std::get<Container<int32_t>>(operand))
-          .operation(input, std::get<Container<int32_t>>(operand).operand);
+    if (std::holds_alternative<Container<int32_t>>(_operand)) {
+      return (std::get<Container<int32_t>>(_operand))
+          .operation(input, std::get<Container<int32_t>>(_operand).operand);
     } else {
       return false;
     }
   }
 
   bool operator()(float input) const {
-    if (std::holds_alternative<Container<float>>(operand)) {
-      return (std::get<Container<float>>(operand))
-          .operation(input, std::get<Container<float>>(operand).operand);
+    if (std::holds_alternative<Container<float>>(_operand)) {
+      return (std::get<Container<float>>(_operand))
+          .operation(input, std::get<Container<float>>(_operand).operand);
     } else {
       return false;
     }
   }
 
   bool operator==(const Constraint& other) const {
-    return other._attribute == _attribute && other.operand == operand;
+    return other._attribute == _attribute && other._operand == _operand;
   }
 
   bool optional() const { return _optional; }
@@ -195,7 +150,7 @@ class Constraint {
   std::string _attribute;
   std::variant<std::monostate, Container<std::string>, Container<int32_t>,
                Container<float>>
-      operand;
+      _operand;
   bool _optional;
 };
 

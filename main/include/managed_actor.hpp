@@ -89,7 +89,7 @@ class ManagedActor {
     api->remove_subscription(_id, sub_id);
   }
 
-  void send(Publication&& p) {
+  void publish(Publication&& p) {
     PubSub::Router::get_instance().publish(std::move(p));
   }
 
@@ -121,8 +121,8 @@ class ManagedActor {
 
   bool _initialized = false;
 
-  void send_exit_message(std::string exit_reason);
-  void send_creation_message();
+  void publish_exit_message(std::string exit_reason);
+  void publish_creation_message();
   void add_default_subscription();
 };
 #endif  //  MAIN_INCLUDE_MANAGED_ACTOR_HPP_

@@ -12,7 +12,7 @@ ManagedActor::ManagedActor(RuntimeApi* api, uint32_t unique_id,
       _code(code),
       api(api) {
   add_default_subscription();
-  send_creation_message();
+  publish_creation_message();
 }
 
 ManagedActor::ReceiveResult ManagedActor::receive_next_internal() {
@@ -28,9 +28,9 @@ ManagedActor::ReceiveResult ManagedActor::receive_next_internal() {
       (next_message.has_attr("type") &&
        std::get<std::string_view>(next_message.get_attr("type")) == "exit")) {
     if (success) {
-      send_exit_message("clean_exit");
+      publish_exit_message("clean_exit");
     } else {
-      send_exit_message("runtime_failure");
+      publish_exit_message("runtime_failure");
     }
     return ManagedActor::ReceiveResult(true, 0);
   }
@@ -75,12 +75,12 @@ bool ManagedActor::initialize() {
   if (_initialized) {
     return true;
   } else {
-    send_exit_message("initialization_failure");
+    publish_exit_message("initialization_failure");
     return false;
   }
 }
 
-void ManagedActor::send_exit_message(std::string exit_reason) {
+void ManagedActor::publish_exit_message(std::string exit_reason) {
   Publication exit_message = Publication(_node_id, _actor_type, _instance_id);
   exit_message.set_attr("category", "actor_lifetime");
   exit_message.set_attr("type", "actor_exit");
@@ -91,7 +91,7 @@ void ManagedActor::send_exit_message(std::string exit_reason) {
   PubSub::Router::get_instance().publish(std::move(exit_message));
 }
 
-void ManagedActor::send_creation_message() {
+void ManagedActor::publish_creation_message() {
   Publication create_message = Publication(_node_id, _actor_type, _instance_id);
   create_message.set_attr("category", "actor_lifetime");
   create_message.set_attr("type", "actor_creation");

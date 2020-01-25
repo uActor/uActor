@@ -29,7 +29,7 @@ TEST(ROUTERV3, base) {
   ASSERT_TRUE(result1);
   ASSERT_EQ(result1->subscription_id, master_subscription_id);
   ASSERT_STREQ(std::get<std::string_view>(
-                   result1->publication.get_attr("sender_node_id"))
+                   result1->publication.get_attr("publisher_node_id"))
                    .data(),
                "sender_node");
   ASSERT_STREQ(
@@ -55,7 +55,7 @@ TEST(ROUTERV3, alias) {
   ASSERT_TRUE(result1);
   ASSERT_EQ(result1->subscription_id, sub_id);
   ASSERT_STREQ(std::get<std::string_view>(
-                   result1->publication.get_attr("sender_node_id"))
+                   result1->publication.get_attr("publisher_node_id"))
                    .data(),
                "sender_node");
   ASSERT_STREQ(
@@ -79,7 +79,7 @@ TEST(ROUTERV3, integer_simple) {
   ASSERT_TRUE(result1);
   ASSERT_EQ(result1->subscription_id, sub_id);
   ASSERT_STREQ(std::get<std::string_view>(
-                   result1->publication.get_attr("sender_node_id"))
+                   result1->publication.get_attr("publisher_node_id"))
                    .data(),
                "sender_node");
   ASSERT_EQ(std::get<int32_t>(result1->publication.get_attr("test_number")), 1);
@@ -118,7 +118,7 @@ TEST(ROUTERV3, integer_advanced) {
   ASSERT_TRUE(result1);
   ASSERT_EQ(result1->subscription_id, sub_id);
   ASSERT_STREQ(std::get<std::string_view>(
-                   result1->publication.get_attr("sender_node_id"))
+                   result1->publication.get_attr("publisher_node_id"))
                    .data(),
                "sender_node");
   ASSERT_EQ(
@@ -141,7 +141,7 @@ TEST(ROUTERV3, float_simple) {
   ASSERT_TRUE(result1);
   ASSERT_EQ(result1->subscription_id, sub_id);
   ASSERT_STREQ(std::get<std::string_view>(
-                   result1->publication.get_attr("sender_node_id"))
+                   result1->publication.get_attr("publisher_node_id"))
                    .data(),
                "sender_node");
   ASSERT_EQ(std::get<float>(result1->publication.get_attr("test_number")),
@@ -182,7 +182,7 @@ TEST(ROUTERV3, float_advanced) {
   ASSERT_TRUE(result1);
   ASSERT_EQ(result1->subscription_id, sub_id);
   ASSERT_STREQ(std::get<std::string_view>(
-                   result1->publication.get_attr("sender_node_id"))
+                   result1->publication.get_attr("publisher_node_id"))
                    .data(),
                "sender_node");
   ASSERT_EQ(std::get<float>(result1->publication.get_attr("test_number_less")),
@@ -223,7 +223,7 @@ TEST(ROUTERV3, valid_optional) {
   auto result1 = r.receive(0);
   ASSERT_TRUE(result1);
   ASSERT_STREQ(std::get<std::string_view>(
-                   result1->publication.get_attr("sender_node_id"))
+                   result1->publication.get_attr("publisher_node_id"))
                    .data(),
                "sender_node");
   ASSERT_STREQ(
