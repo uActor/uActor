@@ -14,9 +14,29 @@ class LuaRuntime : public ActorRuntime<ManagedLuaActor, LuaRuntime> {
       : ActorRuntime<ManagedLuaActor, LuaRuntime>(router, node_id,
                                                   "lua_runtime", id) {
     state = create_lua_state();
+
+    Publication p{BoardFunctions::NODE_ID, "lua_runtime", "1"};
+    p.set_attr("type", "runtime_update");
+    p.set_attr("command", "register");
+    p.set_attr("actor_runtime_type", "lua");
+    p.set_attr("update_node_id", BoardFunctions::NODE_ID);
+    p.set_attr("update_actor_type", "lua_runtime");
+    p.set_attr("update_instance_id", "1");
+    p.set_attr("node_id", BoardFunctions::NODE_ID);
+    PubSub::Router::get_instance().publish(std::move(p));
   }
 
   ~LuaRuntime() {
+    Publication p{BoardFunctions::NODE_ID, "lua_runtime", "1"};
+    p.set_attr("type", "runtime_update");
+    p.set_attr("command", "deregister");
+    p.set_attr("actor_runtime_type", "lua");
+    p.set_attr("update_node_id", BoardFunctions::NODE_ID);
+    p.set_attr("update_actor_type", "lua_runtime");
+    p.set_attr("update_instance_id", "1");
+    p.set_attr("node_id", BoardFunctions::NODE_ID);
+    PubSub::Router::get_instance().publish(std::move(p));
+
     actors.clear();
     lua_close(state);
   }

@@ -31,6 +31,12 @@ menu "Board Configuration"
         default "node_1"
         help
             Unique Node ID
+
+    config NODE_LABELS
+        string "Node Labels"
+        default ""
+        help
+            key=value,key2=value2
 endmenu
 menu "Benchmark Configuration"
     config BENCHMARK_ENABLED

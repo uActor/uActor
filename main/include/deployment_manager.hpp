@@ -12,6 +12,7 @@
 
 #include "native_actor.hpp"
 #include "publication.hpp"
+#include "string_helper.hpp"
 #include "subscription.hpp"
 
 struct Deployment {
@@ -25,7 +26,10 @@ struct Deployment {
         actor_code(actor_code),
         actor_runtime_type(actor_runtime_type),
         lifetime_end(lifetime_end) {
-    process_raw_required_actors(raw_required_actors);
+    for (std::string_view required_actor :
+         StringHelper::string_split(raw_required_actors)) {
+      required_actors.emplace_back(required_actor);
+    }
   }
 
   std::string name;
@@ -41,24 +45,6 @@ struct Deployment {
   int32_t restarts = -1;
   uint32_t lifetime_end;
   bool active = false;
-
- private:
-  // Adapted string_view substring algorithm from
-  // https://www.bfilipek.com/2018/07/string-view-perf-followup.html
-  void process_raw_required_actors(std::string_view raw_required_actors) {
-    size_t pos = 0;
-    while (pos < raw_required_actors.size()) {
-      const auto end_pos = raw_required_actors.find_first_of(",", pos);
-      if (pos != end_pos) {
-        required_actors.emplace_back(
-            raw_required_actors.substr(pos, end_pos - pos));
-      }
-      if (end_pos == std::string_view::npos) {
-        break;
-      }
-      pos = end_pos + 1;
-    }
-  }
 };
 
 struct Runtime {
@@ -68,6 +54,11 @@ struct Runtime {
   std::string node_id;
   std::string actor_type;
   std::string instance_id;
+
+  bool operator==(const Runtime& other) {
+    return other.node_id == node_id && other.actor_type == actor_type &&
+           instance_id == instance_id;
+  }
 };
 
 class DeploymentManager : public NativeActor {
@@ -75,13 +66,18 @@ class DeploymentManager : public NativeActor {
   DeploymentManager(ManagedNativeActor* actor_wrapper, std::string_view node_id,
                     std::string_view actor_type, std::string_view instance_id)
       : NativeActor(actor_wrapper, node_id, actor_type, instance_id) {
-    subscribe(PubSub::Filter{PubSub::Constraint{"type", "deployment"}});
-    runtimes.try_emplace("lua");
-    runtimes.at("lua").push_back(Runtime(node_id, "lua_runtime", "1"));
-
-    std::string fake_node_actor =
-        std::string("fake.node_id.") + std::string(node_id);
-    increment_deployed_actor_type_count(fake_node_actor);
+    subscribe(
+        PubSub::Filter{PubSub::Constraint{"node_id", std::string(node_id)},
+                       PubSub::Constraint{"type", "label_update"}});
+    subscribe(
+        PubSub::Filter{PubSub::Constraint{"node_id", std::string(node_id)},
+                       PubSub::Constraint{"type", "label_get"}});
+    subscribe(
+        PubSub::Filter{PubSub::Constraint{"node_id", std::string(node_id)},
+                       PubSub::Constraint{"type", "unmanaged_actor_update"}});
+    subscribe(
+        PubSub::Filter{PubSub::Constraint{"node_id", std::string(node_id)},
+                       PubSub::Constraint{"type", "runtime_update"}});
   }
 
   void receive(const Publication& publication) {
@@ -91,6 +87,14 @@ class DeploymentManager : public NativeActor {
       receive_lifetime_event(publication);
     } else if (publication.get_str_attr("type") == "deployment_lifetime_end") {
       receive_ttl_timeout(publication);
+    } else if (publication.get_str_attr("type") == "label_update") {
+      receive_label_update(publication);
+    } else if (publication.get_str_attr("type") == "label_get") {
+      receive_label_get(publication);
+    } else if (publication.get_str_attr("type") == "unmanaged_actor_update") {
+      receive_unmanaged_actor_update(publication);
+    } else if (publication.get_str_attr("type") == "runtime_update") {
+      receive_runtime_update(publication);
     }
   }
 
@@ -100,12 +104,15 @@ class DeploymentManager : public NativeActor {
   std::unordered_map<std::string, Deployment> deployments;
   std::unordered_map<std::string, std::unordered_set<Deployment*>> dependencies;
   std::unordered_map<uint32_t, std::string> subscriptions;
+  std::unordered_map<std::string, std::string> labels;
+  uint32_t deployment_sub_id = 0;
 
   std::map<uint32_t, std::list<std::string>> ttl_end_times;
 
   std::unordered_map<std::string, uint32_t> deployed_actor_types;
 
   void receive_deployment(const Publication& publication) {
+    printf("Outer Deployment Message\n");
     if (auto runtime_it = runtimes.find(std::string(
             *publication.get_str_attr("deployment_actor_runtime_type")));
         runtime_it != runtimes.end()) {
@@ -117,6 +124,20 @@ class DeploymentManager : public NativeActor {
           publication.has_attr("deployment_actor_code") &&
           publication.has_attr("deployment_required_actors")) {
         printf("Deployment Message\n");
+
+        if (publication.has_attr("deployment_constraints")) {
+          std::string_view constraints =
+              *publication.get_str_attr("deployment_constraints");
+          for (std::string_view constraint :
+               StringHelper::string_split(constraints)) {
+            auto constraint_value = publication.get_str_attr(constraint);
+            auto label = labels.find(std::string(constraint));
+            if (!(constraint_value && label != labels.end() &&
+                  *constraint_value == label->second)) {
+              return;
+            }
+          }
+        }
 
         std::string_view name = *publication.get_str_attr("deployment_name");
         std::string_view actor_type =
@@ -215,6 +236,110 @@ class DeploymentManager : public NativeActor {
         }
       }
       ttl_end_times.erase(ttl_end_times.begin());
+    }
+  }
+
+  void receive_label_update(const Publication& pub) {
+    auto key = pub.get_str_attr("key");
+    auto value = pub.get_str_attr("value");
+    if (pub.get_str_attr("command") == "upsert" && key && value) {
+      labels.erase(std::string(*key));
+      labels.try_emplace(std::string(*key), std::string(*value));
+    } else if (pub.get_str_attr("command") == "delete" && key) {
+      labels.erase(std::string(*key));
+    }
+
+    std::list<PubSub::Constraint> constraints{
+        PubSub::Constraint{"type", "deployment"}};
+    for (const auto label : labels) {
+      constraints.emplace_back(label.first, label.second,
+                               PubSub::ConstraintPredicates::Predicate::EQ,
+                               true);
+    }
+    uint32_t new_deployment_sub_id =
+        subscribe(PubSub::Filter{std::move(constraints)});
+
+    if (new_deployment_sub_id != deployment_sub_id) {
+      if (deployment_sub_id > 0) {
+        unsubscribe(deployment_sub_id);
+      }
+      deployment_sub_id = new_deployment_sub_id;
+    }
+
+    printf("labels: %d\n", labels.size());
+
+    Publication node_label_updates;
+    node_label_updates.set_attr("type", "label_update_notification");
+    node_label_updates.set_attr("node_id", node_id());
+    publish(std::move(node_label_updates));
+  }
+
+  void receive_label_get(const Publication& pub) {
+    auto key = pub.get_str_attr("key");
+    auto publisher_node_id = pub.get_str_attr("publisher_node_id");
+    auto publisher_actor_type = pub.get_str_attr("publisher_actor_type");
+    auto publisher_instance_id = pub.get_str_attr("publisher_instance_id");
+
+    if (!key) {
+      return;
+    }
+    auto it = labels.find(std::string(*key));
+    if (it == labels.end()) {
+      return;
+    }
+
+    Publication response{};
+    response.set_attr("type", "label_response");
+    response.set_attr("key", *key);
+    response.set_attr("value", it->second);
+    response.set_attr("node_id", *publisher_node_id);
+    response.set_attr("instance_id", *publisher_instance_id);
+    response.set_attr("actor_type", *publisher_actor_type);
+    publish(std::move(response));
+  }
+
+  void receive_unmanaged_actor_update(const Publication& pub) {
+    if (pub.get_str_attr("command") == "register") {
+      increment_deployed_actor_type_count(
+          *pub.get_str_attr("update_actor_type"));
+    } else if (pub.get_str_attr("command") == "deregister") {
+      decrement_deployed_actor_type_count(
+          *pub.get_str_attr("update_actor_type"));
+    }
+  }
+
+  void receive_runtime_update(const Publication& pub) {
+    auto actor_runtime_type = pub.get_str_attr("actor_runtime_type");
+
+    auto update_node_id = pub.get_str_attr("update_node_id");
+    auto update_actor_type = pub.get_str_attr("update_actor_type");
+    auto update_instance_id = pub.get_str_attr("update_instance_id");
+
+    if (!(actor_runtime_type && update_node_id && update_actor_type &&
+          update_instance_id)) {
+      return;
+    }
+
+    if (pub.get_str_attr("command") == "register") {
+      Runtime rt =
+          Runtime(*update_node_id, *update_actor_type, *update_instance_id);
+      auto [it, inserted] = runtimes.try_emplace(
+          std::string(*actor_runtime_type), std::list<Runtime>{std::move(rt)});
+      if (!inserted) {
+        it->second.push_back(std::move(rt));
+      }
+    } else if (pub.get_str_attr("command") == "deregister") {
+      if (auto it = runtimes.find(std::string(*actor_runtime_type));
+          it != runtimes.end()) {
+        Runtime comparison =
+            Runtime(*update_node_id, *update_actor_type, *update_instance_id);
+        auto rt_it =
+            std::find(it->second.begin(), it->second.end(), comparison);
+        it->second.erase(rt_it);
+        if (it->second.size() == 0) {
+          runtimes.erase(it);
+        }
+      }
     }
   }
 

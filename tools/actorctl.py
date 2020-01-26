@@ -48,6 +48,8 @@ def main():
             for deployment in deployments:
                 _publish(sckt, deployment)
 
+        time.sleep(2)
+
         # res = sckt.recv(4, socket.MsgFlag.MSG_WAITALL)
         # size = struct.unpack("!i", res)[0]
         # data = sckt.recv(size)
@@ -73,7 +75,8 @@ def _parse_deployment(configuration_file_path, raw_deployment):
         raise SystemExit("Code file does not exist.")
     code = io.open(code_file, "r", encoding="utf-8").read()
 
-    return {
+
+    deployment = {
         "type" : "deployment",
         "sender_node_id": "actorctl_tmp_node",
         "sender_actor_type": "core.tools.actor_ctl",
@@ -86,6 +89,22 @@ def _parse_deployment(configuration_file_path, raw_deployment):
         "deployment_required_actors": required_actors,
         "deployment_ttl": raw_deployment["ttl"]
     }
+
+    deployment_constraints = [];
+    constraints = []
+    
+    if "constraints" in raw_deployment:
+        for constraint in raw_deployment["constraints"]:
+            for key, value in constraint.items():
+                deployment_constraints.append(key)
+                deployment[key] = value
+
+    if(len(deployment_constraints) > 0):
+        deployment["deployment_constraints"] = ",".join(deployment_constraints)
+    
+    print(deployment)
+    return deployment
+
 
 def _publish(sckt, publication):
     msg = msgpack.packb(publication)

@@ -97,7 +97,6 @@ struct Pin {
 
 class GPIOActor {
  public:
-
   static void os_task(void* args) {
     GPIOActor gpio = GPIOActor();
     xTaskCreate(gpio_queue_reader, "interrupt_reader_task", 2048,
@@ -115,7 +114,7 @@ class GPIOActor {
     int32_t io_num;
     while (true) {
       if (xQueueReceive(gpio->interrupt_queue, &io_num, portMAX_DELAY)) {
-        Publication p{BoardFunctions::NODE_ID, "gpio", "1"};
+        Publication p{BoardFunctions::NODE_ID, "core.io.gpio", "1"};
         p.set_attr("type", "gpio_update");
         p.set_attr("gpio_pin", io_num);
         p.set_attr("gpio_level",
@@ -131,7 +130,7 @@ class GPIOActor {
 
     PubSub::Filter primary_filter{
         PubSub::Constraint(std::string("node_id"), BoardFunctions::NODE_ID),
-        PubSub::Constraint(std::string("actor_type"), "gpio"),
+        PubSub::Constraint(std::string("actor_type"), "core.io.gpio"),
         PubSub::Constraint(std::string("?instance_id"), "1")};
     handle.subscribe(primary_filter);
 
@@ -144,9 +143,23 @@ class GPIOActor {
     pins[25].set_as_output(1);
     pins[5].set_as_input(true, false);
     pins[33].set_as_interrupt(interrupt_queue, true, false);
+
+    Publication p{BoardFunctions::NODE_ID, "core.io.gpio", "1"};
+    p.set_attr("type", "unmanaged_actor_update");
+    p.set_attr("command", "register");
+    p.set_attr("update_actor_type", "core.io.gpio");
+    p.set_attr("node_id", BoardFunctions::NODE_ID);
+    PubSub::Router::get_instance().publish(std::move(p));
   }
 
   ~GPIOActor() {
+    Publication p{BoardFunctions::NODE_ID, "core.io.gpio", "1"};
+    p.set_attr("type", "unmanaged_actor_update");
+    p.set_attr("command", "deregister");
+    p.set_attr("update_actor_type", "core.io.gpio");
+    p.set_attr("node_id", BoardFunctions::NODE_ID);
+    PubSub::Router::get_instance().publish(std::move(p));
+
     gpio_uninstall_isr_service();
     vQueueDelete(interrupt_queue);
   }
@@ -184,7 +197,7 @@ class GPIOActor {
     auto pin = p.get_int_attr("gpio_pin");
     if (pin && *pin < 40 && *pin >= 0) {
       if (pins[*pin].pin_state == Pin::PinState::INPUT) {
-        Publication p{BoardFunctions::NODE_ID, "gpio", "1"};
+        Publication p{BoardFunctions::NODE_ID, "core.io.gpio", "1"};
         p.set_attr("type", "gpio_value");
         p.set_attr("gpio_pin", *pin);
         p.set_attr("gpio_level", pins[*pin].read_level());

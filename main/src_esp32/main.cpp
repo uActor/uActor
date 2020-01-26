@@ -103,31 +103,16 @@ void app_main(void) {
 }
 #else
 
-const char receive_fun[] = R"(
-function receive(message)
-  if(foo == nil) then
-    foo = 0
-  else
-    foo = foo + 1
-  end
-  print(foo);
-  delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="delayed_publish"}, 2000);
-end
-)";
-
 void main_task(void*) {
   printf("InitialHeap: %d \n", xPortGetFreeHeapSize());
-  TaskHandle_t handle = {NULL};
-
-  xTaskCreatePinnedToCore(&GPIOActor::os_task, "GPIO_ACTOR", 4048, nullptr, 4,
-                          nullptr, 1);
-
   Params params = {.node_id = BoardFunctions::NODE_ID, .instance_id = "1"};
-  xTaskCreatePinnedToCore(&LuaRuntime::os_task, "LUA_RUNTIME", 6168, &params, 4,
-                          &handle, 1);
+
+  xTaskCreatePinnedToCore(&WifiStack::os_task, "WIFI_STACK", 6168, nullptr, 4,
+                          nullptr, 1);
   xTaskCreatePinnedToCore(&NativeRuntime::os_task, "BASIC_RUNTIME", 6168,
-                          &params, 4, &handle, 0);
-  vTaskDelay(1000 / portTICK_PERIOD_MS);
+                          &params, 4, nullptr, 0);
+
+  vTaskDelay(500 / portTICK_PERIOD_MS);
 
   Publication create_deployment_manager =
       Publication(BoardFunctions::NODE_ID, "root", "1");
@@ -141,28 +126,24 @@ void main_task(void*) {
   create_deployment_manager.set_attr("instance_id", "1");
   PubSub::Router::get_instance().publish(std::move(create_deployment_manager));
 
-  //vTaskDelay(1000 / portTICK_PERIOD_MS);
+  vTaskDelay(50 / portTICK_PERIOD_MS);
 
-  // char name[128];
-  // for (int i = 0; i < 8; i++) {
-  //   snprintf(name, sizeof(name), "%d", i + 1);
-  //   Publication create_actor =
-  //       Publication(BoardFunctions::NODE_ID, "root", "1");
-  //   create_actor.set_attr("type", "deployment");
-  //   create_actor.set_attr("deployment_name", "test.foo");
-  //   create_actor.set_attr("deployment_actor_code", receive_fun);
-  //   create_actor.set_attr("deployment_actor_type", "actor");
-  //   create_actor.set_attr("deployment_actor_version", "0.1");
-  //   create_actor.set_attr("deployment_actor_runtime_type", "lua");
-  //   create_actor.set_attr("deployment_ttl", 20000);
-  //   create_actor.set_attr("deployment_required_actors", "");
-  //   PubSub::Router::get_instance().publish(std::move(create_actor));
-  //   vTaskDelay(10 / portTICK_PERIOD_MS);
-  // }
+  for (const auto label : BoardFunctions::node_labels()) {
+    Publication label_update(BoardFunctions::NODE_ID, "root", "1");
+    label_update.set_attr("type", "label_update");
+    label_update.set_attr("command", "upsert");
+    label_update.set_attr("node_id", BoardFunctions::NODE_ID);
+    label_update.set_attr("key", label.first);
+    label_update.set_attr("value", label.second);
+    PubSub::Router::get_instance().publish(std::move(label_update));
+  }
 
-  xTaskCreatePinnedToCore(&WifiStack::os_task, "FORWARDER", 6168, nullptr, 4,
+  xTaskCreatePinnedToCore(&LuaRuntime::os_task, "LUA_RUNTIME", 6168, &params, 4,
                           nullptr, 1);
-  vTaskDelay(2000 / portTICK_PERIOD_MS);
+
+  xTaskCreatePinnedToCore(&GPIOActor::os_task, "GPIO_ACTOR", 4048, nullptr, 4,
+                          nullptr, 1);
+
   xTaskCreatePinnedToCore(&TCPForwarder::os_task, "TCP", 6168, nullptr, 4,
                           nullptr, 1);
 
