@@ -13,6 +13,7 @@ extern "C" {
 #include <esp_event.h>
 #include <esp_log.h>
 #include <esp_netif.h>
+#include <esp_sntp.h>
 #include <esp_system.h>
 #include <esp_wifi.h>
 #include <esp_wpa2.h>
@@ -38,6 +39,10 @@ class WifiStack {
     strncpy(reinterpret_cast<char*>(wifi_config.sta.password),
             CONFIG_WIFI_PASSWORD, sizeof(wifi_config.sta.password));
 #endif
+  }
+
+  static void sntp_synced(timeval* tv) {
+    testbed_log_integer("syncronized", 1, true);
   }
 
   void init(void) {
@@ -75,6 +80,13 @@ class WifiStack {
 
     ESP_ERROR_CHECK(esp_wifi_start());
 
+    sntp_setoperatingmode(SNTP_OPMODE_POLL);
+    sntp_setservername(0, "ntp1.lrz.de");
+    sntp_setservername(1, "ntp3.lrz.de");
+    sntp_set_sync_mode(SNTP_SYNC_MODE_IMMED);
+    sntp_set_time_sync_notification_cb(&sntp_synced);
+    sntp_init();
+
     ESP_LOGI(TAG, "wifi_init_sta finished.");
   }
 
@@ -107,6 +119,7 @@ class WifiStack {
       }
       ESP_LOGI(TAG, "connect to the AP fail");
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
+      sntp_restart();
       ip_event_got_ip_t* event =
           reinterpret_cast<ip_event_got_ip_t*>(event_data);
       //  ESP_LOGI(TAG, "got ip: " IPSTR, IP2STR(&event->ip_info.ip));

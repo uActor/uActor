@@ -10,6 +10,7 @@ extern "C" {
 
 #include <cstdio>
 #include <cstring>
+#include <ctime>
 #include <unordered_map>
 
 namespace testbed {
@@ -53,20 +54,34 @@ class TestBed {
 
   TestBed() : sequence_number(0) { semaphore = xSemaphoreCreateMutex(); }
 
-  void log_integer(const char* variable, int64_t value) {
-    log_generic(variable, "#[Testbed][i][%s][%lld][%lld]:[%lld]#\n", value);
+  void log_integer(const char* variable, int64_t value,
+                   bool runtime_value = false) {
+    if (runtime_value) {
+      log_generic(variable, "#[Testbed][rt-i][%s][%lld][%ld]:[%lld]#\n", value);
+    } else {
+      log_generic(variable, "#[Testbed][i][%s][%lld][%ld]:[%lld]#\n", value);
+    }
   }
 
-  void log_string(const char* variable, const char* value) {
-    log_generic(variable, "#[Testbed][s][%s][%lld][%lld]:[%s]#\n", value);
+  void log_string(const char* variable, const char* value,
+                  bool runtime_value = false) {
+    if (runtime_value) {
+      log_generic(variable, "#[Testbed][rt-s][%s][%lld][%ld]:[%s]#\n", value);
+    } else {
+      log_generic(variable, "#[Testbed][s][%s][%lld][%ld]:[%s]#\n", value);
+    }
   }
 
-  void log_double(const char* variable, double value) {
-    log_generic(variable, "#[Testbed][d][%s][%lld][%lld]:[%lf]#\n", value);
+  void log_double(const char* variable, double value,
+                  bool runtime_value = false) {
+    if (runtime_value) {
+      log_generic(variable, "#[Testbed][rt-d][%s][%lld][%ld]:[%lf]#\n", value);
+    } else {
+      log_generic(variable, "#[Testbed][d][%s][%lld][%ld]:[%lf]#\n", value);
+    }
   }
 
   void start_timekeeping(const char* variable) {
-    // std::string requires around 200kb of flash, therefore it is not used here
     char* var = reinterpret_cast<char*>(malloc(strlen(variable) + 1));
     strncpy(var, variable, strlen(variable) + 1);
     timekeeping.emplace(var, esp_timer_get_time());
@@ -76,7 +91,7 @@ class TestBed {
     uint64_t timestamp = esp_timer_get_time();
     auto timer = timekeeping.find(variable);
     if (timer != timekeeping.end()) {
-      log_integer(variable, timestamp - timer->second);
+      log_integer(variable, timestamp - timer->second, false);
       delete timer->first;
       timekeeping.erase(timer);
     }
@@ -86,7 +101,7 @@ class TestBed {
   void log_ipv4(const char* variable, esp_ip4_addr_t ip) {
     char buffer[16];
     snprintf(buffer, sizeof(buffer), "%d.%d.%d.%d", IP2STR(&ip));
-    log_generic(variable, "#[Testbed][ipv4][%s][%lld][%lld]:[%s]#\n", buffer);
+    log_generic(variable, "#[Testbed][rt-ipv4][%s][%lld][%ld]:[%s]#\n", buffer);
   }
 #endif
 
@@ -97,7 +112,8 @@ class TestBed {
 
   template <class T>
   void log_generic(const char* variable, const char* format, T value) {
-    uint64_t timestamp = esp_timer_get_time();
+    time_t timestamp;
+    time(&timestamp);
     if (xSemaphoreTake(semaphore, portMAX_DELAY)) {
       printf(format, variable, sequence_number++, timestamp, value);
       xSemaphoreGive(semaphore);
@@ -106,16 +122,19 @@ class TestBed {
 };
 }  // namespace testbed
 
-void testbed_log_integer(const char* variable, uint64_t value) {
-  testbed::TestBed::get_instance().log_integer(variable, value);
+void testbed_log_integer(const char* variable, uint64_t value,
+                         bool runtime_value) {
+  testbed::TestBed::get_instance().log_integer(variable, value, runtime_value);
 }
 
-void testbed_log_string(const char* variable, const char* value) {
-  testbed::TestBed::get_instance().log_string(variable, value);
+void testbed_log_string(const char* variable, const char* value,
+                        bool runtime_value) {
+  testbed::TestBed::get_instance().log_string(variable, value, runtime_value);
 }
 
-void testbed_log_double(const char* variable, double value) {
-  testbed::TestBed::get_instance().log_double(variable, value);
+void testbed_log_double(const char* variable, double value,
+                        bool runtime_value) {
+  testbed::TestBed::get_instance().log_double(variable, value, runtime_value);
 }
 
 void testbed_start_timekeeping(const char* variable) {

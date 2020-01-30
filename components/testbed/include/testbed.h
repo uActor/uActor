@@ -13,9 +13,9 @@ extern "C" {
 #include <esp_netif.h>
 #endif
 
-void testbed_log_integer(const char*, uint64_t);
-void testbed_log_double(const char*, double);
-void testbed_log_string(const char*, const char*);
+void testbed_log_integer(const char*, uint64_t, bool runtime_value = false);
+void testbed_log_double(const char*, double, bool runtime_value = false);
+void testbed_log_string(const char*, const char*, bool runtime_value = false);
 
 #ifdef CONFIG_TESTBED_NETWORK_UTILS
 void testbed_log_ipv4_address(esp_ip4_addr_t ip);
@@ -28,14 +28,6 @@ void testbed_stop_timekeeping(const char*);
 
 #ifdef __cplusplus
 }
-#else
-// As there unfortunately isn't a C++ alternative to this yet, this is not
-// discussed in the documentation and might change in the future.
-#define testbed_log(var, val) \
-  _Generic((val), \
-  int: testbed_log_integer, \
-  double: testbed_log_double, \
-  char*: testbed_log_string)(var, val)
 #endif
 
 #endif  //  COMPONENTS_TESTBED_INCLUDE_TESTBED_H_
