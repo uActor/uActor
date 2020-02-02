@@ -12,6 +12,8 @@ struct BoardFunctions {
   static void exit_thread();
   static const char* NODE_ID;
 
+  static int32_t epoch;
+
   static std::list<std::pair<std::string, std::string>> node_labels();
 };
 

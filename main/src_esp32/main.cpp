@@ -112,7 +112,17 @@ void main_task(void*) {
   xTaskCreatePinnedToCore(&NativeRuntime::os_task, "BASIC_RUNTIME", 6168,
                           &params, 4, nullptr, 0);
 
-  vTaskDelay(500 / portTICK_PERIOD_MS);
+  vTaskDelay(10000 / portTICK_PERIOD_MS);
+
+  time_t t = 0;
+  time(&t);
+  if (t > 1577836800) {
+    t -= 1577836800;
+    BoardFunctions::epoch = t;
+    printf("epoch %ld\n", t);
+  } else {
+    printf("Epoch not set\n");
+  }
 
   Publication create_deployment_manager =
       Publication(BoardFunctions::NODE_ID, "root", "1");
@@ -125,6 +135,18 @@ void main_task(void*) {
   create_deployment_manager.set_attr("actor_type", "native_runtime");
   create_deployment_manager.set_attr("instance_id", "1");
   PubSub::Router::get_instance().publish(std::move(create_deployment_manager));
+
+  Publication create_topology_manager =
+      Publication(BoardFunctions::NODE_ID, "root", "1");
+  create_topology_manager.set_attr("command", "spawn_native_actor");
+  create_topology_manager.set_attr("spawn_code", "");
+  create_topology_manager.set_attr("spawn_node_id", BoardFunctions::NODE_ID);
+  create_topology_manager.set_attr("spawn_actor_type", "topology_manager");
+  create_topology_manager.set_attr("spawn_instance_id", "1");
+  create_topology_manager.set_attr("node_id", BoardFunctions::NODE_ID);
+  create_topology_manager.set_attr("actor_type", "native_runtime");
+  create_topology_manager.set_attr("instance_id", "1");
+  PubSub::Router::get_instance().publish(std::move(create_topology_manager));
 
   vTaskDelay(50 / portTICK_PERIOD_MS);
 

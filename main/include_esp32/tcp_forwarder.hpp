@@ -23,6 +23,7 @@ extern "C" {
 #include <cmath>
 #include <cstring>
 #include <map>
+#include <mutex>
 #include <set>
 #include <string>
 #include <utility>
@@ -45,7 +46,9 @@ class TCPForwarder : public ForwarderSubscriptionAPI {
     forwarder_subscription_id = handle.subscribe(primary_filter);
 
     PubSub::Filter peer_announcements{
-        PubSub::Constraint(std::string("type"), "ip_peer_announcement")};
+        PubSub::Constraint(std::string("type"), "tcp_client_connect"),
+        PubSub::Constraint(std::string("node_id"), BoardFunctions::NODE_ID),
+    };
     peer_announcement_subscription_id = handle.subscribe(peer_announcements);
   }
 
@@ -72,17 +75,18 @@ class TCPForwarder : public ForwarderSubscriptionAPI {
   }
 
   void receive(PubSub::MatchedPublication&& m) {
+    std::unique_lock remote_lock(remote_mtx);
+
     if (m.subscription_id == forwarder_subscription_id) {
       ESP_LOGW(TAG, "Forwarder received unhandled message!");
       return;
     }
 
     if (m.subscription_id == peer_announcement_subscription_id) {
-      if (m.publication.has_attr("type") &&
-          std::get<std::string_view>(m.publication.get_attr("type")) ==
-              "ip_peer_announcement") {
-        if (std::get<std::string_view>(m.publication.get_attr("peer_node_id")) <
-            std::string_view(BoardFunctions::NODE_ID)) {
+      if (m.publication.get_str_attr("type") == "tcp_client_connect" &&
+          m.publication.get_str_attr("node_id") == BoardFunctions::NODE_ID) {
+        if (m.publication.get_str_attr("peer_node_id") !=
+            BoardFunctions::NODE_ID) {
           std::string peer_ip = std::string(
               std::get<std::string_view>(m.publication.get_attr("peer_ip")));
           uint32_t peer_port =
@@ -92,19 +96,32 @@ class TCPForwarder : public ForwarderSubscriptionAPI {
       }
     }
 
+    if (m.publication.get_str_attr("publisher_node_id") ==
+            BoardFunctions::NODE_ID &&
+        !m.publication.has_attr("_internal_sequence_number")) {
+      int32_t seq = static_cast<int32_t>(RemoteConnection::sequence_number++);
+      m.publication.set_attr("_internal_sequence_number", seq);
+      m.publication.set_attr("_internal_epoch", BoardFunctions::epoch);
+    }
+
     auto receivers = subscription_mapping.find(m.subscription_id);
     if (receivers != subscription_mapping.end()) {
-      for (const uint32_t subscriber_id : receivers->second) {
-        auto& remote = remotes.at(subscriber_id);
-        if (remote.sock > 0) {
+      auto sub_ids = receivers->second;
+      for (uint32_t subscriber_id : sub_ids) {
+        auto remote_it = remotes.find(subscriber_id);
+        if (remote_it != remotes.end() && remote_it->second.sock > 0) {
+          auto& remote = remote_it->second;
           if (!(m.publication.has_attr("_internal_forwarded_by") &&
-                std::get<std::string_view>(m.publication.get_attr(
-                    "_internal_forwarded_by")) == remote.partner_node_id)) {
+                m.publication.get_str_attr("_internal_forwarded_by")
+                        ->find(remote.partner_node_id) != std::string::npos)) {
             std::string serialized = m.publication.to_msg_pack();
             int size = htonl(serialized.size());
-            if (write(remote.sock, 4, reinterpret_cast<char*>(&size))) return;
-            write(remote.sock, m.publication.to_msg_pack().size(),
-                  serialized.c_str());
+            if (write(remote.sock, 4, reinterpret_cast<char*>(&size)) ||
+                write(remote.sock, m.publication.to_msg_pack().size(),
+                      serialized.c_str())) {
+              remotes.erase(remote_it);
+              continue;
+            }
           }
         }
       }
@@ -141,6 +158,8 @@ class TCPForwarder : public ForwarderSubscriptionAPI {
   uint32_t next_local_id = 0;
   std::map<uint32_t, RemoteConnection> remotes;
   std::map<uint32_t, std::set<uint32_t>> subscription_mapping;
+
+  std::mutex remote_mtx;
 
   int listen_sock;
 
@@ -195,15 +214,22 @@ class TCPForwarder : public ForwarderSubscriptionAPI {
     }
 
     while (1) {
+      std::unique_lock remote_lock(remote_mtx);
       FD_ZERO(&sockets_to_read);
       FD_SET(listen_sock, &sockets_to_read);
+      int max_val = listen_sock;
       for (const auto& remote_pair : remotes) {
         FD_SET(remote_pair.second.sock, &sockets_to_read);
+        max_val = std::max(max_val, remote_pair.second.sock);
       }
       timeval timeout;  // We need to set a timeout to allow for new connections
       timeout.tv_sec = 5;  // to be added by other threads
+
+      remote_lock.unlock();
       int num_ready =
-          select(FD_SETSIZE, &sockets_to_read, NULL, NULL, &timeout);
+          select(max_val + 1, &sockets_to_read, NULL, NULL, &timeout);
+      remote_lock.lock();
+
       if (num_ready > 0) {
         for (const auto& remote_pair : remotes) {
           RemoteConnection& remote =
@@ -251,6 +277,9 @@ class TCPForwarder : public ForwarderSubscriptionAPI {
             remotes.try_emplace(remote_id, remote_id, sock, this);
         inserted) {
       remote_it->second.send_routing_info();
+      int nodelay = 1;
+      setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, static_cast<void*>(&nodelay),
+                 sizeof(nodelay));
     }
   }
 
@@ -271,6 +300,10 @@ class TCPForwarder : public ForwarderSubscriptionAPI {
             remotes.try_emplace(remote_id, remote_id, sock_id, this);
         inserted) {
       remote_it->second.send_routing_info();
+
+      int nodelay = 1;
+      setsockopt(sock_id, IPPROTO_TCP, TCP_NODELAY,
+                 static_cast<void*>(&nodelay), sizeof(nodelay));
     }
 
     char addr_str[128];

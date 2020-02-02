@@ -7,6 +7,7 @@
 #include "deployment_manager.hpp"
 #include "managed_actor.hpp"
 #include "native_actor.hpp"
+#include "topology_manager.hpp"
 
 class ManagedNativeActor : public ManagedActor {
  public:
@@ -18,6 +19,9 @@ class ManagedNativeActor : public ManagedActor {
     if (std::string_view("deployment_manager") == actor_type) {
       actor = std::make_unique<DeploymentManager>(this, node_id, actor_type,
                                                   instance_id);
+    } else if (std::string_view("topology_manager") == actor_type) {
+      actor = std::make_unique<TopologyManager>(this, node_id, actor_type,
+                                                instance_id);
     }
   }
 

@@ -122,12 +122,20 @@ class ManagedLuaActor : public ManagedActor {
     return 0;
   }
 
+  static int now_wrapper(lua_State* state) {
+    ManagedLuaActor* actor = reinterpret_cast<ManagedLuaActor*>(
+        lua_touserdata(state, lua_upvalueindex(1)));
+    lua_pushinteger(state, BoardFunctions::timestamp());
+    return 1;
+  }
+
   static constexpr luaL_Reg core[] = {
       {"publish", &publish_wrapper},
       {"delayed_publish", &delayed_publish_wrapper},
       {"deferred_block_for", &deferred_block_for_wrapper},
       {"subscribe", &subscribe_wrapper},
       {"unsubscribe", &unsubscribe_wrapper},
+      {"now", &now_wrapper},
       {NULL, NULL}};
 
   bool createActorEnvironment(const char* receive_function) {

@@ -18,6 +18,8 @@ void BoardFunctions::exit_thread() { vTaskDelete(nullptr); }
 
 const char* BoardFunctions::NODE_ID = CONFIG_NODE_ID;
 
+int32_t BoardFunctions::epoch = 0;
+
 std::list<std::pair<std::string, std::string>> BoardFunctions::node_labels() {
   std::string_view raw_labels = std::string_view(CONFIG_NODE_LABELS);
   std::list<std::pair<std::string, std::string>> labels;

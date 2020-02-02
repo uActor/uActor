@@ -1,0 +1,9 @@
+type: deployment
+name: xyz.hetzel.deployment.multinode_counter
+ttl:  20000
+actor_type:  example.multinode_counter
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "multinode_counter.lua"
+required_actors:
+  - "core.io.gpio"

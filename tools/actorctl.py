@@ -78,14 +78,16 @@ def _parse_deployment(configuration_file_path, raw_deployment):
 
     deployment = {
         "type" : "deployment",
-        "sender_node_id": "actorctl_tmp_node",
-        "sender_actor_type": "core.tools.actor_ctl",
-        "sender_instance_id": "1",
+        "publisher_node_id": "actorctl_tmp_node",
+        "publisher_actor_type": "core.tools.actor_ctl",
+        "publisher_instance_id": "1",
         "deployment_name": raw_deployment["name"],
         "deployment_actor_type": raw_deployment["actor_type"],
         "deployment_actor_runtime_type": raw_deployment["actor_runtime_type"],
         "deployment_actor_version": raw_deployment["actor_version"],
         "deployment_actor_code": code,
+        "_internal_sequence_number": int(time.time()),
+        "_internal_epoch": 0,
         "deployment_required_actors": required_actors,
         "deployment_ttl": raw_deployment["ttl"]
     }

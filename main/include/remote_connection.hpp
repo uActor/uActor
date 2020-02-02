@@ -16,7 +16,9 @@ extern "C" {
 #include <cstring>
 #include <list>
 #include <map>
+#include <mutex>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -49,6 +51,14 @@ class RemoteConnection {
       handle->remove_subscription(local_id, subscription_id);
     }
     subscription_ids.clear();
+    if (!partner_node_id.empty()) {
+      Publication update{BoardFunctions::NODE_ID, "remote_connection",
+                         std::to_string(local_id)};
+      update.set_attr("type", "peer_update");
+      update.set_attr("update_type", "peer_removed");
+      update.set_attr("peer_node_id", partner_node_id);
+      PubSub::Router::get_instance().publish(std::move(update));
+    }
   }
 
   enum ProcessingState {
@@ -62,6 +72,9 @@ class RemoteConnection {
                   std::to_string(local_id)};
     p.set_attr("type", "subscription_update");
     p.set_attr("subscription_node_id", BoardFunctions::NODE_ID);
+    p.set_attr("_internal_sequence_number",
+               static_cast<int32_t>(RemoteConnection::sequence_number++));
+    p.set_attr("_internal_epoch", static_cast<int32_t>(BoardFunctions::epoch));
 
     std::string serialized = p.to_msg_pack();
     uint32_t size = htonl(serialized.size());
@@ -73,6 +86,8 @@ class RemoteConnection {
     uint32_t bytes_remaining = len;
     while (bytes_remaining > 0) {
       if (state == empty) {
+        // testbed_start_timekeeping((std::string("receive") +
+        // std::to_string(local_id)).data());
         if (bytes_remaining >= 4) {
           publicaton_full_size = ntohl(
               *reinterpret_cast<uint32_t*>(data + (len - bytes_remaining)));
@@ -115,17 +130,51 @@ class RemoteConnection {
         bytes_remaining -= to_move;
         publicaton_remaining_bytes -= to_move;
         if (publicaton_remaining_bytes == 0) {
+          // testbed_stop_timekeeping((std::string("receive") +
+          // std::to_string(local_id)).data());
           auto p = Publication::from_msg_pack(std::string_view(
               publication_buffer.data(), publicaton_full_size));
-          if (p) {
-            if (p->has_attr("type") && std::get<std::string_view>(p->get_attr(
-                                           "type")) == "subscription_update") {
-              update_subscriptions(std::move(*p));
+          if (p && p->has_attr("publisher_node_id") &&
+              p->get_str_attr("publisher_node_id") != BoardFunctions::NODE_ID) {
+            auto publisher_node_id = p->get_str_attr("publisher_node_id");
+            auto sequence_number = p->get_int_attr("_internal_sequence_number");
+            auto epoch_number = p->get_int_attr("_internal_epoch");
+
+            std::unique_lock lck(mtx);
+            auto sequence_info_it =
+                sequence_infos.find(std::string(*publisher_node_id));
+            if (sequence_info_it == sequence_infos.end() ||
+                (epoch_number && sequence_number &&
+                 (*epoch_number > sequence_info_it->second.epoch ||
+                  (*epoch_number == sequence_info_it->second.epoch &&
+                   *sequence_number >
+                       sequence_info_it->second.sequence_number)))) {
+              auto new_sequence_info = SequenceInfo(
+                  *sequence_number, *epoch_number, BoardFunctions::timestamp());
+              if (sequence_info_it != sequence_infos.end()) {
+                sequence_info_it->second = std::move(new_sequence_info);
+              } else {
+                sequence_infos.try_emplace(std::string(*publisher_node_id),
+                                           std::move(new_sequence_info));
+              }
+              lck.unlock();
+
+              if (p->get_str_attr("type") == "subscription_update") {
+                update_subscriptions(std::move(*p));
+              } else {
+                if (p->has_attr("_internal_forwarded_by")) {
+                  p->set_attr(
+                      "_internal_forwarded_by",
+                      std::string(*p->get_str_attr("_internal_forwarded_by")) +
+                          "," + partner_node_id);
+                } else {
+                  p->set_attr("_internal_forwarded_by", partner_node_id);
+                }
+                PubSub::Router::get_instance().publish(std::move(*p));
+              }
+
             } else {
-              p->set_attr("_internal_forwarded_by",
-                          partner_node_id);  // TODO(raphaelhetzel) deal with
-                                             // cycles with length > 1
-              PubSub::Router::get_instance().publish(std::move(*p));
+              printf("message dropped %s\n", publisher_node_id->data());
             }
           }
           publication_buffer.clear();
@@ -138,7 +187,21 @@ class RemoteConnection {
     }
   }
 
+  static std::atomic<uint32_t> sequence_number;
+
  private:
+  struct SequenceInfo {
+    SequenceInfo(uint32_t sequence_number, uint32_t epoch,
+                 uint32_t last_timestamp)
+        : sequence_number(sequence_number),
+          epoch(epoch),
+          last_timestamp(last_timestamp) {}
+
+    uint32_t sequence_number;
+    uint32_t epoch;
+    uint32_t last_timestamp;
+  };
+
   // TCP Related
   // TODO(raphaelhetzel) potentially move this to a seperate
   // wrapper once we have more types of forwarders
@@ -164,15 +227,28 @@ class RemoteConnection {
   uint32_t publicaton_full_size{0};
   std::vector<char> publication_buffer;
 
+  static std::unordered_map<std::string, SequenceInfo> sequence_infos;
+  static std::mutex mtx;
+
   void update_subscriptions(Publication&& p) {
     for (const auto& subscription_id : subscription_ids) {
       handle->remove_subscription(local_id, subscription_id);
     }
     subscription_ids.clear();
-    partner_node_id = std::string(
-        std::get<std::string_view>(p.get_attr("subscription_node_id")));
     subscription_ids.push_back(
         handle->add_subscription(local_id, PubSub::Filter{}));
+
+    std::string_view new_partner_id =
+        std::get<std::string_view>(p.get_attr("subscription_node_id"));
+    if (partner_node_id.empty()) {
+      Publication update{BoardFunctions::NODE_ID, "remote_connection",
+                         std::to_string(local_id)};
+      update.set_attr("type", "peer_update");
+      update.set_attr("update_type", "peer_added");
+      update.set_attr("peer_node_id", new_partner_id);
+      PubSub::Router::get_instance().publish(std::move(update));
+    }
+    partner_node_id = std::string(new_partner_id);
   }
   friend TCPForwarder;
 };

@@ -21,6 +21,7 @@ class NativeActor {
   void delayed_publish(Publication&& publication, uint32_t delay);
   uint32_t subscribe(PubSub::Filter&& filter);
   void unsubscribe(uint32_t subscription_id);
+  void deffered_block_for(PubSub::Filter&& filter, uint32_t timeout);
   uint32_t now();
 
   std::string_view node_id() { return std::string_view(_node_id); }
