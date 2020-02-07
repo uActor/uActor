@@ -271,7 +271,6 @@ class RemoteConnection {
       std::unordered_set<uint32_t> old_subscriptions =
           std::unordered_set<uint32_t>(subscription_ids.begin(),
                                        subscription_ids.end());
-      printf("received external subs\n");
       for (auto serialized : StringHelper::string_split(
                *p.get_str_attr("serialized_subscriptions"), "&")) {
         auto deserialized = PubSub::Filter::deserialize(serialized);
