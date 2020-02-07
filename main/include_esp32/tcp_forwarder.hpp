@@ -50,6 +50,12 @@ class TCPForwarder : public ForwarderSubscriptionAPI {
         PubSub::Constraint(std::string("node_id"), BoardFunctions::NODE_ID),
     };
     peer_announcement_subscription_id = handle.subscribe(peer_announcements);
+
+    PubSub::Filter subscription_update{
+        PubSub::Constraint(std::string("type"), "local_subscription_update"),
+        PubSub::Constraint(std::string("node_id"), BoardFunctions::NODE_ID),
+    };
+    subscription_update_subscription_id = handle.subscribe(subscription_update);
   }
 
   static TCPForwarder& get_instance() {
@@ -80,6 +86,16 @@ class TCPForwarder : public ForwarderSubscriptionAPI {
     if (m.subscription_id == forwarder_subscription_id) {
       ESP_LOGW(TAG, "Forwarder received unhandled message!");
       return;
+    }
+
+    if (m.subscription_id == subscription_update_subscription_id) {
+      if (m.publication.get_str_attr("type") == "local_subscription_update" &&
+          m.publication.get_str_attr("node_id") == BoardFunctions::NODE_ID) {
+        for (auto& receiver : remotes) {
+          receiver.second.handle_subscription_update_notification(
+              m.publication);
+        }
+      }
     }
 
     if (m.subscription_id == peer_announcement_subscription_id) {
@@ -128,8 +144,9 @@ class TCPForwarder : public ForwarderSubscriptionAPI {
     }
   }
 
-  uint32_t add_subscription(uint32_t local_id, PubSub::Filter&& filter) {
-    uint32_t sub_id = handle.subscribe(std::move(filter));
+  uint32_t add_subscription(uint32_t local_id, PubSub::Filter&& filter,
+                            std::string_view node_id) {
+    uint32_t sub_id = handle.subscribe(std::move(filter), node_id);
     auto entry = subscription_mapping.find(sub_id);
     if (entry != subscription_mapping.end()) {
       entry->second.insert(local_id);
@@ -139,7 +156,8 @@ class TCPForwarder : public ForwarderSubscriptionAPI {
     return sub_id;
   }
 
-  void remove_subscription(uint32_t local_id, uint32_t sub_id) {
+  void remove_subscription(uint32_t local_id, uint32_t sub_id,
+                           std::string_view node_id) {
     auto it = subscription_mapping.find(sub_id);
     if (it != subscription_mapping.end()) {
       it->second.erase(local_id);
@@ -153,6 +171,7 @@ class TCPForwarder : public ForwarderSubscriptionAPI {
  private:
   int forwarder_subscription_id;
   int peer_announcement_subscription_id;
+  int subscription_update_subscription_id;
   PubSub::SubscriptionHandle handle;
 
   uint32_t next_local_id = 0;

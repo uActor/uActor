@@ -105,6 +105,10 @@ void app_main(void) {
 
 void main_task(void*) {
   printf("InitialHeap: %d \n", xPortGetFreeHeapSize());
+
+  xTaskCreatePinnedToCore(&PubSub::Router::os_task, "Router", 5000, nullptr, 4,
+                          nullptr, 0);
+
   Params params = {.node_id = BoardFunctions::NODE_ID, .instance_id = "1"};
 
   xTaskCreatePinnedToCore(&WifiStack::os_task, "WIFI_STACK", 6168, nullptr, 4,
@@ -112,10 +116,12 @@ void main_task(void*) {
   xTaskCreatePinnedToCore(&NativeRuntime::os_task, "BASIC_RUNTIME", 6168,
                           &params, 4, nullptr, 0);
 
-  vTaskDelay(10000 / portTICK_PERIOD_MS);
-
   time_t t = 0;
-  time(&t);
+  while (t < 1577836800) {
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    time(&t);
+  }
+
   if (t > 1577836800) {
     t -= 1577836800;
     BoardFunctions::epoch = t;
@@ -163,7 +169,7 @@ void main_task(void*) {
   xTaskCreatePinnedToCore(&LuaRuntime::os_task, "LUA_RUNTIME", 6168, &params, 4,
                           nullptr, 1);
 
-  xTaskCreatePinnedToCore(&GPIOActor::os_task, "GPIO_ACTOR", 4048, nullptr, 4,
+  xTaskCreatePinnedToCore(&GPIOActor::os_task, "GPIO_ACTOR", 6048, nullptr, 4,
                           nullptr, 1);
 
   xTaskCreatePinnedToCore(&TCPForwarder::os_task, "TCP", 6168, nullptr, 4,

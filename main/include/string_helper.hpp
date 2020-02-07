@@ -8,11 +8,12 @@
 struct StringHelper {
   // Adapted string_view substring algorithm from
   // https://www.bfilipek.com/2018/07/string-view-perf-followup.html
-  static std::list<std::string_view> string_split(std::string_view input) {
+  static std::list<std::string_view> string_split(std::string_view input,
+                                                  const char* split = ",") {
     size_t pos = 0;
     std::list<std::string_view> substrings;
     while (pos < input.size()) {
-      const auto end_pos = input.find_first_of(",", pos);
+      const auto end_pos = input.find_first_of(split, pos);
       if (pos != end_pos) {
         substrings.emplace_back(input.substr(pos, end_pos - pos));
       }

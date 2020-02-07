@@ -18,7 +18,9 @@ extern "C" {
 #include <map>
 #include <mutex>
 #include <string>
+#include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -28,9 +30,10 @@ extern "C" {
 class TCPForwarder;
 
 struct ForwarderSubscriptionAPI {
-  virtual uint32_t add_subscription(uint32_t local_id,
-                                    PubSub::Filter&& filter) = 0;
-  virtual void remove_subscription(uint32_t local_id, uint32_t sub_id) = 0;
+  virtual uint32_t add_subscription(uint32_t local_id, PubSub::Filter&& filter,
+                                    std::string_view node_id) = 0;
+  virtual void remove_subscription(uint32_t local_id, uint32_t sub_id,
+                                   std::string_view node_id) = 0;
   virtual bool write(int sock, int len, const char* message) = 0;
   virtual ~ForwarderSubscriptionAPI() {}
 };
@@ -48,7 +51,7 @@ class RemoteConnection {
 
   ~RemoteConnection() {
     for (const auto& subscription_id : subscription_ids) {
-      handle->remove_subscription(local_id, subscription_id);
+      handle->remove_subscription(local_id, subscription_id, std::string(""));
     }
     subscription_ids.clear();
     if (!partner_node_id.empty()) {
@@ -67,14 +70,26 @@ class RemoteConnection {
     waiting_for_data,
   };
 
+  void handle_subscription_update_notification(
+      const Publication& update_message) {
+    if (update_message.get_str_attr("node_id") == BoardFunctions::NODE_ID) {
+      send_routing_info();
+    }
+  }
+
   void send_routing_info() {
     Publication p{BoardFunctions::NODE_ID, "remote_connection",
                   std::to_string(local_id)};
     p.set_attr("type", "subscription_update");
-    p.set_attr("subscription_node_id", BoardFunctions::NODE_ID);
+    p.set_attr("subscription_node_id", std::string(BoardFunctions::NODE_ID));
     p.set_attr("_internal_sequence_number",
                static_cast<int32_t>(RemoteConnection::sequence_number++));
     p.set_attr("_internal_epoch", static_cast<int32_t>(BoardFunctions::epoch));
+    if (!partner_node_id.empty()) {
+      p.set_attr(
+          "serialized_subscriptions",
+          PubSub::Router::get_instance().subscriptions_for(partner_node_id));
+    }
 
     std::string serialized = p.to_msg_pack();
     uint32_t size = htonl(serialized.size());
@@ -231,15 +246,8 @@ class RemoteConnection {
   static std::mutex mtx;
 
   void update_subscriptions(Publication&& p) {
-    for (const auto& subscription_id : subscription_ids) {
-      handle->remove_subscription(local_id, subscription_id);
-    }
-    subscription_ids.clear();
-    subscription_ids.push_back(
-        handle->add_subscription(local_id, PubSub::Filter{}));
+    std::string_view new_partner_id = *p.get_str_attr("subscription_node_id");
 
-    std::string_view new_partner_id =
-        std::get<std::string_view>(p.get_attr("subscription_node_id"));
     if (partner_node_id.empty()) {
       Publication update{BoardFunctions::NODE_ID, "remote_connection",
                          std::to_string(local_id)};
@@ -247,8 +255,40 @@ class RemoteConnection {
       update.set_attr("update_type", "peer_added");
       update.set_attr("peer_node_id", new_partner_id);
       PubSub::Router::get_instance().publish(std::move(update));
+
+      partner_node_id = std::string(new_partner_id);
+
+      // TODO(raphaelhetzel) We could reduce traffic a bit by delaying one of
+      // the parties.
+      send_routing_info();
+
+      // Flooding
+      // subscription_ids.push_back(handle->add_subscription(local_id,
+      // PubSub::Filter{}, std::string_view(partner_node_id)));
     }
-    partner_node_id = std::string(new_partner_id);
+
+    if (p.has_attr("serialized_subscriptions")) {
+      std::unordered_set<uint32_t> old_subscriptions =
+          std::unordered_set<uint32_t>(subscription_ids.begin(),
+                                       subscription_ids.end());
+      printf("received external subs\n");
+      for (auto serialized : StringHelper::string_split(
+               *p.get_str_attr("serialized_subscriptions"), "&")) {
+        auto deserialized = PubSub::Filter::deserialize(serialized);
+        if (deserialized) {
+          uint32_t sub_id =
+              handle->add_subscription(local_id, std::move(*deserialized),
+                                       std::string_view(partner_node_id));
+          if (old_subscriptions.erase(sub_id) == 0) {
+            subscription_ids.push_back(sub_id);
+          }
+        }
+      }
+      for (auto subscription_id : old_subscriptions) {
+        handle->remove_subscription(local_id, subscription_id,
+                                    std::string_view(partner_node_id));
+      }
+    }
   }
   friend TCPForwarder;
 };
