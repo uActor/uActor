@@ -12,6 +12,7 @@ extern "C" {
 #include <cstring>
 #include <ctime>
 #include <unordered_map>
+#include <mutex>
 
 namespace testbed {
 struct CStrHasher {
@@ -82,6 +83,7 @@ class TestBed {
   }
 
   void start_timekeeping(const char* variable) {
+    std::unique_lock lck(mtx);
     char* var = reinterpret_cast<char*>(malloc(strlen(variable) + 1));
     strncpy(var, variable, strlen(variable) + 1);
     timekeeping.emplace(var, esp_timer_get_time());
@@ -89,6 +91,7 @@ class TestBed {
 
   void stop_timekeeping(const char* variable) {
     uint64_t timestamp = esp_timer_get_time();
+    std::unique_lock lck(mtx);
     auto timer = timekeeping.find(variable);
     if (timer != timekeeping.end()) {
       log_integer(variable, timestamp - timer->second, false);
@@ -109,6 +112,7 @@ class TestBed {
   uint64_t sequence_number;
   SemaphoreHandle_t semaphore;
   std::unordered_map<const char*, uint64_t, CStrHasher, CStrEquals> timekeeping;
+  std::mutex mtx;
 
   template <class T>
   void log_generic(const char* variable, const char* format, T value) {
