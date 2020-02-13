@@ -66,7 +66,7 @@ TEST(RuntimeSystem, pingPong) {
   ping.set_attr("message", "ping");
   PubSub::Router::get_instance().publish(std::move(ping));
 
-  auto result = root_handle.receive(100);
+  auto result = root_handle.receive(1000);
   ASSERT_TRUE(result);
   ASSERT_STREQ(
       std::get<std::string_view>(result->publication.get_attr("message"))
@@ -78,7 +78,7 @@ TEST(RuntimeSystem, pingPong) {
 
 TEST(RuntimeSystem, delayedSend) {
   const char delayed_pong[] = R"(function receive(publication)
-    if(publication.publisher_actor_type == "root") then 
+    if(publication.publisher_actor_type == "root") then
       delayed_publish({instance_id=publication.publisher_instance_id, node_id=publication.publisher_node_id, actor_type=publication.publisher_actor_type, message="pong1"}, 100);
       publish({instance_id=publication.publisher_instance_id, node_id=publication.publisher_node_id, actor_type=publication.publisher_actor_type, message="pong2"});
     end
@@ -98,7 +98,7 @@ TEST(RuntimeSystem, delayedSend) {
   ping.set_attr("message", "ping");
   PubSub::Router::get_instance().publish(std::move(ping));
   {
-    auto result = root_handle.receive(100);
+    auto result = root_handle.receive(10000);
     ASSERT_TRUE(result);
     ASSERT_STREQ(
         std::get<std::string_view>(result->publication.get_attr("message"))

@@ -123,8 +123,6 @@ class ManagedLuaActor : public ManagedActor {
   }
 
   static int now_wrapper(lua_State* state) {
-    ManagedLuaActor* actor = reinterpret_cast<ManagedLuaActor*>(
-        lua_touserdata(state, lua_upvalueindex(1)));
     lua_pushinteger(state, BoardFunctions::timestamp());
     return 1;
   }

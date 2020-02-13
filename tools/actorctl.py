@@ -29,6 +29,10 @@ def main():
 
     deployments = []
     min_ttl = 0
+
+    sequence_number =  0
+    epoch = int(time.time())
+
     for raw_deployment in raw_deployments:
         deployment = _parse_deployment(configuration_file_path, raw_deployment)
         if deployment:
@@ -40,19 +44,17 @@ def main():
         sckt.connect((arguments.host, arguments.port))
 
         for deployment in deployments:
-            _publish(sckt, deployment)
+            _publish(sckt, deployment, epoch, sequence_number)
+            sequence_number += 1
 
         while min_ttl > 0 and arguments.refresh:
             sleep_time = min_ttl/1000.0 - 1 if min_ttl > 2000 else 1000
             time.sleep(sleep_time)
             for deployment in deployments:
-                _publish(sckt, deployment)
+                _publish(sckt, deployment, epoch, sequence_number)
+                sequence_number += 1
 
         time.sleep(2)
-
-        # res = sckt.recv(4, socket.MsgFlag.MSG_WAITALL)
-        # size = struct.unpack("!i", res)[0]
-        # data = sckt.recv(size)
 
 def _parse_deployment(configuration_file_path, raw_deployment):
     if "type" not in raw_deployment or not raw_deployment["type"] == "deployment":
@@ -86,8 +88,6 @@ def _parse_deployment(configuration_file_path, raw_deployment):
         "deployment_actor_runtime_type": raw_deployment["actor_runtime_type"],
         "deployment_actor_version": raw_deployment["actor_version"],
         "deployment_actor_code": code,
-        "_internal_sequence_number": int(time.time()),
-        "_internal_epoch": 0,
         "deployment_required_actors": required_actors,
         "deployment_ttl": raw_deployment["ttl"]
     }
@@ -108,7 +108,10 @@ def _parse_deployment(configuration_file_path, raw_deployment):
     return deployment
 
 
-def _publish(sckt, publication):
+def _publish(sckt, publication, epoch, sequence_number):
+    publication["_internal_sequence_number"] = sequence_number
+    publication["_internal_epoch"] = epoch
+    print(publication)
     msg = msgpack.packb(publication)
     sckt.send(struct.pack("!i", len(msg)))
     sckt.send(msg)

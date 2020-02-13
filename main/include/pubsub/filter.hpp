@@ -1,16 +1,20 @@
 #ifndef MAIN_INCLUDE_PUBSUB_FILTER_HPP_
 #define MAIN_INCLUDE_PUBSUB_FILTER_HPP_
 
+#include <list>
 #include <optional>
 #include <string>
-#include <list>
+#include <string_view>
 #include <utility>
 #include <variant>
-#include <string_view>
 
 #include "constraint.hpp"
+#include "string_helper.hpp"
 
 namespace PubSub {
+class Subscription;
+class Router;
+
 class Filter {
  public:
   explicit Filter(std::initializer_list<Constraint> constraints) {
@@ -41,6 +45,13 @@ class Filter {
   }
 
   bool matches(const Publication& publication) const {
+    if (!check_required(publication)) {
+      return false;
+    }
+    return check_optionals(publication);
+  }
+
+  bool check_required(const Publication& publication) const {
     for (const Constraint& constraint : required) {
       auto attr = publication.get_attr(constraint.attribute());
       if (!std::holds_alternative<std::monostate>(attr)) {
@@ -60,6 +71,10 @@ class Filter {
         return false;
       }
     }
+    return true;
+  }
+
+  bool check_optionals(const Publication& publication) const {
     for (const Constraint& constraint : optional) {
       auto attr = publication.get_attr(constraint.attribute());
       if (!std::holds_alternative<std::monostate>(attr)) {
@@ -120,10 +135,10 @@ class Filter {
   }
 
   static std::optional<Filter> deserialize(std::string_view serialized) {
-    Filter f;
+    Filter filter;
 
     if (serialized.length() == 0) {
-      return std::move(f);
+      return std::move(filter);
     }
 
     size_t optional_index = serialized.find("?");
@@ -134,7 +149,7 @@ class Filter {
          StringHelper::string_split(required_args, "^")) {
       auto constraint = Constraint::deserialize(constraint_string, false);
       if (constraint) {
-        f.required.emplace_back(std::move(*constraint));
+        filter.required.emplace_back(std::move(*constraint));
       } else {
         return std::nullopt;
       }
@@ -146,19 +161,21 @@ class Filter {
            StringHelper::string_split(optional_args, "^")) {
         auto constraint = Constraint::deserialize(constraint_string, true);
         if (constraint) {
-          f.optional.emplace_back(std::move(*constraint));
+          filter.optional.emplace_back(std::move(*constraint));
         } else {
           return std::nullopt;
         }
       }
     }
 
-    return std::move(f);
+    return std::move(filter);
   }
 
  private:
   std::list<Constraint> required;
   std::list<Constraint> optional;
+  friend Subscription;
+  friend Router;
 };
 }  // namespace PubSub
 

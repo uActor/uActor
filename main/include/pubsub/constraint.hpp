@@ -2,12 +2,12 @@
 #define MAIN_INCLUDE_PUBSUB_CONSTRAINT_HPP_
 
 #include <cstdint>
-#include <optional>
 #include <functional>
-#include <variant>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
+#include <variant>
 
 namespace PubSub {
 
@@ -228,6 +228,35 @@ class Constraint {
       return Constraint(attribute_name, std::string(operator_string),
                         *predicate, optional);
     }
+  }
+
+  std::variant<std::monostate, std::string, int32_t, float> operand() const {
+    if (std::holds_alternative<Container<std::string>>(_operand)) {
+      auto& ct = std::get<Container<std::string>>(_operand);
+      return ct.operand;
+    } else if (std::holds_alternative<Container<int32_t>>(_operand)) {
+      auto& ct = std::get<Container<std::int32_t>>(_operand);
+      return ct.operand;
+    } else if (std::holds_alternative<Container<float>>(_operand)) {
+      auto& ct = std::get<Container<std::int32_t>>(_operand);
+      return ct.operand;
+    }
+    return std::variant<std::monostate, std::string, int32_t, float>();
+  }
+
+  ConstraintPredicates::Predicate predicate() const {
+    if (std::holds_alternative<Container<std::string>>(_operand)) {
+      auto& ct = std::get<Container<std::string>>(_operand);
+      return ct.operation_name;
+    } else if (std::holds_alternative<Container<int32_t>>(_operand)) {
+      auto& ct = std::get<Container<int32_t>>(_operand);
+      return ct.operation_name;
+    } else if (std::holds_alternative<Container<float>>(_operand)) {
+      auto& ct = std::get<Container<float>>(_operand);
+      return ct.operation_name;
+    }
+    printf("warning: requested predicate of undefined constraint\n");
+    return ConstraintPredicates::Predicate::EQ;
   }
 
  private:

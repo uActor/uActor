@@ -189,7 +189,7 @@ class RemoteConnection {
               }
 
             } else {
-              printf("message dropped %s\n", publisher_node_id->data());
+              printf("message dropped from %s: message: %d - %d, local %d, %d \n", publisher_node_id->data(), *epoch_number, *sequence_number, sequence_info_it->second.epoch, sequence_info_it->second.sequence_number);
             }
           }
           publication_buffer.clear();

@@ -1,5 +1,6 @@
 #include <chrono>
 #include <cstdint>
+#include <thread>
 
 #include "board_functions.hpp"
 
@@ -14,3 +15,9 @@ uint32_t BoardFunctions::timestamp() {
 void BoardFunctions::exit_thread() {}
 
 const char* BoardFunctions::NODE_ID = "node_1";
+
+void BoardFunctions::sleep(uint32_t sleep_ms) {
+  std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms));
+}
+
+int32_t BoardFunctions::epoch = 0;

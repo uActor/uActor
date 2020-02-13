@@ -32,3 +32,7 @@ std::list<std::pair<std::string, std::string>> BoardFunctions::node_labels() {
 
   return std::move(labels);
 }
+
+void BoardFunctions::sleep(uint32_t sleep_ms) {
+  vTaskDelay(sleep_ms / portTICK_PERIOD_MS);
+}

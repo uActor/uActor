@@ -15,6 +15,8 @@ struct BoardFunctions {
   static int32_t epoch;
 
   static std::list<std::pair<std::string, std::string>> node_labels();
+
+  static void sleep(uint32_t sleep_ms);
 };
 
 #endif  // MAIN_INCLUDE_BOARD_FUNCTIONS_HPP_

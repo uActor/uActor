@@ -63,6 +63,30 @@ TEST(ROUTERV3, alias) {
       "bar");
 }
 
+TEST(ROUTERV3, sub_all) {
+  Router router{};
+  auto r = router.new_subscriber();
+  size_t sub_id = r.subscribe(Filter{});
+
+  auto result0 = r.receive(0);
+  ASSERT_FALSE(result0);
+
+  Publication p = Publication("sender_node", "sender_type", "sender_instance");
+  p.set_attr("foo", "bar");
+  router.publish(std::move(p));
+
+  auto result1 = r.receive(0);
+  ASSERT_TRUE(result1);
+  ASSERT_EQ(result1->subscription_id, sub_id);
+  ASSERT_STREQ(std::get<std::string_view>(
+                   result1->publication.get_attr("publisher_node_id"))
+                   .data(),
+               "sender_node");
+  ASSERT_STREQ(
+      std::get<std::string_view>(result1->publication.get_attr("foo")).data(),
+      "bar");
+}
+
 TEST(ROUTERV3, integer_simple) {
   Router router{};
   auto r = router.new_subscriber();

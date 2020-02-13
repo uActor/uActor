@@ -5,7 +5,7 @@
 #include "board_functions.hpp"
 
 namespace PubSub {
-class Router::Receiver::Queue {
+class Receiver::Queue {
  public:
   void send_message(MatchedPublication&& publication) {
     queue.emplace_back(std::move(publication));
@@ -25,19 +25,37 @@ class Router::Receiver::Queue {
   std::list<MatchedPublication> queue;
 };
 
-Router::Receiver::Receiver(Router* router) : router(router) {
+Receiver::Receiver(Router* router) : router(router) {
   router->register_receiver(this);
-  queue = std::make_unique<Router::Receiver::Queue>();
+  queue = std::make_unique<Receiver::Queue>();
 }
 
-Router::Receiver::~Receiver() { router->deregister_receiver(this); }
+Receiver::~Receiver() {
+  for (auto sub : subscriptions) {
+    router->remove_subscription(sub, this);
+  }
+  router->deregister_receiver(this);
+}
 
-std::optional<MatchedPublication> Router::Receiver::receive(uint32_t timeout) {
+std::optional<MatchedPublication> Receiver::receive(uint32_t timeout) {
   return queue->receive_message(BoardFunctions::timestamp() + timeout);
 }
 
-void Router::Receiver::publish(MatchedPublication&& publication) {
+void Receiver::publish(MatchedPublication&& publication) {
   queue->send_message(std::move(publication));
+}
+
+uint32_t Receiver::subscribe(Filter&& f, std::string node_id) {
+  uint32_t sub_id = router->add_subscription(std::move(f), this, node_id);
+  subscriptions.insert(sub_id);
+  return sub_id;
+}
+
+void Receiver::unsubscribe(uint32_t sub_id, std::string node_id) {
+  size_t sub_count = router->remove_subscription(sub_id, this, node_id);
+  if (sub_count == 0) {
+    subscriptions.erase(sub_id);
+  }
 }
 
 SubscriptionHandle PubSub::Router::new_subscriber() {

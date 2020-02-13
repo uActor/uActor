@@ -1,8 +1,6 @@
 #ifndef MAIN_INCLUDE_SUBSCRIPTION_HPP_
 #define MAIN_INCLUDE_SUBSCRIPTION_HPP_
 
-#include <testbed.h>
-
 #include <algorithm>
 #include <atomic>
 #include <cstdio>
@@ -14,17 +12,17 @@
 #include <set>
 #include <string>
 #include <string_view>
-#include <unordered_set>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <variant>
 
 #include "board_functions.hpp"
 #include "publication.hpp"
-#include "string_helper.hpp"
-
 #include "pubsub/constraint.hpp"
+#include "pubsub/constraint_index.hpp"
 #include "pubsub/filter.hpp"
+#include "string_helper.hpp"
 
 namespace PubSub {
 class Router;
@@ -35,10 +33,15 @@ struct Subscription {
       : subscription_id(id), filter(f) {
     nodes.emplace(node_id, std::list<Receiver*>{r});
     receivers.emplace(r, std::list<std::string>{node_id});
+    count_required = filter.required.size();
+    count_optional = filter.optional.size();
   }
 
   uint32_t subscription_id;
+
   Filter filter;
+
+  size_t count_required, count_optional = 0;
 
   std::unordered_map<std::string, std::list<Receiver*>> nodes;
   std::unordered_map<Receiver*, std::list<std::string>> receivers;
@@ -90,7 +93,7 @@ class Router {
   static void os_task(void*) {
     Router& router = get_instance();
     while (true) {
-      vTaskDelay(500 / portTICK_PERIOD_MS);
+      BoardFunctions::sleep(500);
       bool t = true;
       if (router.updated.compare_exchange_weak(t, false)) {
         Publication update{BoardFunctions::NODE_ID, "router", "1"};
@@ -101,23 +104,60 @@ class Router {
     }
   }
 
+  // Linear scan
+  // void publish(Publication&& publication) {
+  //   std::unique_lock lock(mtx);
+  //   for (auto& subscribtion : subscriptions) {
+  //     if (subscribtion.second.filter.matches(publication)) {
+  //       for (auto& receiver : subscribtion.second.receivers) {
+  //         receiver.first->publish(MatchedPublication(Publication(publication),
+  //         subscribtion.first));
+  //       }
+  //     }
+  //   }
+  // }
+
   void publish(Publication&& publication) {
-    bool subscriber_found = false;
-    testbed_start_timekeeping("publish");
-    std::unique_lock lock(mtx);
-    for (auto& subscribtion : subscriptions) {
-      if (subscribtion.second.filter.matches(publication)) {
-        for (auto& receiver : subscribtion.second.receivers) {
-          subscriber_found = true;
-          receiver.first->publish(
-              MatchedPublication(Publication(publication), subscribtion.first));
+    Counter c;
+
+    // testbed_start_timekeeping("search");
+
+    for (const auto& [attribute, value] : publication) {
+      if (auto constraint_it = constraints.find(attribute);
+          constraint_it != constraints.end()) {
+        constraint_it->second.check(value, &c);
+      }
+    }
+
+    // testbed_stop_timekeeping("search");
+    // testbed_start_timekeeping("match");
+
+    for (const auto& [subscription_ptr, counts] : c) {
+      auto& subscription = *subscription_ptr;
+      if (counts.required == subscription.count_required) {
+        if (counts.optional == subscription.count_optional ||
+            subscription.filter.check_optionals(publication)) {
+          for (auto& receiver : subscription.receivers) {
+            receiver.first->publish(MatchedPublication(
+                Publication(publication), subscription.subscription_id));
+          }
         }
       }
     }
-    testbed_stop_timekeeping("publish");
-    if (!subscriber_found) {
-      printf("useless message\n");
+
+    // Check remaining subscriptions that might still match
+    for (auto sub : no_requirements) {
+      if (c.find(sub) == c.end()) {
+        if (sub->filter.check_optionals(publication)) {
+          for (auto& receiver : sub->receivers) {
+            receiver.first->publish(MatchedPublication(Publication(publication),
+                                                       sub->subscription_id));
+          }
+        }
+      }
     }
+
+    // testbed_stop_timekeeping("match");
   }
 
   SubscriptionHandle new_subscriber();
@@ -138,14 +178,20 @@ class Router {
   std::atomic<uint32_t> next_sub_id{1};
 
   std::list<Receiver*> receivers;
-  std::map<uint32_t, Subscription> subscriptions;
+
+  std::unordered_map<uint32_t, Subscription> subscriptions;
+
+  std::unordered_map<std::string, ConstraintIndex> constraints;
+
+  // Index for all subscriptions without required constraints.
+  std::set<Subscription*> no_requirements;
 
   std::atomic<bool> updated{false};
-
   std::recursive_mutex mtx;
 
-  uint32_t add_subscription(Filter&& f, Receiver* r,
-                            std::string peer_node_id = std::string("local")) {
+  uint32_t add_subscription(
+      Filter&& f, Receiver* r,
+      std::string subscriber_node_id = std::string("local")) {
     std::unique_lock lck(mtx);
     if (auto it =
             std::find_if(subscriptions.begin(), subscriptions.end(),
@@ -155,17 +201,17 @@ class Router {
 
       if (auto rec_it = sub.receivers.find(r); rec_it != sub.receivers.end()) {
         if (std::find(rec_it->second.begin(), rec_it->second.end(),
-                      peer_node_id) == rec_it->second.end()) {
-          rec_it->second.push_back(peer_node_id);
+                      subscriber_node_id) == rec_it->second.end()) {
+          rec_it->second.push_back(subscriber_node_id);
         }
       } else {
         sub.receivers.try_emplace(
-            r, std::list<std::string>{std::string(peer_node_id)});
+            r, std::list<std::string>{std::string(subscriber_node_id)});
       }
 
       // Check if this subscription is for a new node. A new node will affect
       // the external subscriptions.
-      if (auto node_it = sub.nodes.find(peer_node_id);
+      if (auto node_it = sub.nodes.find(subscriber_node_id);
           node_it != sub.nodes.end()) {
         // Additional receiver: For remote nodes this could mean there is a
         // second path.
@@ -174,33 +220,54 @@ class Router {
           node_it->second.push_back(r);
         }
       } else {
-        if (peer_node_id == "local") {
+        if (subscriber_node_id == "local") {
           publish_subscription_update();
         } else if (sub.nodes.size() == 1) {
           // TODO(raphaelhetzel) Single node update optimization
           // std::string update_node_id = sub.nodes.begin()->first;
           publish_subscription_update();
         }
-        sub.nodes.emplace(peer_node_id, std::list<Receiver*>{r});
+        sub.nodes.emplace(subscriber_node_id, std::list<Receiver*>{r});
       }
 
       return sub.subscription_id;
     } else {  // new subscription
       uint32_t id = next_sub_id++;
-      if (peer_node_id == "local") {
+      if (subscriber_node_id == "local") {
         publish_subscription_update();
       } else {
         // TODO(raphaelhetzel) Optimization: We could exclude peer_node_id here.
         publish_subscription_update();
       }
-      subscriptions.try_emplace(id, id, std::move(f), std::move(peer_node_id),
-                                r);
+      auto [sub_it, inserted] = subscriptions.try_emplace(
+          id, id, std::move(f), std::move(subscriber_node_id), r);
+
+      // Index maintenance
+      if (inserted && sub_it->second.count_required == 0) {
+        no_requirements.insert(&sub_it->second);
+      }
+      if (inserted) {
+        for (auto constraint : sub_it->second.filter.required) {
+          auto [constraint_it, _inserted] = constraints.try_emplace(
+              std::string(constraint.attribute()), ConstraintIndex());
+          constraint_it->second.insert(std::move(constraint), &(sub_it->second),
+                                       false);
+        }
+        for (auto constraint : sub_it->second.filter.optional) {
+          auto [constraint_it, _inserted] = constraints.try_emplace(
+              std::string(constraint.attribute()), ConstraintIndex());
+          constraint_it->second.insert(std::move(constraint), &(sub_it->second),
+                                       true);
+        }
+      }
+
       return id;
     }
   }
 
   uint32_t remove_subscription(uint32_t sub_id, Receiver* r,
                                std::string node_id = "") {
+    size_t remaining = 0;
     std::unique_lock lck(mtx);
     if (auto sub_it = subscriptions.find(sub_id);
         sub_it != subscriptions.end()) {
@@ -215,7 +282,6 @@ class Router {
             remove_subscription_for_node(&sub, r, sub_node_id);
           }
           sub.receivers.erase(receiver_it);
-          return 0;
         } else {
           remove_subscription_for_node(&sub, r, node_id);
           if (receiver.second.size() == 1) {
@@ -225,13 +291,49 @@ class Router {
                                             receiver_it->second.end(), node_id);
                 node_id_it != receiver_it->second.end()) {
               receiver_it->second.erase(node_id_it);
+              remaining = receiver_it->second.size();
             }
           }
-          return 0;
+        }
+
+        if (sub.nodes.size() == 0) {
+          // Index maintenance
+          if (sub.count_required == 0) {
+            no_requirements.erase(&sub);
+          }
+          for (auto constraint : sub.filter.required) {
+            if (auto constraint_it =
+                    constraints.find(std::string(constraint.attribute()));
+                constraint_it != constraints.end()) {
+              if (constraint_it->second.remove(std::move(constraint), &sub)) {
+                constraints.erase(constraint_it);
+              }
+            }
+          }
+          for (auto constraint : sub.filter.optional) {
+            if (auto constraint_it =
+                    constraints.find(std::string(constraint.attribute()));
+                constraint_it != constraints.end()) {
+              if (constraint_it->second.remove(std::move(constraint), &sub)) {
+                constraints.erase(constraint_it);
+              }
+            }
+          }
+
+          subscriptions.erase(sub.subscription_id);
+
+          // TODO(raphaelhetzel) optimization: potentially delay this longer
+          // than subscriptions
+          publish_subscription_update();
+        } else if (sub.nodes.size() == 1) {
+          if (node_id != "local") {
+            // TODO(raphaelhetzel) optimization: only send to a single node
+            publish_subscription_update();
+          }
         }
       }
     }
-    return 0;
+    return remaining;
   }
 
   void remove_subscription_for_node(Subscription* sub, Receiver* r,
@@ -239,16 +341,6 @@ class Router {
     if (auto node_it = sub->nodes.find(node_id); node_it != sub->nodes.end()) {
       if (node_it->second.size() == 1) {
         sub->nodes.erase(node_it);
-        if (sub->nodes.size() == 0) {
-          // TODO(raphaelhetzel) optimization: potentially delay this longer
-          // than subscriptions
-          publish_subscription_update();
-        } else if (sub->nodes.size() == 1) {
-          if (node_id != "local") {
-            // TODO(raphaelhetzel) optimization: only send to a single node
-            publish_subscription_update();
-          }
-        }
       } else {
         if (auto reference_it =
                 std::find(node_it->second.begin(), node_it->second.end(), r);

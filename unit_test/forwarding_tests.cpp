@@ -8,11 +8,18 @@
 #include "subscription.hpp"
 
 struct FakeForwarder : public ForwarderSubscriptionAPI {
-  uint32_t add_subscription(uint32_t local_id, PubSub::Filter&& filter) {
+  uint32_t add_subscription(uint32_t local_id, PubSub::Filter&& filter,
+                            std::string_view node_id) {
     return 0;
   }
-  void remove_subscription(uint32_t local_id, uint32_t sub_id) {}
+  void remove_subscription(uint32_t local_id, uint32_t sub_id,
+                           std::string_view node_id) {}
   bool write(int sock, int len, const char* message) { return false; }
+
+  static int next_sequence_number() {
+    static int sequence_number{0};
+    return sequence_number++;
+  }
 };
 
 TEST(FORWARDING, data_handling_base) {
@@ -21,13 +28,17 @@ TEST(FORWARDING, data_handling_base) {
 
   PubSub::Filter primary_filter{PubSub::Constraint(std::string("foo"), "bar")};
   subscription_handle.subscribe(primary_filter);
-
   FakeForwarder f;
   RemoteConnection connection{0, 0, &f};
 
   Publication sub_update{"sender_node", "sender_type", "sender_id"};
   sub_update.set_attr("type", "subscription_update");
   sub_update.set_attr("subscription_node_id", "node_1");
+  sub_update.set_attr("serialized_subscriptions",
+                      PubSub::Filter{}.serialize() + "&");
+  sub_update.set_attr("_internal_epoch", 0);
+  sub_update.set_attr("_internal_sequence_number",
+                      FakeForwarder::next_sequence_number());
 
   std::string serialized_update = sub_update.to_msg_pack();
 
@@ -37,6 +48,9 @@ TEST(FORWARDING, data_handling_base) {
 
   Publication p{"sender_node", "sender_type", "sender_id"};
   p.set_attr("foo", "bar");
+  p.set_attr("_internal_sequence_number",
+             FakeForwarder::next_sequence_number());
+  p.set_attr("_internal_epoch", 0);
 
   std::string serialized = p.to_msg_pack();
 
@@ -65,6 +79,9 @@ TEST(FORWARDING, data_handling_split_data) {
 
   Publication p{"sender_node", "sender_type", "sender_id"};
   p.set_attr("foo", "bar");
+  p.set_attr("_internal_sequence_number",
+             FakeForwarder::next_sequence_number());
+  p.set_attr("_internal_epoch", 0);
 
   std::string serialized = p.to_msg_pack();
 
@@ -90,6 +107,9 @@ TEST(FORWARDING, data_handling_split_message_size) {
 
   Publication p{"sender_node", "sender_type", "sender_id"};
   p.set_attr("foo", "bar");
+  p.set_attr("_internal_sequence_number",
+             FakeForwarder::next_sequence_number());
+  p.set_attr("_internal_epoch", 0);
 
   std::string serialized = p.to_msg_pack();
 
@@ -114,6 +134,9 @@ TEST(FORWARDING, mixed_data) {
 
   Publication p{"sender_node", "sender_type", "sender_id"};
   p.set_attr("foo", "bar");
+  p.set_attr("_internal_sequence_number",
+             FakeForwarder::next_sequence_number());
+  p.set_attr("_internal_epoch", 0);
 
   std::string serialized = p.to_msg_pack();
 
