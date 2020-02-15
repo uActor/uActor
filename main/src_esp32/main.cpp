@@ -18,9 +18,9 @@ extern "C" {
 #include "lua_runtime.hpp"
 #include "managed_actor.hpp"
 #include "native_runtime.hpp"
+#include "pubsub/router.hpp"
 #include "tcp_forwarder.hpp"
 #include "wifi_stack.hpp"
-
 extern "C" {
 void app_main(void);
 }
@@ -106,8 +106,8 @@ void app_main(void) {
 void main_task(void*) {
   printf("InitialHeap: %d \n", xPortGetFreeHeapSize());
 
-  xTaskCreatePinnedToCore(&PubSub::Router::os_task, "Router", 5000, nullptr, 4,
-                          nullptr, 0);
+  xTaskCreatePinnedToCore(&uActor::PubSub::Router::os_task, "Router", 5000,
+                          nullptr, 4, nullptr, 0);
 
   Params params = {.node_id = BoardFunctions::NODE_ID, .instance_id = "1"};
 
@@ -130,8 +130,8 @@ void main_task(void*) {
     printf("Epoch not set\n");
   }
 
-  Publication create_deployment_manager =
-      Publication(BoardFunctions::NODE_ID, "root", "1");
+  auto create_deployment_manager =
+      uActor::PubSub::Publication(BoardFunctions::NODE_ID, "root", "1");
   create_deployment_manager.set_attr("command", "spawn_native_actor");
   create_deployment_manager.set_attr("spawn_code", "");
   create_deployment_manager.set_attr("spawn_node_id", BoardFunctions::NODE_ID);
@@ -140,10 +140,11 @@ void main_task(void*) {
   create_deployment_manager.set_attr("node_id", BoardFunctions::NODE_ID);
   create_deployment_manager.set_attr("actor_type", "native_runtime");
   create_deployment_manager.set_attr("instance_id", "1");
-  PubSub::Router::get_instance().publish(std::move(create_deployment_manager));
+  uActor::PubSub::Router::get_instance().publish(
+      std::move(create_deployment_manager));
 
-  Publication create_topology_manager =
-      Publication(BoardFunctions::NODE_ID, "root", "1");
+  auto create_topology_manager =
+      uActor::PubSub::Publication(BoardFunctions::NODE_ID, "root", "1");
   create_topology_manager.set_attr("command", "spawn_native_actor");
   create_topology_manager.set_attr("spawn_code", "");
   create_topology_manager.set_attr("spawn_node_id", BoardFunctions::NODE_ID);
@@ -152,18 +153,20 @@ void main_task(void*) {
   create_topology_manager.set_attr("node_id", BoardFunctions::NODE_ID);
   create_topology_manager.set_attr("actor_type", "native_runtime");
   create_topology_manager.set_attr("instance_id", "1");
-  PubSub::Router::get_instance().publish(std::move(create_topology_manager));
+  uActor::PubSub::Router::get_instance().publish(
+      std::move(create_topology_manager));
 
   vTaskDelay(50 / portTICK_PERIOD_MS);
 
   for (const auto label : BoardFunctions::node_labels()) {
-    Publication label_update(BoardFunctions::NODE_ID, "root", "1");
+    uActor::PubSub::Publication label_update(BoardFunctions::NODE_ID, "root",
+                                             "1");
     label_update.set_attr("type", "label_update");
     label_update.set_attr("command", "upsert");
     label_update.set_attr("node_id", BoardFunctions::NODE_ID);
     label_update.set_attr("key", label.first);
     label_update.set_attr("value", label.second);
-    PubSub::Router::get_instance().publish(std::move(label_update));
+    uActor::PubSub::Router::get_instance().publish(std::move(label_update));
   }
 
   xTaskCreatePinnedToCore(&LuaRuntime::os_task, "LUA_RUNTIME", 6168, &params, 4,

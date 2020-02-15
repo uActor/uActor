@@ -1,40 +1,29 @@
-#define RECEIVER_QUEUE_HARD_LIMIT 100
-
-#include <freertos/FreeRTOS.h>
-#include <freertos/queue.h>
-
 #include <list>
 
-#include "publication.hpp"
-#include "subscription.hpp"
+#include "board_functions.hpp"
+#include "pubsub/matched_publication.hpp"
+#include "pubsub/receiver.hpp"
+#include "pubsub/router.hpp"
 
-namespace PubSub {
+namespace uActor::PubSub {
 class Receiver::Queue {
  public:
-  Queue() {
-    queue =
-        xQueueCreate(RECEIVER_QUEUE_HARD_LIMIT, sizeof(MatchedPublication*));
-  }
-
-  ~Queue() { vQueueDelete(queue); }
-
   void send_message(MatchedPublication&& publication) {
-    MatchedPublication* p = new MatchedPublication(publication);
-    xQueueSend(queue, &p, portMAX_DELAY);
+    queue.emplace_back(std::move(publication));
   }
 
   std::optional<MatchedPublication> receive_message(uint32_t timeout) {
-    MatchedPublication* pub = nullptr;
-
-    if (xQueueReceive(queue, &pub, timeout)) {
-      MatchedPublication out = MatchedPublication(*pub);
-      delete pub;
-      return std::move(out);
-    }
+    do {
+      if (queue.begin() != queue.end()) {
+        MatchedPublication pub = std::move(*queue.begin());
+        queue.pop_front();
+        return std::move(pub);
+      }
+    } while (BoardFunctions::timestamp() < timeout);
     return std::nullopt;
   }
 
-  QueueHandle_t queue;
+  std::list<MatchedPublication> queue;
 };
 
 Receiver::Receiver(Router* router) : router(router) {
@@ -50,7 +39,7 @@ Receiver::~Receiver() {
 }
 
 std::optional<MatchedPublication> Receiver::receive(uint32_t timeout) {
-  return queue->receive_message(timeout);
+  return queue->receive_message(BoardFunctions::timestamp() + timeout);
 }
 
 void Receiver::publish(MatchedPublication&& publication) {
@@ -70,7 +59,4 @@ void Receiver::unsubscribe(uint32_t sub_id, std::string node_id) {
   }
 }
 
-SubscriptionHandle PubSub::Router::new_subscriber() {
-  return SubscriptionHandle{this};
-}
-}  // namespace PubSub
+}  // namespace uActor::PubSub

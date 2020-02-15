@@ -11,15 +11,16 @@ NativeActor::NativeActor(ManagedNativeActor* actor_wrapper,
       _actor_type(actor_type),
       _instance_id(instance_id) {}
 
-void NativeActor::publish(Publication&& p) {
+void NativeActor::publish(uActor::PubSub::Publication&& p) {
   actor_wrapper->publish(std::move(p));
 }
 
-void NativeActor::delayed_publish(Publication&& publication, uint32_t delay) {
+void NativeActor::delayed_publish(uActor::PubSub::Publication&& publication,
+                                  uint32_t delay) {
   actor_wrapper->delayed_publish(std::move(publication), delay);
 }
 
-uint32_t NativeActor::subscribe(PubSub::Filter&& filter) {
+uint32_t NativeActor::subscribe(uActor::PubSub::Filter&& filter) {
   return actor_wrapper->subscribe(std::move(filter));
 }
 
@@ -29,7 +30,7 @@ void NativeActor::unsubscribe(uint32_t subscription_id) {
 
 uint32_t NativeActor::now() { return BoardFunctions::timestamp(); }
 
-void NativeActor::deffered_block_for(PubSub::Filter&& filter,
+void NativeActor::deffered_block_for(uActor::PubSub::Filter&& filter,
                                      uint32_t timeout) {
   actor_wrapper->deffered_block_for(std::move(filter), timeout);
 }

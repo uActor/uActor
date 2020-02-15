@@ -9,14 +9,17 @@
 
 class NativeRuntime : public ActorRuntime<ManagedNativeActor, NativeRuntime> {
  public:
-  NativeRuntime(PubSub::Router* router, const char* node_id, const char* id)
+  NativeRuntime(uActor::PubSub::Router* router, const char* node_id,
+                const char* id)
       : ActorRuntime<ManagedNativeActor, NativeRuntime>(router, node_id,
                                                         "native_runtime", id) {}
 
   ~NativeRuntime() { actors.clear(); }
 
  private:
-  void add_actor(Publication&& publication) { add_actor_base(publication); }
+  void add_actor(uActor::PubSub::Publication&& publication) {
+    add_actor_base(publication);
+  }
 
   friend ActorRuntime;
 };

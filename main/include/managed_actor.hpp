@@ -12,19 +12,18 @@
 #include <string>
 #include <utility>
 
-#include "publication.hpp"
+#include "pubsub/router.hpp"
 #include "runtime_api.hpp"
-#include "subscription.hpp"
 
 class Pattern {
  public:
   Pattern() : filter() {}
 
-  bool matches(const Publication& publication) {
+  bool matches(const uActor::PubSub::Publication& publication) {
     return filter.matches(publication);
   }
 
-  PubSub::Filter filter;
+  uActor::PubSub::Filter filter;
 };
 
 class ManagedActor {
@@ -48,17 +47,17 @@ class ManagedActor {
     }
   }
 
-  virtual bool receive(const Publication& p) = 0;
+  virtual bool receive(const uActor::PubSub::Publication& p) = 0;
 
   bool initialize();
 
   ReceiveResult receive_next_internal();
 
-  bool enqueue(Publication&& message);
+  bool enqueue(uActor::PubSub::Publication&& message);
 
   void trigger_timeout() {
-    Publication p = Publication(_node_id.c_str(), _actor_type.c_str(),
-                                _instance_id.c_str());
+    auto p = uActor::PubSub::Publication(_node_id.c_str(), _actor_type.c_str(),
+                                         _instance_id.c_str());
     p.set_attr("_internal_timeout", "_timeout");
     message_queue.emplace_front(std::move(p));
   }
@@ -78,7 +77,7 @@ class ManagedActor {
  protected:
   virtual bool internal_initialize() = 0;
 
-  uint32_t subscribe(PubSub::Filter&& f) {
+  uint32_t subscribe(uActor::PubSub::Filter&& f) {
     uint32_t sub_id = api->add_subscription(_id, std::move(f));
     subscriptions.insert(sub_id);
     return sub_id;
@@ -89,15 +88,15 @@ class ManagedActor {
     api->remove_subscription(_id, sub_id);
   }
 
-  void publish(Publication&& p) {
-    PubSub::Router::get_instance().publish(std::move(p));
+  void publish(uActor::PubSub::Publication&& p) {
+    uActor::PubSub::Router::get_instance().publish(std::move(p));
   }
 
-  void delayed_publish(Publication&& p, uint32_t delay) {
+  void delayed_publish(uActor::PubSub::Publication&& p, uint32_t delay) {
     api->delayed_publish(std::move(p), delay);
   }
 
-  void deffered_block_for(PubSub::Filter&& filter, uint32_t timeout) {
+  void deffered_block_for(uActor::PubSub::Filter&& filter, uint32_t timeout) {
     waiting = true;
     pattern.filter = std::move(filter);
     _timeout = timeout;
@@ -115,7 +114,7 @@ class ManagedActor {
   std::string _instance_id;
   std::string _code;
 
-  std::deque<Publication> message_queue;
+  std::deque<uActor::PubSub::Publication> message_queue;
   std::set<uint32_t> subscriptions;
   RuntimeApi* api;
 

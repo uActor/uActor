@@ -4,11 +4,11 @@
 #include <cstdint>
 #include <vector>
 
+#include "pubsub/router.hpp"
 #include "remote_connection.hpp"
-#include "subscription.hpp"
 
 struct FakeForwarder : public ForwarderSubscriptionAPI {
-  uint32_t add_subscription(uint32_t local_id, PubSub::Filter&& filter,
+  uint32_t add_subscription(uint32_t local_id, uActor::PubSub::Filter&& filter,
                             std::string_view node_id) {
     return 0;
   }
@@ -23,19 +23,21 @@ struct FakeForwarder : public ForwarderSubscriptionAPI {
 };
 
 TEST(FORWARDING, data_handling_base) {
-  PubSub::SubscriptionHandle subscription_handle =
-      PubSub::Router::get_instance().new_subscriber();
+  auto subscription_handle =
+      uActor::PubSub::Router::get_instance().new_subscriber();
 
-  PubSub::Filter primary_filter{PubSub::Constraint(std::string("foo"), "bar")};
+  uActor::PubSub::Filter primary_filter{
+      uActor::PubSub::Constraint(std::string("foo"), "bar")};
   subscription_handle.subscribe(primary_filter);
   FakeForwarder f;
   RemoteConnection connection{0, 0, &f};
 
-  Publication sub_update{"sender_node", "sender_type", "sender_id"};
+  uActor::PubSub::Publication sub_update{"sender_node", "sender_type",
+                                         "sender_id"};
   sub_update.set_attr("type", "subscription_update");
   sub_update.set_attr("subscription_node_id", "node_1");
   sub_update.set_attr("serialized_subscriptions",
-                      PubSub::Filter{}.serialize() + "&");
+                      uActor::PubSub::Filter{}.serialize() + "&");
   sub_update.set_attr("_internal_epoch", 0);
   sub_update.set_attr("_internal_sequence_number",
                       FakeForwarder::next_sequence_number());
@@ -46,7 +48,7 @@ TEST(FORWARDING, data_handling_base) {
   connection.process_data(4, reinterpret_cast<char*>(&size_update));
   connection.process_data(serialized_update.size(), serialized_update.data());
 
-  Publication p{"sender_node", "sender_type", "sender_id"};
+  uActor::PubSub::Publication p{"sender_node", "sender_type", "sender_id"};
   p.set_attr("foo", "bar");
   p.set_attr("_internal_sequence_number",
              FakeForwarder::next_sequence_number());
@@ -68,16 +70,17 @@ TEST(FORWARDING, data_handling_base) {
 }
 
 TEST(FORWARDING, data_handling_split_data) {
-  PubSub::SubscriptionHandle subscription_handle =
-      PubSub::Router::get_instance().new_subscriber();
+  auto subscription_handle =
+      uActor::PubSub::Router::get_instance().new_subscriber();
 
-  PubSub::Filter primary_filter{PubSub::Constraint(std::string("foo"), "bar")};
+  uActor::PubSub::Filter primary_filter{
+      uActor::PubSub::Constraint(std::string("foo"), "bar")};
   subscription_handle.subscribe(primary_filter);
 
   FakeForwarder f;
   RemoteConnection connection{0, 0, &f};
 
-  Publication p{"sender_node", "sender_type", "sender_id"};
+  uActor::PubSub::Publication p{"sender_node", "sender_type", "sender_id"};
   p.set_attr("foo", "bar");
   p.set_attr("_internal_sequence_number",
              FakeForwarder::next_sequence_number());
@@ -96,16 +99,17 @@ TEST(FORWARDING, data_handling_split_data) {
 }
 
 TEST(FORWARDING, data_handling_split_message_size) {
-  PubSub::SubscriptionHandle subscription_handle =
-      PubSub::Router::get_instance().new_subscriber();
+  auto subscription_handle =
+      uActor::PubSub::Router::get_instance().new_subscriber();
 
-  PubSub::Filter primary_filter{PubSub::Constraint(std::string("foo"), "bar")};
+  uActor::PubSub::Filter primary_filter{
+      uActor::PubSub::Constraint(std::string("foo"), "bar")};
   subscription_handle.subscribe(primary_filter);
 
   FakeForwarder f;
   RemoteConnection connection{0, 0, &f};
 
-  Publication p{"sender_node", "sender_type", "sender_id"};
+  uActor::PubSub::Publication p{"sender_node", "sender_type", "sender_id"};
   p.set_attr("foo", "bar");
   p.set_attr("_internal_sequence_number",
              FakeForwarder::next_sequence_number());
@@ -123,16 +127,17 @@ TEST(FORWARDING, data_handling_split_message_size) {
 }
 
 TEST(FORWARDING, mixed_data) {
-  PubSub::SubscriptionHandle subscription_handle =
-      PubSub::Router::get_instance().new_subscriber();
+  auto subscription_handle =
+      uActor::PubSub::Router::get_instance().new_subscriber();
 
-  PubSub::Filter primary_filter{PubSub::Constraint(std::string("foo"), "bar")};
+  uActor::PubSub::Filter primary_filter{
+      uActor::PubSub::Constraint(std::string("foo"), "bar")};
   subscription_handle.subscribe(primary_filter);
 
   FakeForwarder f;
   RemoteConnection connection{0, 0, &f};
 
-  Publication p{"sender_node", "sender_type", "sender_id"};
+  uActor::PubSub::Publication p{"sender_node", "sender_type", "sender_id"};
   p.set_attr("foo", "bar");
   p.set_attr("_internal_sequence_number",
              FakeForwarder::next_sequence_number());

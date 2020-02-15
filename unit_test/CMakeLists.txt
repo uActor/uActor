@@ -29,6 +29,6 @@ include_directories(../main/include)
 include_directories(../main/legacy/include)
 
 # Now simply link against gtest or gtest_main as needed. Eg
-add_executable(runtime_system_test ${lua_SRC} ../main/src/managed_actor.cpp ../main/src/publication.cpp mock_board_functions.cpp mock_router.cpp mock_routing.cpp legacy_routing_tests.cpp ../main/src/remote_connection.cpp pubsub_tests.cpp runtime_tests.cpp forwarding_tests.cpp)
+add_executable(runtime_system_test ${lua_SRC} ../main/src/managed_actor.cpp ../main/src/pubsub/constraint_index.cpp ../main/src/pubsub/constraint.cpp ../main/src/pubsub/filter.cpp ../main/src/pubsub/publication.cpp ../main/src/pubsub/router.cpp mock_board_functions.cpp mock_router.cpp mock_receiver.cpp legacy_routing_tests.cpp ../main/src/remote_connection.cpp pubsub_tests.cpp runtime_tests.cpp forwarding_tests.cpp)
 target_link_libraries(runtime_system_test gtest_main)
 add_test(NAME runtime_system_unit_test COMMAND runtime_system_test)

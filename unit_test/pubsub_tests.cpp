@@ -2,10 +2,9 @@
 
 #include <iostream>
 
-#include "publication.hpp"
-#include "subscription.hpp"
+#include "pubsub/router.hpp"
 
-namespace PubSub {
+namespace uActor::PubSub {
 TEST(ROUTERV3, base) {
   Router router{};
   auto r = router.new_subscriber();
@@ -331,4 +330,4 @@ TEST(Publication, msgpack) {
 
   ASSERT_TRUE(p == decoded);
 }
-}  // namespace PubSub
+}  // namespace uActor::PubSub

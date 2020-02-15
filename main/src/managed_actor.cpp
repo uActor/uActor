@@ -36,11 +36,12 @@ ManagedActor::ReceiveResult ManagedActor::receive_next_internal() {
   }
   message_queue.pop_front();
   if (waiting) {
-    auto it = std::find_if(
-        message_queue.begin(), message_queue.end(),
-        [&](Publication& message) { return pattern.matches(message); });
+    auto it = std::find_if(message_queue.begin(), message_queue.end(),
+                           [&](uActor::PubSub::Publication& message) {
+                             return pattern.matches(message);
+                           });
     if (it != message_queue.end()) {
-      Publication message = std::move(*it);
+      uActor::PubSub::Publication message = std::move(*it);
       message_queue.erase(it);
       message_queue.push_front(std::move(message));
       return ManagedActor::ReceiveResult(false, 0);
@@ -51,7 +52,7 @@ ManagedActor::ReceiveResult ManagedActor::receive_next_internal() {
   return ManagedActor::ReceiveResult(false, _timeout);
 }
 
-bool ManagedActor::enqueue(Publication&& pub) {
+bool ManagedActor::enqueue(uActor::PubSub::Publication&& pub) {
   if (message_queue.size() >= ACTOR_QUEUE_SOFTLIMIT) {
     printf("Warning: Actor queue size excedes configured limit.");
   }
@@ -81,31 +82,35 @@ bool ManagedActor::initialize() {
 }
 
 void ManagedActor::publish_exit_message(std::string exit_reason) {
-  Publication exit_message = Publication(_node_id, _actor_type, _instance_id);
+  auto exit_message =
+      uActor::PubSub::Publication(_node_id, _actor_type, _instance_id);
   exit_message.set_attr("category", "actor_lifetime");
   exit_message.set_attr("type", "actor_exit");
   exit_message.set_attr("exit_reason", exit_reason);
   exit_message.set_attr("lifetime_node_id", _node_id);
   exit_message.set_attr("lifetime_actor_type", _actor_type);
   exit_message.set_attr("lifetime_instance_id", _instance_id);
-  PubSub::Router::get_instance().publish(std::move(exit_message));
+  uActor::PubSub::Router::get_instance().publish(std::move(exit_message));
 }
 
 void ManagedActor::publish_creation_message() {
-  Publication create_message = Publication(_node_id, _actor_type, _instance_id);
+  auto create_message =
+      uActor::PubSub::Publication(_node_id, _actor_type, _instance_id);
   create_message.set_attr("category", "actor_lifetime");
   create_message.set_attr("type", "actor_creation");
   create_message.set_attr("lifetime_node_id", _node_id);
   create_message.set_attr("lifetime_actor_type", _actor_type);
   create_message.set_attr("lifetime_instance_id", _instance_id);
-  PubSub::Router::get_instance().publish(std::move(create_message));
+  uActor::PubSub::Router::get_instance().publish(std::move(create_message));
 }
 
 void ManagedActor::add_default_subscription() {
   uint32_t sub_id = api->add_subscription(
-      _id, PubSub::Filter{
-               PubSub::Constraint(std::string("node_id"), _node_id),
-               PubSub::Constraint(std::string("actor_type"), _actor_type),
-               PubSub::Constraint(std::string("?instance_id"), _instance_id)});
+      _id,
+      uActor::PubSub::Filter{
+          uActor::PubSub::Constraint(std::string("node_id"), _node_id),
+          uActor::PubSub::Constraint(std::string("actor_type"), _actor_type),
+          uActor::PubSub::Constraint(std::string("?instance_id"),
+                                     _instance_id)});
   subscriptions.insert(sub_id);
 }

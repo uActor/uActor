@@ -10,8 +10,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "freertos/task.h"
-#include "publication.hpp"
-#include "subscription.hpp"
+#include "pubsub/router.hpp"
 
 class GPIOActor;
 
@@ -114,24 +113,27 @@ class GPIOActor {
     int32_t io_num;
     while (true) {
       if (xQueueReceive(gpio->interrupt_queue, &io_num, portMAX_DELAY)) {
-        Publication p{BoardFunctions::NODE_ID, "core.io.gpio", "1"};
+        uActor::PubSub::Publication p{BoardFunctions::NODE_ID, "core.io.gpio",
+                                      "1"};
         p.set_attr("type", "gpio_update");
         p.set_attr("gpio_pin", io_num);
         p.set_attr("gpio_level",
                    gpio_get_level(static_cast<gpio_num_t>(io_num)));
-        PubSub::Router::get_instance().publish(std::move(p));
+        uActor::PubSub::Router::get_instance().publish(std::move(p));
       }
     }
   }
 
-  GPIOActor() : handle(PubSub::Router::get_instance().new_subscriber()) {
+  GPIOActor()
+      : handle(uActor::PubSub::Router::get_instance().new_subscriber()) {
     interrupt_queue = xQueueCreate(10, sizeof(uint32_t));
     gpio_install_isr_service(0);
 
-    PubSub::Filter primary_filter{
-        PubSub::Constraint(std::string("node_id"), BoardFunctions::NODE_ID),
-        PubSub::Constraint(std::string("actor_type"), "core.io.gpio"),
-        PubSub::Constraint(std::string("?instance_id"), "1")};
+    uActor::PubSub::Filter primary_filter{
+        uActor::PubSub::Constraint(std::string("node_id"),
+                                   BoardFunctions::NODE_ID),
+        uActor::PubSub::Constraint(std::string("actor_type"), "core.io.gpio"),
+        uActor::PubSub::Constraint(std::string("?instance_id"), "1")};
     handle.subscribe(primary_filter);
 
     for (int i = 0; i < 40; i++) {
@@ -144,27 +146,27 @@ class GPIOActor {
     pins[5].set_as_input(true, false);
     pins[33].set_as_interrupt(interrupt_queue, true, false);
 
-    Publication p{BoardFunctions::NODE_ID, "core.io.gpio", "1"};
+    uActor::PubSub::Publication p{BoardFunctions::NODE_ID, "core.io.gpio", "1"};
     p.set_attr("type", "unmanaged_actor_update");
     p.set_attr("command", "register");
     p.set_attr("update_actor_type", "core.io.gpio");
     p.set_attr("node_id", BoardFunctions::NODE_ID);
-    PubSub::Router::get_instance().publish(std::move(p));
+    uActor::PubSub::Router::get_instance().publish(std::move(p));
   }
 
   ~GPIOActor() {
-    Publication p{BoardFunctions::NODE_ID, "core.io.gpio", "1"};
+    uActor::PubSub::Publication p{BoardFunctions::NODE_ID, "core.io.gpio", "1"};
     p.set_attr("type", "unmanaged_actor_update");
     p.set_attr("command", "deregister");
     p.set_attr("update_actor_type", "core.io.gpio");
     p.set_attr("node_id", BoardFunctions::NODE_ID);
-    PubSub::Router::get_instance().publish(std::move(p));
+    uActor::PubSub::Router::get_instance().publish(std::move(p));
 
     gpio_uninstall_isr_service();
     vQueueDelete(interrupt_queue);
   }
 
-  void receive(Publication&& p) {
+  void receive(uActor::PubSub::Publication&& p) {
     if (p.get_str_attr("publisher_node_id") != BoardFunctions::NODE_ID) {
       return;
     }
@@ -180,10 +182,10 @@ class GPIOActor {
 
  private:
   std::array<Pin, 40> pins;
-  PubSub::SubscriptionHandle handle;
+  uActor::PubSub::ReceiverHandle handle;
   xQueueHandle interrupt_queue;
 
-  void receive_output_set(Publication&& p) {
+  void receive_output_set(uActor::PubSub::Publication&& p) {
     auto pin = p.get_int_attr("gpio_pin");
     auto level = p.get_int_attr("gpio_level");
     if (pin && level && *pin < 40 && *pin >= 0 && *level < 2 && *level >= 0) {
@@ -193,15 +195,16 @@ class GPIOActor {
     }
   }
 
-  void receive_trigger_read(Publication&& p) {
+  void receive_trigger_read(uActor::PubSub::Publication&& p) {
     auto pin = p.get_int_attr("gpio_pin");
     if (pin && *pin < 40 && *pin >= 0) {
       if (pins[*pin].pin_state == Pin::PinState::INPUT) {
-        Publication p{BoardFunctions::NODE_ID, "core.io.gpio", "1"};
+        uActor::PubSub::Publication p{BoardFunctions::NODE_ID, "core.io.gpio",
+                                      "1"};
         p.set_attr("type", "gpio_value");
         p.set_attr("gpio_pin", *pin);
         p.set_attr("gpio_level", pins[*pin].read_level());
-        PubSub::Router::get_instance().publish(std::move(p));
+        uActor::PubSub::Router::get_instance().publish(std::move(p));
       }
     }
   }

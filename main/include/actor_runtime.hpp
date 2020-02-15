@@ -13,8 +13,8 @@
 
 #include "board_functions.hpp"
 #include "managed_actor.hpp"
+#include "pubsub/router.hpp"
 #include "runtime_api.hpp"
-#include "subscription.hpp"
 
 struct Params {
   const char* node_id;
@@ -25,7 +25,7 @@ template <typename ActorType, typename RuntimeType>
 class ActorRuntime : public RuntimeApi {
  public:
   static void os_task(void* params) {
-    PubSub::Router* router = &PubSub::Router::get_instance();
+    auto* router = &uActor::PubSub::Router::get_instance();
     const char* instance_id = ((struct Params*)params)->instance_id;
     const char* node_id = ((struct Params*)params)->node_id;
 
@@ -36,22 +36,23 @@ class ActorRuntime : public RuntimeApi {
     BoardFunctions::exit_thread();
   }
 
-  ActorRuntime(PubSub::Router* router, const char* node_id,
+  ActorRuntime(uActor::PubSub::Router* router, const char* node_id,
                const char* actor_type, const char* instance_id)
       : _node_id(node_id),
         _actor_type(actor_type),
         _instance_id(instance_id),
         router_handle(router->new_subscriber()) {
-    PubSub::Filter primary_filter{
-        PubSub::Constraint(std::string("node_id"), node_id),
-        PubSub::Constraint(std::string("actor_type"), actor_type),
-        PubSub::Constraint(std::string("instance_id"), instance_id)};
+    uActor::PubSub::Filter primary_filter{
+        uActor::PubSub::Constraint(std::string("node_id"), node_id),
+        uActor::PubSub::Constraint(std::string("actor_type"), actor_type),
+        uActor::PubSub::Constraint(std::string("instance_id"), instance_id)};
     runtime_subscription_id = router_handle.subscribe(primary_filter);
   }
 
  protected:
   template <typename... Args>
-  void add_actor_base(const Publication& publication, Args... args) {
+  void add_actor_base(const uActor::PubSub::Publication& publication,
+                      Args... args) {
     const char* node_id =
         std::get<std::string_view>(publication.get_attr("spawn_node_id"))
             .data();
@@ -71,20 +72,21 @@ class ActorRuntime : public RuntimeApi {
                                instance_id, code, std::forward<Args>(args)...);
         success) {
       if (actor_it->second.initialize()) {
-        Publication init_message =
-            Publication(_node_id, _actor_type, _instance_id);
+        auto init_message =
+            uActor::PubSub::Publication(_node_id, _actor_type, _instance_id);
         init_message.set_attr("node_id", node_id);
         init_message.set_attr("actor_type", actor_type);
         init_message.set_attr("instance_id", instance_id);
         init_message.set_attr("type", "init");
-        PubSub::Router::get_instance().publish(std::move(init_message));
+        uActor::PubSub::Router::get_instance().publish(std::move(init_message));
       } else {
         actors.erase(actor_it);
       }
     }
   }
 
-  uint32_t add_subscription(uint32_t local_id, PubSub::Filter&& filter) {
+  uint32_t add_subscription(uint32_t local_id,
+                            uActor::PubSub::Filter&& filter) {
     uint32_t sub_id = router_handle.subscribe(filter);
     auto entry = subscription_mapping.find(sub_id);
     if (entry != subscription_mapping.end()) {
@@ -106,7 +108,8 @@ class ActorRuntime : public RuntimeApi {
     }
   }
 
-  void delayed_publish(Publication&& publication, uint32_t delay) {
+  void delayed_publish(uActor::PubSub::Publication&& publication,
+                       uint32_t delay) {
     delayed_messages.emplace(BoardFunctions::timestamp() + delay,
                              std::move(publication));
   }
@@ -118,12 +121,12 @@ class ActorRuntime : public RuntimeApi {
   std::string _node_id;
   std::string _actor_type;
   std::string _instance_id;
-  PubSub::SubscriptionHandle router_handle;
+  uActor::PubSub::ReceiverHandle router_handle;
   uint32_t next_id = 1;
   std::map<uint32_t, std::set<uint32_t>> subscription_mapping;
   std::list<uint32_t> ready_queue;
   std::list<std::pair<uint32_t, uint32_t>> timeouts;
-  std::multimap<uint32_t, Publication> delayed_messages;
+  std::multimap<uint32_t, uActor::PubSub::Publication> delayed_messages;
   uint32_t runtime_subscription_id;
 
   void event_loop() {
@@ -160,8 +163,8 @@ class ActorRuntime : public RuntimeApi {
             for (uint32_t receiver_id : receivers->second) {
               auto actor = actors.find(receiver_id);
               if (actor != actors.end()) {
-                if (actor->second.enqueue(
-                        Publication(publication->publication))) {
+                if (actor->second.enqueue(uActor::PubSub::Publication(
+                        publication->publication))) {
                   if (std::find(ready_queue.begin(), ready_queue.end(),
                                 receiver_id) == ready_queue.end()) {
                     ready_queue.push_back(receiver_id);
@@ -187,7 +190,7 @@ class ActorRuntime : public RuntimeApi {
 
       while (delayed_messages.begin() != delayed_messages.end() &&
              delayed_messages.begin()->first < BoardFunctions::timestamp()) {
-        PubSub::Router::get_instance().publish(
+        uActor::PubSub::Router::get_instance().publish(
             std::move(delayed_messages.begin()->second));
         delayed_messages.erase(delayed_messages.begin());
       }
@@ -221,11 +224,12 @@ class ActorRuntime : public RuntimeApi {
     }
   }
 
-  void add_actor_wrapper(const Publication& publication) {
-    static_cast<RuntimeType*>(this)->add_actor(Publication(publication));
+  void add_actor_wrapper(const uActor::PubSub::Publication& publication) {
+    static_cast<RuntimeType*>(this)->add_actor(
+        uActor::PubSub::Publication(publication));
   }
 
-  void add_actor(const Publication& publication) {
+  void add_actor(const uActor::PubSub::Publication& publication) {
     add_actor_base<>(publication);
   }
 };

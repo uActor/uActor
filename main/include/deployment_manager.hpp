@@ -11,9 +11,8 @@
 #include <utility>
 
 #include "native_actor.hpp"
-#include "publication.hpp"
+#include "pubsub/router.hpp"
 #include "string_helper.hpp"
-#include "subscription.hpp"
 
 struct Deployment {
   Deployment(std::string_view name, std::string_view actor_type,
@@ -66,21 +65,21 @@ class DeploymentManager : public NativeActor {
   DeploymentManager(ManagedNativeActor* actor_wrapper, std::string_view node_id,
                     std::string_view actor_type, std::string_view instance_id)
       : NativeActor(actor_wrapper, node_id, actor_type, instance_id) {
-    subscribe(
-        PubSub::Filter{PubSub::Constraint{"node_id", std::string(node_id)},
-                       PubSub::Constraint{"type", "label_update"}});
-    subscribe(
-        PubSub::Filter{PubSub::Constraint{"node_id", std::string(node_id)},
-                       PubSub::Constraint{"type", "label_get"}});
-    subscribe(
-        PubSub::Filter{PubSub::Constraint{"node_id", std::string(node_id)},
-                       PubSub::Constraint{"type", "unmanaged_actor_update"}});
-    subscribe(
-        PubSub::Filter{PubSub::Constraint{"node_id", std::string(node_id)},
-                       PubSub::Constraint{"type", "runtime_update"}});
+    subscribe(uActor::PubSub::Filter{
+        uActor::PubSub::Constraint{"node_id", std::string(node_id)},
+        uActor::PubSub::Constraint{"type", "label_update"}});
+    subscribe(uActor::PubSub::Filter{
+        uActor::PubSub::Constraint{"node_id", std::string(node_id)},
+        uActor::PubSub::Constraint{"type", "label_get"}});
+    subscribe(uActor::PubSub::Filter{
+        uActor::PubSub::Constraint{"node_id", std::string(node_id)},
+        uActor::PubSub::Constraint{"type", "unmanaged_actor_update"}});
+    subscribe(uActor::PubSub::Filter{
+        uActor::PubSub::Constraint{"node_id", std::string(node_id)},
+        uActor::PubSub::Constraint{"type", "runtime_update"}});
   }
 
-  void receive(const Publication& publication) {
+  void receive(const uActor::PubSub::Publication& publication) {
     if (publication.get_str_attr("type") == "deployment") {
       receive_deployment(publication);
     } else if (publication.get_str_attr("category") == "actor_lifetime") {
@@ -111,7 +110,7 @@ class DeploymentManager : public NativeActor {
 
   std::unordered_map<std::string, uint32_t> deployed_actor_types;
 
-  void receive_deployment(const Publication& publication) {
+  void receive_deployment(const uActor::PubSub::Publication& publication) {
     printf("Outer Deployment Message\n");
     if (auto runtime_it = runtimes.find(std::string(
             *publication.get_str_attr("deployment_actor_runtime_type")));
@@ -190,7 +189,7 @@ class DeploymentManager : public NativeActor {
     }
   }
 
-  void receive_lifetime_event(const Publication& publication) {
+  void receive_lifetime_event(const uActor::PubSub::Publication& publication) {
     printf("Deployment Manager Lifetime Event %s\n",
            publication.get_str_attr("type")->data());
     if (publication.get_str_attr("type") == "actor_exit") {
@@ -220,7 +219,7 @@ class DeploymentManager : public NativeActor {
     }
   }
 
-  void receive_ttl_timeout(const Publication& publication) {
+  void receive_ttl_timeout(const uActor::PubSub::Publication& publication) {
     while (ttl_end_times.begin() != ttl_end_times.end() &&
            ttl_end_times.begin()->first < now()) {
       printf("Deployment Manager Timeout\n");
@@ -239,7 +238,7 @@ class DeploymentManager : public NativeActor {
     }
   }
 
-  void receive_label_update(const Publication& pub) {
+  void receive_label_update(const uActor::PubSub::Publication& pub) {
     auto key = pub.get_str_attr("key");
     auto value = pub.get_str_attr("value");
     if (pub.get_str_attr("command") == "upsert" && key && value) {
@@ -249,15 +248,15 @@ class DeploymentManager : public NativeActor {
       labels.erase(std::string(*key));
     }
 
-    std::list<PubSub::Constraint> constraints{
-        PubSub::Constraint{"type", "deployment"}};
+    std::list<uActor::PubSub::Constraint> constraints{
+        uActor::PubSub::Constraint{"type", "deployment"}};
     for (const auto label : labels) {
-      constraints.emplace_back(label.first, label.second,
-                               PubSub::ConstraintPredicates::Predicate::EQ,
-                               true);
+      constraints.emplace_back(
+          label.first, label.second,
+          uActor::PubSub::ConstraintPredicates::Predicate::EQ, true);
     }
     uint32_t new_deployment_sub_id =
-        subscribe(PubSub::Filter{std::move(constraints)});
+        subscribe(uActor::PubSub::Filter{std::move(constraints)});
 
     if (new_deployment_sub_id != deployment_sub_id) {
       if (deployment_sub_id > 0) {
@@ -268,13 +267,13 @@ class DeploymentManager : public NativeActor {
 
     printf("labels: %d\n", labels.size());
 
-    Publication node_label_updates;
+    uActor::PubSub::Publication node_label_updates;
     node_label_updates.set_attr("type", "label_update_notification");
     node_label_updates.set_attr("node_id", node_id());
     publish(std::move(node_label_updates));
   }
 
-  void receive_label_get(const Publication& pub) {
+  void receive_label_get(const uActor::PubSub::Publication& pub) {
     auto key = pub.get_str_attr("key");
     auto publisher_node_id = pub.get_str_attr("publisher_node_id");
     auto publisher_actor_type = pub.get_str_attr("publisher_actor_type");
@@ -288,7 +287,7 @@ class DeploymentManager : public NativeActor {
       return;
     }
 
-    Publication response{};
+    uActor::PubSub::Publication response{};
     response.set_attr("type", "label_response");
     response.set_attr("key", *key);
     response.set_attr("value", it->second);
@@ -298,7 +297,7 @@ class DeploymentManager : public NativeActor {
     publish(std::move(response));
   }
 
-  void receive_unmanaged_actor_update(const Publication& pub) {
+  void receive_unmanaged_actor_update(const uActor::PubSub::Publication& pub) {
     if (pub.get_str_attr("command") == "register") {
       increment_deployed_actor_type_count(
           *pub.get_str_attr("update_actor_type"));
@@ -308,7 +307,7 @@ class DeploymentManager : public NativeActor {
     }
   }
 
-  void receive_runtime_update(const Publication& pub) {
+  void receive_runtime_update(const uActor::PubSub::Publication& pub) {
     auto actor_runtime_type = pub.get_str_attr("actor_runtime_type");
 
     auto update_node_id = pub.get_str_attr("update_node_id");
@@ -358,10 +357,10 @@ class DeploymentManager : public NativeActor {
     deployment->active = true;
 
     if (deployment->lifetime_subscription_id == 0) {
-      uint32_t sub_id = subscribe(
-          PubSub::Filter{PubSub::Constraint{"category", "actor_lifetime"},
-                         PubSub::Constraint{"?lifetime_instance_id",
-                                            std::string(deployment->name)}});
+      uint32_t sub_id = subscribe(uActor::PubSub::Filter{
+          uActor::PubSub::Constraint{"category", "actor_lifetime"},
+          uActor::PubSub::Constraint{"?lifetime_instance_id",
+                                     std::string(deployment->name)}});
       subscriptions.emplace(sub_id, deployment->name);
       deployment->lifetime_subscription_id = sub_id;
     }
@@ -380,7 +379,7 @@ class DeploymentManager : public NativeActor {
   }
 
   void start_deployment(Deployment* deployment, Runtime* runtime) {
-    Publication spawn_message{};
+    uActor::PubSub::Publication spawn_message{};
     spawn_message.set_attr("command", "spawn_lua_actor");
 
     spawn_message.set_attr("spawn_code", deployment->actor_code);
@@ -396,7 +395,7 @@ class DeploymentManager : public NativeActor {
   }
 
   void stop_deployment(Deployment* deployment) {
-    Publication exit_message{};
+    uActor::PubSub::Publication exit_message{};
     exit_message.set_attr("type", "exit");
     exit_message.set_attr("node_id", node_id());
     exit_message.set_attr("actor_type", deployment->actor_type);
@@ -412,7 +411,7 @@ class DeploymentManager : public NativeActor {
         !inserted) {
       end_time_it->second.push_back(deployment->name);
     }
-    Publication timeout_message{};
+    uActor::PubSub::Publication timeout_message{};
     timeout_message.set_attr("type", "deployment_lifetime_end");
     timeout_message.set_attr("deployment_name", deployment->name);
     timeout_message.set_attr("node_id", node_id());

@@ -10,12 +10,13 @@
 
 class LuaRuntime : public ActorRuntime<ManagedLuaActor, LuaRuntime> {
  public:
-  LuaRuntime(PubSub::Router* router, const char* node_id, const char* id)
+  LuaRuntime(uActor::PubSub::Router* router, const char* node_id,
+             const char* id)
       : ActorRuntime<ManagedLuaActor, LuaRuntime>(router, node_id,
                                                   "lua_runtime", id) {
     state = create_lua_state();
 
-    Publication p{BoardFunctions::NODE_ID, "lua_runtime", "1"};
+    uActor::PubSub::Publication p{BoardFunctions::NODE_ID, "lua_runtime", "1"};
     p.set_attr("type", "runtime_update");
     p.set_attr("command", "register");
     p.set_attr("actor_runtime_type", "lua");
@@ -23,11 +24,11 @@ class LuaRuntime : public ActorRuntime<ManagedLuaActor, LuaRuntime> {
     p.set_attr("update_actor_type", "lua_runtime");
     p.set_attr("update_instance_id", "1");
     p.set_attr("node_id", BoardFunctions::NODE_ID);
-    PubSub::Router::get_instance().publish(std::move(p));
+    uActor::PubSub::Router::get_instance().publish(std::move(p));
   }
 
   ~LuaRuntime() {
-    Publication p{BoardFunctions::NODE_ID, "lua_runtime", "1"};
+    uActor::PubSub::Publication p{BoardFunctions::NODE_ID, "lua_runtime", "1"};
     p.set_attr("type", "runtime_update");
     p.set_attr("command", "deregister");
     p.set_attr("actor_runtime_type", "lua");
@@ -35,7 +36,7 @@ class LuaRuntime : public ActorRuntime<ManagedLuaActor, LuaRuntime> {
     p.set_attr("update_actor_type", "lua_runtime");
     p.set_attr("update_instance_id", "1");
     p.set_attr("node_id", BoardFunctions::NODE_ID);
-    PubSub::Router::get_instance().publish(std::move(p));
+    uActor::PubSub::Router::get_instance().publish(std::move(p));
 
     actors.clear();
     lua_close(state);
@@ -51,7 +52,7 @@ class LuaRuntime : public ActorRuntime<ManagedLuaActor, LuaRuntime> {
     return lua_state;
   }
 
-  void add_actor(Publication&& publication) {
+  void add_actor(uActor::PubSub::Publication&& publication) {
     add_actor_base<lua_State*>(publication, state);
   }
 

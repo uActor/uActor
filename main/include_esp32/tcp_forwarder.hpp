@@ -30,30 +30,34 @@ extern "C" {
 #include <vector>
 
 #include "board_functions.hpp"
-#include "publication.hpp"
+#include "pubsub/router.hpp"
 #include "remote_connection.hpp"
-#include "subscription.hpp"
 
 class TCPForwarder : public ForwarderSubscriptionAPI {
  public:
   constexpr static const char* TAG = "tcp_forwarder";
 
-  TCPForwarder() : handle(PubSub::Router::get_instance().new_subscriber()) {
-    PubSub::Filter primary_filter{
-        PubSub::Constraint(std::string("node_id"), BoardFunctions::NODE_ID),
-        PubSub::Constraint(std::string("actor_type"), "forwarder"),
-        PubSub::Constraint(std::string("instance_id"), "1")};
+  TCPForwarder()
+      : handle(uActor::PubSub::Router::get_instance().new_subscriber()) {
+    uActor::PubSub::Filter primary_filter{
+        uActor::PubSub::Constraint(std::string("node_id"),
+                                   BoardFunctions::NODE_ID),
+        uActor::PubSub::Constraint(std::string("actor_type"), "forwarder"),
+        uActor::PubSub::Constraint(std::string("instance_id"), "1")};
     forwarder_subscription_id = handle.subscribe(primary_filter);
 
-    PubSub::Filter peer_announcements{
-        PubSub::Constraint(std::string("type"), "tcp_client_connect"),
-        PubSub::Constraint(std::string("node_id"), BoardFunctions::NODE_ID),
+    uActor::PubSub::Filter peer_announcements{
+        uActor::PubSub::Constraint(std::string("type"), "tcp_client_connect"),
+        uActor::PubSub::Constraint(std::string("node_id"),
+                                   BoardFunctions::NODE_ID),
     };
     peer_announcement_subscription_id = handle.subscribe(peer_announcements);
 
-    PubSub::Filter subscription_update{
-        PubSub::Constraint(std::string("type"), "local_subscription_update"),
-        PubSub::Constraint(std::string("node_id"), BoardFunctions::NODE_ID),
+    uActor::PubSub::Filter subscription_update{
+        uActor::PubSub::Constraint(std::string("type"),
+                                   "local_subscription_update"),
+        uActor::PubSub::Constraint(std::string("node_id"),
+                                   BoardFunctions::NODE_ID),
     };
     subscription_update_subscription_id = handle.subscribe(subscription_update);
   }
@@ -80,7 +84,7 @@ class TCPForwarder : public ForwarderSubscriptionAPI {
     fwd->tcp_reader();
   }
 
-  void receive(PubSub::MatchedPublication&& m) {
+  void receive(uActor::PubSub::MatchedPublication&& m) {
     std::unique_lock remote_lock(remote_mtx);
 
     if (m.subscription_id == forwarder_subscription_id) {
@@ -144,7 +148,7 @@ class TCPForwarder : public ForwarderSubscriptionAPI {
     }
   }
 
-  uint32_t add_subscription(uint32_t local_id, PubSub::Filter&& filter,
+  uint32_t add_subscription(uint32_t local_id, uActor::PubSub::Filter&& filter,
                             std::string_view node_id) {
     uint32_t sub_id = handle.subscribe(std::move(filter), node_id);
     auto entry = subscription_mapping.find(sub_id);
@@ -172,7 +176,7 @@ class TCPForwarder : public ForwarderSubscriptionAPI {
   int forwarder_subscription_id;
   int peer_announcement_subscription_id;
   int subscription_update_subscription_id;
-  PubSub::SubscriptionHandle handle;
+  uActor::PubSub::ReceiverHandle handle;
 
   uint32_t next_local_id = 0;
   std::map<uint32_t, RemoteConnection> remotes;

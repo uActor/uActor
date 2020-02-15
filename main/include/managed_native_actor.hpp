@@ -25,7 +25,7 @@ class ManagedNativeActor : public ManagedActor {
     }
   }
 
-  bool receive(const Publication& p) {
+  bool receive(const uActor::PubSub::Publication& p) {
     actor->receive(std::move(p));
     return true;
   }

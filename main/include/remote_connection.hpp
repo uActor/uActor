@@ -25,12 +25,13 @@ extern "C" {
 #include <vector>
 
 #include "board_functions.hpp"
-#include "subscription.hpp"
+#include "pubsub/router.hpp"
 
 class TCPForwarder;
 
 struct ForwarderSubscriptionAPI {
-  virtual uint32_t add_subscription(uint32_t local_id, PubSub::Filter&& filter,
+  virtual uint32_t add_subscription(uint32_t local_id,
+                                    uActor::PubSub::Filter&& filter,
                                     std::string_view node_id) = 0;
   virtual void remove_subscription(uint32_t local_id, uint32_t sub_id,
                                    std::string_view node_id) = 0;
@@ -55,12 +56,13 @@ class RemoteConnection {
     }
     subscription_ids.clear();
     if (!partner_node_id.empty()) {
-      Publication update{BoardFunctions::NODE_ID, "remote_connection",
-                         std::to_string(local_id)};
+      uActor::PubSub::Publication update{BoardFunctions::NODE_ID,
+                                         "remote_connection",
+                                         std::to_string(local_id)};
       update.set_attr("type", "peer_update");
       update.set_attr("update_type", "peer_removed");
       update.set_attr("peer_node_id", partner_node_id);
-      PubSub::Router::get_instance().publish(std::move(update));
+      uActor::PubSub::Router::get_instance().publish(std::move(update));
     }
   }
 
@@ -71,24 +73,24 @@ class RemoteConnection {
   };
 
   void handle_subscription_update_notification(
-      const Publication& update_message) {
+      const uActor::PubSub::Publication& update_message) {
     if (update_message.get_str_attr("node_id") == BoardFunctions::NODE_ID) {
       send_routing_info();
     }
   }
 
   void send_routing_info() {
-    Publication p{BoardFunctions::NODE_ID, "remote_connection",
-                  std::to_string(local_id)};
+    uActor::PubSub::Publication p{BoardFunctions::NODE_ID, "remote_connection",
+                                  std::to_string(local_id)};
     p.set_attr("type", "subscription_update");
     p.set_attr("subscription_node_id", std::string(BoardFunctions::NODE_ID));
     p.set_attr("_internal_sequence_number",
                static_cast<int32_t>(RemoteConnection::sequence_number++));
     p.set_attr("_internal_epoch", static_cast<int32_t>(BoardFunctions::epoch));
     if (!partner_node_id.empty()) {
-      p.set_attr(
-          "serialized_subscriptions",
-          PubSub::Router::get_instance().subscriptions_for(partner_node_id));
+      p.set_attr("serialized_subscriptions",
+                 uActor::PubSub::Router::get_instance().subscriptions_for(
+                     partner_node_id));
     }
 
     std::string serialized = p.to_msg_pack();
@@ -147,7 +149,7 @@ class RemoteConnection {
         if (publicaton_remaining_bytes == 0) {
           // testbed_stop_timekeeping((std::string("receive") +
           // std::to_string(local_id)).data());
-          auto p = Publication::from_msg_pack(std::string_view(
+          auto p = uActor::PubSub::Publication::from_msg_pack(std::string_view(
               publication_buffer.data(), publicaton_full_size));
           if (p && p->has_attr("publisher_node_id") &&
               p->get_str_attr("publisher_node_id") != BoardFunctions::NODE_ID) {
@@ -185,11 +187,15 @@ class RemoteConnection {
                 } else {
                   p->set_attr("_internal_forwarded_by", partner_node_id);
                 }
-                PubSub::Router::get_instance().publish(std::move(*p));
+                uActor::PubSub::Router::get_instance().publish(std::move(*p));
               }
 
             } else {
-              printf("message dropped from %s: message: %d - %d, local %d, %d \n", publisher_node_id->data(), *epoch_number, *sequence_number, sequence_info_it->second.epoch, sequence_info_it->second.sequence_number);
+              printf(
+                  "message dropped from %s: message: %d - %d, local %d, %d \n",
+                  publisher_node_id->data(), *epoch_number, *sequence_number,
+                  sequence_info_it->second.epoch,
+                  sequence_info_it->second.sequence_number);
             }
           }
           publication_buffer.clear();
@@ -245,16 +251,17 @@ class RemoteConnection {
   static std::unordered_map<std::string, SequenceInfo> sequence_infos;
   static std::mutex mtx;
 
-  void update_subscriptions(Publication&& p) {
+  void update_subscriptions(uActor::PubSub::Publication&& p) {
     std::string_view new_partner_id = *p.get_str_attr("subscription_node_id");
 
     if (partner_node_id.empty()) {
-      Publication update{BoardFunctions::NODE_ID, "remote_connection",
-                         std::to_string(local_id)};
+      uActor::PubSub::Publication update{BoardFunctions::NODE_ID,
+                                         "remote_connection",
+                                         std::to_string(local_id)};
       update.set_attr("type", "peer_update");
       update.set_attr("update_type", "peer_added");
       update.set_attr("peer_node_id", new_partner_id);
-      PubSub::Router::get_instance().publish(std::move(update));
+      uActor::PubSub::Router::get_instance().publish(std::move(update));
 
       partner_node_id = std::string(new_partner_id);
 
@@ -264,7 +271,7 @@ class RemoteConnection {
 
       // Flooding
       // subscription_ids.push_back(handle->add_subscription(local_id,
-      // PubSub::Filter{}, std::string_view(partner_node_id)));
+      // uActor::PubSub::Filter{}, std::string_view(partner_node_id)));
     }
 
     if (p.has_attr("serialized_subscriptions")) {
@@ -273,7 +280,7 @@ class RemoteConnection {
                                        subscription_ids.end());
       for (auto serialized : StringHelper::string_split(
                *p.get_str_attr("serialized_subscriptions"), "&")) {
-        auto deserialized = PubSub::Filter::deserialize(serialized);
+        auto deserialized = uActor::PubSub::Filter::deserialize(serialized);
         if (deserialized) {
           uint32_t sub_id =
               handle->add_subscription(local_id, std::move(*deserialized),

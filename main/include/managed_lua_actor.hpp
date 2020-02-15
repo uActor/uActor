@@ -8,8 +8,7 @@
 
 #include "lua.hpp"
 #include "managed_actor.hpp"
-#include "publication.hpp"
-#include "subscription.hpp"
+#include "pubsub/router.hpp"
 
 class ManagedLuaActor : public ManagedActor {
  public:
@@ -29,7 +28,7 @@ class ManagedLuaActor : public ManagedActor {
     }
   }
 
-  bool receive(const Publication& m) {
+  bool receive(const uActor::PubSub::Publication& m) {
     if (!initialized()) {
       printf("Actor not initialized, can't process message\n");
       return false;
@@ -160,8 +159,9 @@ class ManagedLuaActor : public ManagedActor {
     lua_getglobal(state, "tonumber");
     lua_setfield(state, -2, "tonumber");
 
-    for (uint32_t i = 1; i <= PubSub::ConstraintPredicates::MAX_INDEX; i++) {
-      const char* name = PubSub::ConstraintPredicates::name(i);
+    for (uint32_t i = 1; i <= uActor::PubSub::ConstraintPredicates::MAX_INDEX;
+         i++) {
+      const char* name = uActor::PubSub::ConstraintPredicates::name(i);
       if (name) {
         lua_pushinteger(state, i);
         lua_setfield(state, -2, name);
@@ -218,8 +218,8 @@ class ManagedLuaActor : public ManagedActor {
     return true;
   }
 
-  static PubSub::Filter parse_filters(lua_State* state, size_t index) {
-    std::list<PubSub::Constraint> filter_list;
+  static uActor::PubSub::Filter parse_filters(lua_State* state, size_t index) {
+    std::list<uActor::PubSub::Constraint> filter_list;
     luaL_checktype(state, index, LUA_TTABLE);
     lua_pushvalue(state, index);
     lua_pushnil(state);
@@ -240,13 +240,14 @@ class ManagedLuaActor : public ManagedActor {
         filter_list.emplace_back(std::move(key), value);
       } else if (lua_type(state, -2) == LUA_TTABLE) {  //  Complex Operator
         lua_geti(state, -2, 1);
-        PubSub::ConstraintPredicates::Predicate operation =
-            PubSub::ConstraintPredicates::Predicate::EQ;
+        uActor::PubSub::ConstraintPredicates::Predicate operation =
+            uActor::PubSub::ConstraintPredicates::Predicate::EQ;
         int32_t value = lua_tointeger(state, -1);
         if (lua_isinteger(state, -1) && value > 0 &&
-            value <= PubSub::ConstraintPredicates::MAX_INDEX) {
-          operation = static_cast<PubSub::ConstraintPredicates::Predicate>(
-              lua_tointeger(state, -1));
+            value <= uActor::PubSub::ConstraintPredicates::MAX_INDEX) {
+          operation =
+              static_cast<uActor::PubSub::ConstraintPredicates::Predicate>(
+                  lua_tointeger(state, -1));
         } else {
           luaL_error(state, "Bad Predicate");
         }
@@ -275,13 +276,14 @@ class ManagedLuaActor : public ManagedActor {
     }
     lua_pop(state, 1);
 
-    return PubSub::Filter(std::move(filter_list));
+    return uActor::PubSub::Filter(std::move(filter_list));
   }
 
-  static Publication parse_publication(ManagedLuaActor* actor, lua_State* state,
-                                       size_t index) {
-    Publication p = Publication(actor->node_id(), actor->actor_type(),
-                                actor->instance_id());
+  static uActor::PubSub::Publication parse_publication(ManagedLuaActor* actor,
+                                                       lua_State* state,
+                                                       size_t index) {
+    auto p = uActor::PubSub::Publication(actor->node_id(), actor->actor_type(),
+                                         actor->instance_id());
 
     luaL_checktype(state, index, LUA_TTABLE);
     lua_pushvalue(state, index);
