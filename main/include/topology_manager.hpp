@@ -1,6 +1,8 @@
 #ifndef MAIN_INCLUDE_TOPOLOGY_MANAGER_HPP_
 #define MAIN_INCLUDE_TOPOLOGY_MANAGER_HPP_
 
+#include <sdkconfig.h>
+
 #include <map>
 #include <string>
 #include <unordered_set>
@@ -71,11 +73,13 @@ class TopologyManager : public NativeActor {
   }
 
   bool should_connect(std::string_view peer_id) {
-    auto it = reachable_peers.find(std::string(peer_id));
+    if (reachable_peers.find(std::string(peer_id)) == reachable_peers.end()) {
+      if (peer_id == CONFIG_SERVER_NODE) {
+        return true;
+      }
+    }
 
-    // star topology
-    return it == reachable_peers.end() && peer_id != node_id() &&
-           peer_id == "node_3";
+    return false;
   }
 };
 

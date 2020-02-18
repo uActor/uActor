@@ -3,6 +3,7 @@ import struct
 import argparse
 import msgpack
 import time
+import testbed_client
 
 # parser = argparse.ArgumentParser()
 # parser.add_argument("board_host")
@@ -14,7 +15,7 @@ import time
 # arguments = parser.parse_args()
 
 def main():
-  nodes = [("node_2", "192.168.2.229"), ("node_3", "192.168.2.230"), ("node_1", "192.168.2.231")]
+  nodes = testbed_client.node_adresses()
   t = int(time.time())
   for node_id, node_ip in nodes:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -38,6 +39,7 @@ def main():
         s.send(struct.pack("!i", len(peer_msg)))
         s.send(peer_msg)
         t+=1
+      time.sleep(1)
         
 if __name__ == "__main__":
   main()

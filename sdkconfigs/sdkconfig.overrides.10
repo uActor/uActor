@@ -1,3 +1,4 @@
 CONFIG_NODE_ID="node_10"
 CONFIG_NODE_LABELS="core.location.room=home,xyz.hetzel.lighting.device_type=lightbulb,xyz.hetzel.fire_alarm.device_type=warning_light"
 CONFIG_WIFI_SSID="HETZEL-IOT"
+CONFIG_SERVER_NODE="node_home"

@@ -37,6 +37,12 @@ menu "Board Configuration"
         default ""
         help
             key=value,key2=value2
+
+    config SERVER_NODE
+        string "Topology Server Node"
+        default ""
+        help
+            Topology control
 endmenu
 menu "Benchmark Configuration"
     config BENCHMARK_ENABLED
