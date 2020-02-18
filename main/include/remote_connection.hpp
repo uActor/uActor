@@ -293,6 +293,7 @@ class RemoteConnection {
       for (auto subscription_id : old_subscriptions) {
         handle->remove_subscription(local_id, subscription_id,
                                     std::string_view(partner_node_id));
+        subscription_ids.remove(subscription_id);
       }
     }
   }
