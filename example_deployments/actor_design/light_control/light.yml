@@ -1,25 +1,23 @@
 type: deployment
-name: xyz.hetzel.deployment.lightbulb
+name: xyz.hetzel.deployment.room_lightbulb
 ttl:  20000
 actor_type:  xyz.hetzel.actor.lightbulb
 actor_runtime_type:  lua
 actor_version:  "0.1"
 actor_code_file:  "lightbulb.lua"
 constraints:
-  - "core.location.room": "room1"
   - "xyz.hetzel.lighting.device_type": "lightbulb"
 required_actors:
   - "core.io.gpio"
 ---
 type: deployment
-name: xyz.hetzel.deployment.lightswitch
+name: xyz.hetzel.deployment.room_lightswitch
 ttl:  20000
 actor_type:  xyz.hetzel.actor.lightswitch
 actor_runtime_type:  lua
 actor_version:  "0.1"
 actor_code_file:  "lightswitch.lua"
 constraints:
-  - "core.location.room": "room1"
   - "xyz.hetzel.lighting.device_type": "lightswitch"
 required_actors:
   - "core.io.gpio"

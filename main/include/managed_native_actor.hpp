@@ -4,6 +4,7 @@
 #include <memory>
 #include <utility>
 
+#include "bmp180_actor.hpp"
 #include "deployment_manager.hpp"
 #include "managed_actor.hpp"
 #include "native_actor.hpp"
@@ -22,6 +23,9 @@ class ManagedNativeActor : public ManagedActor {
     } else if (std::string_view("topology_manager") == actor_type) {
       actor = std::make_unique<TopologyManager>(this, node_id, actor_type,
                                                 instance_id);
+    } else if (std::string_view("bmp180_sensor") == actor_type) {
+      actor =
+          std::make_unique<BMP180Actor>(this, node_id, actor_type, instance_id);
     }
   }
 

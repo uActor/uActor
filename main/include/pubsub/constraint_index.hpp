@@ -4,9 +4,9 @@
 #include <list>
 #include <map>
 #include <string>
-#include <variant>
 #include <unordered_map>
 #include <utility>
+#include <variant>
 
 #include "constraint.hpp"
 #include "subscription.hpp"

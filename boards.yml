@@ -39,3 +39,11 @@ boards:
     serial_device: "/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_TUM09-if00-port0"
     sdkconfig: sdkconfig
     sdkconfig_overrides: sdkconfigs/sdkconfig.overrides.9
+  node_10:
+    serial_device: "/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_TUM10-if00-port0"
+    sdkconfig: sdkconfig
+    sdkconfig_overrides: sdkconfigs/sdkconfig.overrides.10
+  node_home:
+    serial_device: "/dev/serial/by-id/usb-Silicon_Labs_CP2102N_USB_to_UART_Bridge_Controller_44c2be6d8198e8119af37540c3e5cfbd-if00-port0"
+    sdkconfig: sdkconfig
+    sdkconfig_overrides: sdkconfigs/sdkconfig.overrides.home

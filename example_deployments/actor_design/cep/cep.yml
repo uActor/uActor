@@ -1,0 +1,33 @@
+type: deployment
+name: xyz.hetzel.deployment.cep_temperature_reader
+ttl:  20000
+actor_type:  xyz.hetzel.actor.temperature_reader
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "temperature_reader.lua"
+required_actors:
+  - "core.sensors.temperature"
+---
+type: deployment
+name: xyz.hetzel.deployment.smoke_detector
+ttl:  20000
+actor_type:  xyz.hetzel.actor.smoke_detector
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "smoke_detector.lua"
+constraints:
+  - "xyz.hetzel.fire_alarm.device_type": "smoke_detector"
+required_actors:
+  - "core.io.gpio"
+---
+type: deployment
+name: xyz.hetzel.deployment.warning_light
+ttl:  20000
+actor_type:  xyz.hetzel.actor.warning_light
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "warning_light.lua"
+constraints:
+  - "xyz.hetzel.fire_alarm.device_type": "warning_light"
+required_actors:
+  - "core.io.gpio"
