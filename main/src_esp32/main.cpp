@@ -156,7 +156,7 @@ void main_task(void*) {
   uActor::PubSub::Router::get_instance().publish(
       std::move(create_topology_manager));
 
-  if(std::string("node_home") == BoardFunctions::NODE_ID) {
+  if (std::string("node_home") == BoardFunctions::NODE_ID) {
     auto create_bmp180_sensor =
         uActor::PubSub::Publication(BoardFunctions::NODE_ID, "root", "1");
     create_bmp180_sensor.set_attr("command", "spawn_native_actor");
@@ -172,7 +172,16 @@ void main_task(void*) {
   }
 
   vTaskDelay(50 / portTICK_PERIOD_MS);
-
+  {
+    uActor::PubSub::Publication label_update(BoardFunctions::NODE_ID, "root",
+                                             "1");
+    label_update.set_attr("type", "label_update");
+    label_update.set_attr("command", "upsert");
+    label_update.set_attr("node_id", BoardFunctions::NODE_ID);
+    label_update.set_attr("key", "core.node_id");
+    label_update.set_attr("value", BoardFunctions::NODE_ID);
+    uActor::PubSub::Router::get_instance().publish(std::move(label_update));
+  }
   for (const auto label : BoardFunctions::node_labels()) {
     uActor::PubSub::Publication label_update(BoardFunctions::NODE_ID, "root",
                                              "1");
