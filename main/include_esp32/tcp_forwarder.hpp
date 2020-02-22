@@ -69,7 +69,7 @@ class TCPForwarder : public ForwarderSubscriptionAPI {
 
   static void os_task(void* args) {
     TCPForwarder fwd = TCPForwarder();
-    xTaskCreatePinnedToCore(&tcp_reader_task, "TCP-SERVER", 6168,
+    xTaskCreatePinnedToCore(&tcp_reader_task, "TCP-SERVER", 5000,
                             static_cast<void*>(&fwd), 4, nullptr, 1);
     while (true) {
       auto result = fwd.handle.receive(BoardFunctions::SLEEP_FOREVER);

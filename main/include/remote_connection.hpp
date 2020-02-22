@@ -192,14 +192,16 @@ class RemoteConnection {
 
             } else {
               printf(
-                  "message dropped from %s: message: %d - %d, local %d, %d \n",
+                  "message dropped from %s: message: %d - %d, local %d, %d, "
+                  "forwared_by: %s\n",
                   publisher_node_id->data(), *epoch_number, *sequence_number,
                   sequence_info_it->second.epoch,
-                  sequence_info_it->second.sequence_number);
+                  sequence_info_it->second.sequence_number,
+                  partner_node_id.data());
             }
           }
           publication_buffer.clear();
-          publication_buffer.resize(0);
+          publication_buffer.shrink_to_fit();
           state = empty;
           assert(publicaton_remaining_bytes == 0);
         } else {

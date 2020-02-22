@@ -3,11 +3,11 @@
 
 #include <atomic>
 #include <list>
+#include <map>
 #include <mutex>
 #include <set>
 #include <string>
 #include <string_view>
-#include <unordered_map>
 
 #include "constraint_index.hpp"
 #include "filter.hpp"
@@ -36,8 +36,8 @@ class Router {
  private:
   std::atomic<uint32_t> next_sub_id{1};
   std::list<Receiver*> receivers;
-  std::unordered_map<uint32_t, Subscription> subscriptions;
-  std::unordered_map<std::string, ConstraintIndex> constraints;
+  std::map<uint32_t, Subscription> subscriptions;
+  std::map<std::string, ConstraintIndex> constraints;
   // Index for all subscriptions without required constraints.
   std::set<Subscription*> no_requirements;
 
@@ -63,8 +63,6 @@ class Router {
   friend ReceiverHandle;
   friend Receiver;
 
-  void remove_subscription_for_node(Subscription* sub, Receiver* r,
-                                    std::string node_id);
   void publish_subscription_update();
 };
 

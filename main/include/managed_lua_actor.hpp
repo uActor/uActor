@@ -1,6 +1,10 @@
 #ifndef MAIN_INCLUDE_MANAGED_LUA_ACTOR_HPP_
 #define MAIN_INCLUDE_MANAGED_LUA_ACTOR_HPP_
 
+#ifdef IDF
+#include <testbed.h>
+#endif
+
 #include <cstdio>
 #include <list>
 #include <string>
@@ -20,11 +24,15 @@ class ManagedLuaActor : public ManagedActor {
 
   ~ManagedLuaActor() {
     if (initialized()) {
-      lua_pushglobaltable(state);
+      printf("before collect: %d %d\n", lua_gc(state, LUA_GCCOUNT, 0),
+             lua_gc(state, LUA_GCCOUNTB, 0));
+
       lua_pushnil(state);
-      lua_seti(state, -2, id());
-      lua_pop(state, 1);
+      lua_setglobal(state, std::to_string(id()).data());
       lua_gc(state, LUA_GCCOLLECT, 0);
+
+      printf("after collect: %d %d\n", lua_gc(state, LUA_GCCOUNT, 0),
+             lua_gc(state, LUA_GCCOUNTB, 0));
     }
   }
 
@@ -34,14 +42,12 @@ class ManagedLuaActor : public ManagedActor {
       return false;
     }
 
-    lua_pushglobaltable(state);
-    lua_geti(state, -1, id());
+    lua_getglobal(state, std::to_string(id()).data());
     lua_getfield(state, -1, "receive");
     if (!lua_isfunction(state, -1)) {
       printf("receive is not a function\n");
     }
     lua_replace(state, 1);
-    lua_pop(state, 1);
 
     lua_newtable(state);
     for (const auto& value : m) {
@@ -126,6 +132,32 @@ class ManagedLuaActor : public ManagedActor {
     return 1;
   }
 
+#ifdef IDF
+  static int testbed_log_integer_wrapper(lua_State* state) {
+    const char* variable = lua_tostring(state, 1);
+    uint32_t value = lua_tointeger(state, 2);
+
+    testbed_log_integer(variable, value);
+    return 0;
+  }
+
+  static int testbed_log_double_wrapper(lua_State* state) {
+    const char* variable = lua_tostring(state, 1);
+    float value = lua_tonumber(state, 2);
+
+    testbed_log_double(variable, value);
+    return 0;
+  }
+
+  static int testbed_log_string_wrapper(lua_State* state) {
+    const char* variable = lua_tostring(state, 1);
+    const char* value = lua_tostring(state, 2);
+
+    testbed_log_string(variable, value);
+    return 0;
+  }
+#endif
+
   static constexpr luaL_Reg core[] = {
       {"publish", &publish_wrapper},
       {"delayed_publish", &delayed_publish_wrapper},
@@ -133,13 +165,19 @@ class ManagedLuaActor : public ManagedActor {
       {"subscribe", &subscribe_wrapper},
       {"unsubscribe", &unsubscribe_wrapper},
       {"now", &now_wrapper},
+#ifdef IDF
+      {"testbed_log_string", &testbed_log_integer_wrapper},
+      {"testbed_log_double", &testbed_log_double_wrapper},
+      {"testbed_log_string", &testbed_log_string_wrapper},
+#endif
       {NULL, NULL}};
 
   bool createActorEnvironment(const char* receive_function) {
-    lua_pushglobaltable(state);          // 1
-    luaL_newlibtable(state, core);       // 2
-    lua_pushlightuserdata(state, this);  // 3
-    luaL_setfuncs(state, core, 1);       // 2
+    printf("before create: %d %d\n", lua_gc(state, LUA_GCCOUNT, 0),
+           lua_gc(state, LUA_GCCOUNTB, 0));
+    lua_createtable(state, 0, 16);       // 1
+    lua_pushlightuserdata(state, this);  // 2
+    luaL_setfuncs(state, core, 1);       // 1
 
     lua_pushstring(state, node_id());
     lua_setfield(state, -2, "node_id");
@@ -168,17 +206,17 @@ class ManagedLuaActor : public ManagedActor {
       }
     }
 
-    lua_newtable(state);               // 3
-    lua_pushvalue(state, -1);          // 4
-    lua_setfield(state, -3, "state");  // 3
+    lua_newtable(state);               // 2
+    lua_pushvalue(state, -1);          // 3
+    lua_setfield(state, -3, "state");  // 2
 
-    lua_newtable(state);                    // 4
-    lua_pushvalue(state, -2);               // 5
-    lua_setfield(state, -2, "__index");     // 4
-    lua_pushvalue(state, -2);               // 5
-    lua_setfield(state, -2, "__newindex");  // 4
-    lua_setmetatable(state, -3);            // 3
-    lua_pop(state, 1);                      // 2
+    lua_newtable(state);                    // 3
+    lua_pushvalue(state, -2);               // 4
+    lua_setfield(state, -2, "__index");     // 3
+    lua_pushvalue(state, -2);               // 4
+    lua_setfield(state, -2, "__newindex");  // 3
+    lua_setmetatable(state, -3);            // 2
+    lua_pop(state, 1);                      // 1
 
     if (luaL_loadstring(state, receive_function)) {
       printf("LUA LOAD ERROR for actor %s.%s.%s\n", node_id(), actor_type(),
@@ -190,10 +228,10 @@ class ManagedLuaActor : public ManagedActor {
 
     // Sandbox the function by settings its
     // global environment to the table created above
-    lua_pushvalue(state, -2);      // 4
-    lua_setupvalue(state, -2, 1);  // 3
+    lua_pushvalue(state, -2);      // 3
+    lua_setupvalue(state, -2, 1);  // 2
 
-    int error_code = lua_pcall(state, 0, 0, 0);  // 2 - 3
+    int error_code = lua_pcall(state, 0, 0, 0);
     if (error_code) {
       printf("LUA LOAD ERROR for actor %s.%s.%s\n", node_id(), actor_type(),
              instance_id());
@@ -206,15 +244,17 @@ class ManagedLuaActor : public ManagedActor {
       return false;
     }
 
-    lua_getfield(state, -1, "receive");  // 3
+    lua_getfield(state, -1, "receive");  // 2
     if (!lua_isfunction(state, -1)) {
-      lua_pop(state, 3);  // 0
+      lua_pop(state, 3);
       return false;
     }
-    lua_pop(state, 1);  // 2
+    lua_pop(state, 1);  // 1
 
-    lua_seti(state, -2, id());  // 1
-    lua_pop(state, 1);
+    lua_setglobal(state, std::to_string(id()).data());  // 0
+
+    printf("after create: %d %d\n", lua_gc(state, LUA_GCCOUNT, 0),
+           lua_gc(state, LUA_GCCOUNTB, 0));
     return true;
   }
 

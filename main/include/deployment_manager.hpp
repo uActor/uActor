@@ -5,9 +5,8 @@
 #include <cstdint>
 #include <list>
 #include <map>
+#include <set>
 #include <string>
-#include <unordered_map>
-#include <unordered_set>
 #include <utility>
 
 #include "native_actor.hpp"
@@ -98,20 +97,19 @@ class DeploymentManager : public NativeActor {
   }
 
  private:
-  std::unordered_map<std::string, std::list<Runtime>> runtimes;
+  std::map<std::string, std::list<Runtime>> runtimes;
 
-  std::unordered_map<std::string, Deployment> deployments;
-  std::unordered_map<std::string, std::unordered_set<Deployment*>> dependencies;
-  std::unordered_map<uint32_t, std::string> subscriptions;
-  std::unordered_map<std::string, std::string> labels;
+  std::map<std::string, Deployment> deployments;
+  std::map<uint32_t, std::string> subscriptions;
+  std::map<std::string, std::set<Deployment*>> dependencies;
+
+  std::map<std::string, std::string> labels;
+  std::map<std::string, uint32_t> deployed_actor_types;
+
   uint32_t deployment_sub_id = 0;
-
   std::map<uint32_t, std::list<std::string>> ttl_end_times;
 
-  std::unordered_map<std::string, uint32_t> deployed_actor_types;
-
   void receive_deployment(const uActor::PubSub::Publication& publication) {
-    printf("Outer Deployment Message\n");
     if (auto runtime_it = runtimes.find(std::string(
             *publication.get_str_attr("deployment_actor_runtime_type")));
         runtime_it != runtimes.end()) {
@@ -122,8 +120,6 @@ class DeploymentManager : public NativeActor {
           publication.has_attr("deployment_actor_version") &&
           publication.has_attr("deployment_actor_code") &&
           publication.has_attr("deployment_required_actors")) {
-        printf("Deployment Message\n");
-
         if (publication.has_attr("deployment_constraints")) {
           std::string_view constraints =
               *publication.get_str_attr("deployment_constraints");
@@ -162,14 +158,15 @@ class DeploymentManager : public NativeActor {
         Deployment& deployment = deployment_iterator->second;
 
         if (inserted) {
-          printf("Deployment Created\n");
-
+          printf("Receive deployment from: %s\n",
+                 publication.get_str_attr("publisher_node_id")->data());
           add_deployment_dependencies(&deployment);
           if (requirements_check(&deployment)) {
             activate_deployment(&deployment, &runtime);
           }
         } else {
-          printf("Deployment Update / Refresh\n");
+          printf("Receive deployment update from: %s\n",
+                 publication.get_str_attr("publisher_node_id")->data());
 
           if (actor_version != deployment.actor_version ||
               actor_type != deployment.actor_type) {
@@ -183,6 +180,8 @@ class DeploymentManager : public NativeActor {
           }
 
           deployment.lifetime_end = end_time;
+        }
+        if (deployment.lifetime_end > 0) {
           enqueue_lifetime_end_wakeup(&deployment);
         }
       }
@@ -190,8 +189,6 @@ class DeploymentManager : public NativeActor {
   }
 
   void receive_lifetime_event(const uActor::PubSub::Publication& publication) {
-    printf("Deployment Manager Lifetime Event %s\n",
-           publication.get_str_attr("type")->data());
     if (publication.get_str_attr("type") == "actor_exit") {
       std::string deployment_id =
           std::string(*publication.get_str_attr("lifetime_instance_id"));
@@ -199,8 +196,7 @@ class DeploymentManager : public NativeActor {
           deployment_it != deployments.end()) {
         Deployment& deployment = deployment_it->second;
         if (deployment.lifetime_end < now()) {
-          printf("Deployment lifetime ended\n");
-          deactivate_deployment(&deployment);
+          // Already deactivated
           remove_deployment(&deployment);
         } else if (*publication.get_str_attr("exit_reason") != "clean_exit") {
           if (deployment.restarts < 3) {
@@ -222,15 +218,17 @@ class DeploymentManager : public NativeActor {
   void receive_ttl_timeout(const uActor::PubSub::Publication& publication) {
     while (ttl_end_times.begin() != ttl_end_times.end() &&
            ttl_end_times.begin()->first < now()) {
-      printf("Deployment Manager Timeout\n");
       for (auto deployment_id : ttl_end_times.begin()->second) {
         if (auto deployment_it = deployments.find(deployment_id);
             deployment_it != deployments.end()) {
           Deployment& deployment = deployment_it->second;
 
           if (ttl_end_times.begin()->first == deployment.lifetime_end) {
+            bool was_active = deployment.active;
             deactivate_deployment(&deployment);
-            remove_deployment(&deployment);
+            if (!was_active) {
+              remove_deployment(&deployment);
+            }
           }
         }
       }
@@ -264,8 +262,6 @@ class DeploymentManager : public NativeActor {
       }
       deployment_sub_id = new_deployment_sub_id;
     }
-
-    printf("labels: %d\n", labels.size());
 
     uActor::PubSub::Publication node_label_updates;
     node_label_updates.set_attr("type", "label_update_notification");
@@ -344,8 +340,7 @@ class DeploymentManager : public NativeActor {
 
   bool requirements_check(Deployment* deployment) {
     for (const auto& actor_type : deployment->required_actors) {
-      if (auto it = deployed_actor_types.find(actor_type);
-          it == deployed_actor_types.end()) {
+      if (deployed_actor_types.find(actor_type) == deployed_actor_types.end()) {
         return false;
       }
     }
@@ -353,32 +348,36 @@ class DeploymentManager : public NativeActor {
   }
 
   void activate_deployment(Deployment* deployment, Runtime* runtime) {
+    printf("DeploymentManager activate deployment\n");
+
     increment_deployed_actor_type_count(deployment->actor_type);
     deployment->active = true;
 
     if (deployment->lifetime_subscription_id == 0) {
       uint32_t sub_id = subscribe(uActor::PubSub::Filter{
           uActor::PubSub::Constraint{"category", "actor_lifetime"},
-          uActor::PubSub::Constraint{"?lifetime_instance_id",
-                                     std::string(deployment->name)}});
-      subscriptions.emplace(sub_id, deployment->name);
+          uActor::PubSub::Constraint{"lifetime_instance_id",
+                                     std::string(deployment->name)},
+          uActor::PubSub::Constraint{"publisher_node_id",
+                                     std::string(node_id())}});
+      subscriptions.try_emplace(sub_id, deployment->name);
       deployment->lifetime_subscription_id = sub_id;
     }
 
     start_deployment(deployment, runtime);
-
-    if (deployment->lifetime_end > 0) {
-      enqueue_lifetime_end_wakeup(deployment);
-    }
   }
 
   void deactivate_deployment(Deployment* deployment) {
-    decrement_deployed_actor_type_count(deployment->actor_type);
-    deployment->active = false;
-    stop_deployment(deployment);
+    printf("DeploymentManager deactivate deployment\n");
+    if (deployment->active) {
+      decrement_deployed_actor_type_count(deployment->actor_type);
+      deployment->active = false;
+      stop_deployment(deployment);
+    }
   }
 
   void start_deployment(Deployment* deployment, Runtime* runtime) {
+    printf("DeploymentManager start deployment\n");
     uActor::PubSub::Publication spawn_message{};
     spawn_message.set_attr("command", "spawn_lua_actor");
 
@@ -395,6 +394,7 @@ class DeploymentManager : public NativeActor {
   }
 
   void stop_deployment(Deployment* deployment) {
+    printf("DeploymentManager stop deployment\n");
     uActor::PubSub::Publication exit_message{};
     exit_message.set_attr("type", "exit");
     exit_message.set_attr("node_id", node_id());
@@ -404,8 +404,6 @@ class DeploymentManager : public NativeActor {
   }
 
   void enqueue_lifetime_end_wakeup(Deployment* deployment) {
-    printf("Deployment Manager enqueue timeout %d\n",
-           deployment->lifetime_end - now());
     if (auto [end_time_it, inserted] = ttl_end_times.try_emplace(
             deployment->lifetime_end, std::list<std::string>{deployment->name});
         !inserted) {
@@ -422,6 +420,7 @@ class DeploymentManager : public NativeActor {
   }
 
   void remove_deployment(Deployment* deployment) {
+    printf("DeploymentManager remove deployment\n");
     assert(!deployment->active);
 
     if (deployment->lifetime_subscription_id > 0) {
@@ -449,7 +448,7 @@ class DeploymentManager : public NativeActor {
   void add_deployment_dependencies(Deployment* deployment) {
     for (const auto& actor_type : deployment->required_actors) {
       if (auto [requirements_it, inserted] = dependencies.try_emplace(
-              actor_type, std::unordered_set<Deployment*>{deployment});
+              actor_type, std::set<Deployment*>{deployment});
           !inserted) {
         requirements_it->second.emplace(deployment);
       }
@@ -459,7 +458,6 @@ class DeploymentManager : public NativeActor {
   void increment_deployed_actor_type_count(std::string_view actor_type) {
     auto [counter_it, inserted] =
         deployed_actor_types.try_emplace(std::string(actor_type), 1);
-    counter_it != deployed_actor_types.end();
     if (!inserted) {
       counter_it->second++;
     } else {
