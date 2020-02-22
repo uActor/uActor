@@ -48,9 +48,20 @@ class RemoteConnection {
 
   RemoteConnection(uint32_t local_id, int32_t sock,
                    ForwarderSubscriptionAPI* handle)
-      : sock(sock), local_id(local_id), handle(handle) {}
+      : sock(sock), local_id(local_id), handle(handle) {
+    update_sub_id = handle->add_subscription(
+        local_id,
+        uActor::PubSub::Filter{
+            uActor::PubSub::Constraint{"type", "subscription_update"},
+            uActor::PubSub::Constraint{"update_receiver_id",
+                                       std::to_string(local_id)},
+            uActor::PubSub::Constraint{"publisher_node_id",
+                                       std::string(BoardFunctions::NODE_ID)}},
+        "local");
+  }
 
   ~RemoteConnection() {
+    handle->remove_subscription(local_id, update_sub_id, "");
     for (const auto& subscription_id : subscription_ids) {
       handle->remove_subscription(local_id, subscription_id, std::string(""));
     }
@@ -83,20 +94,14 @@ class RemoteConnection {
     uActor::PubSub::Publication p{BoardFunctions::NODE_ID, "remote_connection",
                                   std::to_string(local_id)};
     p.set_attr("type", "subscription_update");
+    p.set_attr("update_receiver_id", std::to_string(local_id));
     p.set_attr("subscription_node_id", std::string(BoardFunctions::NODE_ID));
-    p.set_attr("_internal_sequence_number",
-               static_cast<int32_t>(RemoteConnection::sequence_number++));
-    p.set_attr("_internal_epoch", static_cast<int32_t>(BoardFunctions::epoch));
     if (!partner_node_id.empty()) {
       p.set_attr("serialized_subscriptions",
                  uActor::PubSub::Router::get_instance().subscriptions_for(
                      partner_node_id));
     }
-
-    std::string serialized = p.to_msg_pack();
-    uint32_t size = htonl(serialized.size());
-    handle->write(sock, 4, reinterpret_cast<char*>(&size));
-    handle->write(sock, serialized.size(), serialized.data());
+    uActor::PubSub::Router::get_instance().publish(std::move(p));
   }
 
   void process_data(uint32_t len, char* data) {
@@ -236,6 +241,7 @@ class RemoteConnection {
   uint32_t local_id;
   ForwarderSubscriptionAPI* handle;
   std::list<uint32_t> subscription_ids;
+  uint32_t update_sub_id;
 
   std::string partner_node_id;
 

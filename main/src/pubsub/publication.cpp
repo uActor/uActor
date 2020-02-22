@@ -65,7 +65,7 @@ bool Publication::operator==(const Publication& other) {
 }
 
 std::string Publication::to_msg_pack() {
-  msgpack::sbuffer sbuf{512ul};
+  msgpack::sbuffer sbuf{64ul};
   msgpack::packer<msgpack::sbuffer> packer(sbuf);
   packer.pack_map(attributes->size());
   for (const auto& attr : *attributes) {

@@ -43,6 +43,15 @@ void Router::publish(Publication&& publication) {
 
   // testbed_start_timekeeping("search");
 
+  if (publication.get_str_attr("publisher_node_id") ==
+          BoardFunctions::NODE_ID &&
+      !publication.has_attr("_internal_sequence_number")) {
+    int32_t seq = static_cast<int32_t>(RemoteConnection::sequence_number++);
+    publication.set_attr("_internal_sequence_number", seq);
+    publication.set_attr("_internal_epoch", BoardFunctions::epoch);
+    // printf("publish %d\n", seq);
+  }
+
   for (const auto& [attribute, value] : publication) {
     if (auto constraint_it = constraints.find(attribute);
         constraint_it != constraints.end()) {
@@ -84,12 +93,43 @@ void Router::publish(Publication&& publication) {
 std::string Router::subscriptions_for(std::string_view node_id) {
   std::unique_lock lock(mtx);
   std::string serialized_sub;
-  for (auto& sub : subscriptions) {
-    if (sub.second.nodes.size() > 2 ||
-        sub.second.nodes.find(std::string(node_id)) == sub.second.nodes.end()) {
-      serialized_sub += sub.second.filter.serialize() + "&";
+  std::unordered_set<std::string> node_ids;
+
+  for (auto& sub_pair : subscriptions) {
+    auto& sub = sub_pair.second;
+    bool skip = false;
+    // Only subscriptions that could be fulfilled
+    if (sub.nodes.size() >= 2 ||
+        sub.nodes.find(std::string(node_id)) == sub.nodes.end()) {
+      for (auto constraint : sub.filter.required) {
+        // Don't forward local subscriptions
+        if (constraint.attribute() == "publisher_node_id") {
+          if (std::holds_alternative<std::string>(constraint.operand()) &&
+              std::get<std::string>(constraint.operand()) ==
+                  BoardFunctions::NODE_ID) {
+            skip = true;
           }
         }
+        // Overapproximate node_id based subscriptions as they would otherwise
+        // floud the routing tables
+        if (constraint.attribute() == "node_id") {
+          node_ids.emplace(std::get<std::string>(constraint.operand()));
+          skip = true;
+        }
+      }
+      if (!skip) {
+        serialized_sub += sub.filter.serialize() + "&";
+      }
+    }
+  }
+
+  for (const auto& id : node_ids) {
+    serialized_sub += Filter{Constraint{"node_id", id}}.serialize() + "&";
+  }
+
+  if (serialized_sub.size() > 0) {
+    serialized_sub.resize(serialized_sub.size() - 1);
+  }
   return serialized_sub;
 }
 

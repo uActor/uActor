@@ -116,17 +116,11 @@ class TCPForwarder : public ForwarderSubscriptionAPI {
       }
     }
 
-    if (m.publication.get_str_attr("publisher_node_id") ==
-            BoardFunctions::NODE_ID &&
-        !m.publication.has_attr("_internal_sequence_number")) {
-      int32_t seq = static_cast<int32_t>(RemoteConnection::sequence_number++);
-      m.publication.set_attr("_internal_sequence_number", seq);
-      m.publication.set_attr("_internal_epoch", BoardFunctions::epoch);
-    }
-
     auto receivers = subscription_mapping.find(m.subscription_id);
     if (receivers != subscription_mapping.end()) {
       auto sub_ids = receivers->second;
+      std::string serialized = m.publication.to_msg_pack();
+      int size = htonl(serialized.size());
       for (uint32_t subscriber_id : sub_ids) {
         auto remote_it = remotes.find(subscriber_id);
         if (remote_it != remotes.end() && remote_it->second.sock > 0) {
@@ -134,11 +128,8 @@ class TCPForwarder : public ForwarderSubscriptionAPI {
           if (!(m.publication.has_attr("_internal_forwarded_by") &&
                 m.publication.get_str_attr("_internal_forwarded_by")
                         ->find(remote.partner_node_id) != std::string::npos)) {
-            std::string serialized = m.publication.to_msg_pack();
-            int size = htonl(serialized.size());
             if (write(remote.sock, 4, reinterpret_cast<char*>(&size)) ||
-                write(remote.sock, m.publication.to_msg_pack().size(),
-                      serialized.c_str())) {
+                write(remote.sock, serialized.size(), serialized.c_str())) {
               remotes.erase(remote_it);
               continue;
             }
