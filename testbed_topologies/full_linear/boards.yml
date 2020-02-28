@@ -1,0 +1,89 @@
+boards:
+  node_1:
+    serial_device: "/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_TUM01-if00-port0"
+    sdkconfig: ../../sdkconfig
+    sdkconfig_overrides: sdkconfig.overrides.1_linear
+  node_2:
+    serial_device: "/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_TUM02-if00-port0"
+    sdkconfig: ../../sdkconfig
+    sdkconfig_overrides: sdkconfig.overrides.2_linear
+  node_3:
+    serial_device: "/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_TUM03-if00-port0"
+    sdkconfig: ../../sdkconfig
+    sdkconfig_overrides: sdkconfig.overrides.3_linear
+  node_4:
+    serial_device: "/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_TUM04-if00-port0"
+    sdkconfig: ../../sdkconfig
+    sdkconfig_overrides: sdkconfig.overrides.4_linear
+  node_5:
+    serial_device: "/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_TUM05-if00-port0"
+    sdkconfig: ../../sdkconfig
+    sdkconfig_overrides: sdkconfig.overrides.5_linear
+  node_6:
+    serial_device: "/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_TUM06-if00-port0"
+    sdkconfig: ../../sdkconfig
+    sdkconfig_overrides: sdkconfig.overrides.6_linear
+  node_7:
+    serial_device: "/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_TUM07-if00-port0"
+    sdkconfig: ../../sdkconfig
+    sdkconfig_overrides: sdkconfig.overrides.7_linear
+  node_8:
+    serial_device: "/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_TUM08-if00-port0"
+    sdkconfig: ../../sdkconfig
+    sdkconfig_overrides: sdkconfig.overrides.8_linear
+  node_9:
+    serial_device: "/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_TUM09-if00-port0"
+    sdkconfig: ../../sdkconfig
+    sdkconfig_overrides: sdkconfig.overrides.9_linear
+  node_10:
+    serial_device: "/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_TUM10-if00-port0"
+    sdkconfig: ../../sdkconfig
+    sdkconfig_overrides: sdkconfig.overrides.10_linear
+  node_11:
+    serial_device: "/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_TUM11-if00-port0"
+    sdkconfig: ../../sdkconfig
+    sdkconfig_overrides: sdkconfig.overrides.11_linear
+    remote:
+      host: "192.168.50.2"
+      user: "pi"
+      root_directory: "/home/pi/remote_testbed"
+  node_12:
+    serial_device: "/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_TUM12-if00-port0"
+    sdkconfig: ../../sdkconfig
+    sdkconfig_overrides: sdkconfig.overrides.12_linear
+    remote:
+      host: "192.168.50.2"
+      user: "pi"
+      root_directory: "/home/pi/remote_testbed"
+  node_13:
+    serial_device: "/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_TUM13-if00-port0"
+    sdkconfig: ../../sdkconfig
+    sdkconfig_overrides: sdkconfig.overrides.13_linear
+    remote:
+      host: "192.168.50.2"
+      user: "pi"
+      root_directory: "/home/pi/remote_testbed"
+  node_14:
+    serial_device: "/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_TUM14-if00-port0"
+    sdkconfig: ../../sdkconfig
+    sdkconfig_overrides: sdkconfig.overrides.14_linear
+    remote:
+      host: "192.168.50.2"
+      user: "pi"
+      root_directory: "/home/pi/remote_testbed"
+  node_15:
+    serial_device: "/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_TUM15-if00-port0"
+    sdkconfig: ../../sdkconfig
+    sdkconfig_overrides: sdkconfig.overrides.15_linear
+    remote:
+      host: "192.168.50.2"
+      user: "pi"
+      root_directory: "/home/pi/remote_testbed"
+  node_16:
+    serial_device: "/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_TUM16-if00-port0"
+    sdkconfig: ../../sdkconfig
+    sdkconfig_overrides: sdkconfig.overrides.16_linear
+    remote:
+      host: "192.168.50.2"
+      user: "pi"
+      root_directory: "/home/pi/remote_testbed"
