@@ -156,6 +156,20 @@ class ManagedLuaActor : public ManagedActor {
     testbed_log_string(variable, value);
     return 0;
   }
+
+  static int testbed_start_timekeeping_wrapper(lua_State* state) {
+    size_t variable = lua_tointeger(state, 1);
+    testbed_start_timekeeping(variable);
+    return 0;
+  }
+
+  static int testbed_stop_timekeeping_wrapper(lua_State* state) {
+    size_t variable = lua_tointeger(state, 1);
+    const char* name = lua_tostring(state, 2);
+    testbed_stop_timekeeping(variable, name);
+    return 0;
+  }
+
 #endif
 
   static constexpr luaL_Reg core[] = {
@@ -166,9 +180,11 @@ class ManagedLuaActor : public ManagedActor {
       {"unsubscribe", &unsubscribe_wrapper},
       {"now", &now_wrapper},
 #ifdef IDF
-      {"testbed_log_string", &testbed_log_integer_wrapper},
+      {"testbed_log_integer", &testbed_log_integer_wrapper},
       {"testbed_log_double", &testbed_log_double_wrapper},
       {"testbed_log_string", &testbed_log_string_wrapper},
+      {"testbed_start_timekeeping", &testbed_start_timekeeping_wrapper},
+      {"testbed_stop_timekeeping", &testbed_stop_timekeeping_wrapper},
 #endif
       {NULL, NULL}};
 

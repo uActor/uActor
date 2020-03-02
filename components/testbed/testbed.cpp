@@ -8,41 +8,12 @@ extern "C" {
 }
 #endif
 
+#include <array>
 #include <cstdio>
 #include <cstring>
 #include <ctime>
-#include <unordered_map>
-#include <mutex>
 
 namespace testbed {
-struct CStrHasher {
-  // We do not want to include std::string here (code size 200k).
-  // Hash function taken from
-  // http://www.isthe.com/chongo/tech/comp/fnv/index.html#public_domain
-  static size_t fnv_32a_str(const char* str, size_t hval = 0x811c9dc5) {
-    unsigned const char* s = (unsigned const char*)str; /* unsigned string */
-    /*
-     * FNV-1a hash each octet in the buffer
-     */
-    while (*s) {
-      /* xor the bottom with the current octet */
-      hval ^= (size_t)*s++;
-      /* multiply by the 32 bit FNV magic prime mod 2^32 */
-      hval +=
-          (hval << 1) + (hval << 4) + (hval << 7) + (hval << 8) + (hval << 24);
-    }
-    /* return our new hash value */
-    return hval;
-  }
-
-  size_t operator()(const char* var) const { return fnv_32a_str(var); }
-};
-
-struct CStrEquals {
-  bool operator()(const char* lhs, const char* rhs) const {
-    return strcmp(lhs, rhs) == 0;
-  }
-};
 
 class TestBed {
  public:
@@ -82,22 +53,19 @@ class TestBed {
     }
   }
 
-  void start_timekeeping(const char* variable) {
-    std::unique_lock lck(mtx);
-    char* var = reinterpret_cast<char*>(malloc(strlen(variable) + 1));
-    strncpy(var, variable, strlen(variable) + 1);
-    timekeeping.emplace(var, esp_timer_get_time());
+  void start_timekeeping(size_t variable) {
+    timekeeping[variable] = esp_timer_get_time();
   }
 
-  void stop_timekeeping(const char* variable) {
+  void stop_timekeeping(size_t variable, const char* name) {
     uint64_t timestamp = esp_timer_get_time();
-    std::unique_lock lck(mtx);
-    auto timer = timekeeping.find(variable);
-    if (timer != timekeeping.end()) {
-      log_integer(variable, timestamp - timer->second, false);
-      delete timer->first;
-      timekeeping.erase(timer);
+    std::string var_name;
+    if (name) {
+      var_name = var_name = std::string(name);
+    } else {
+      var_name = std::to_string(variable);
     }
+    log_integer(var_name.data(), timestamp - timekeeping[variable], false);
   }
 
 #ifdef CONFIG_TESTBED_NETWORK_UTILS
@@ -111,8 +79,7 @@ class TestBed {
  private:
   uint64_t sequence_number;
   SemaphoreHandle_t semaphore;
-  std::unordered_map<const char*, uint64_t, CStrHasher, CStrEquals> timekeeping;
-  std::mutex mtx;
+  std::array<uint64_t, 10> timekeeping;
 
   template <class T>
   void log_generic(const char* variable, const char* format, T value) {
@@ -141,12 +108,12 @@ void testbed_log_double(const char* variable, double value,
   testbed::TestBed::get_instance().log_double(variable, value, runtime_value);
 }
 
-void testbed_start_timekeeping(const char* variable) {
+void testbed_start_timekeeping(size_t variable) {
   testbed::TestBed::get_instance().start_timekeeping(variable);
 }
 
-void testbed_stop_timekeeping(const char* variable) {
-  testbed::TestBed::get_instance().stop_timekeeping(variable);
+void testbed_stop_timekeeping(size_t variable, const char* name) {
+  testbed::TestBed::get_instance().stop_timekeeping(variable, name);
 }
 
 #ifdef CONFIG_TESTBED_NETWORK_UTILS

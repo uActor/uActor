@@ -23,8 +23,8 @@ void testbed_log_ipv4_netmask(esp_ip4_addr_t netmask);
 void testbed_log_ipv4_gateway(esp_ip4_addr_t gateway);
 #endif
 
-void testbed_start_timekeeping(const char*);
-void testbed_stop_timekeeping(const char*);
+void testbed_start_timekeeping(size_t variable);
+void testbed_stop_timekeeping(size_t variable, const char* name = NULL);
 
 #ifdef __cplusplus
 }
