@@ -158,15 +158,15 @@ class DeploymentManager : public NativeActor {
         Deployment& deployment = deployment_iterator->second;
 
         if (inserted) {
-          printf("Receive deployment from: %s\n",
-                 publication.get_str_attr("publisher_node_id")->data());
+          // printf("Receive deployment from: %s\n",
+          //       publication.get_str_attr("publisher_node_id")->data());
           add_deployment_dependencies(&deployment);
           if (requirements_check(&deployment)) {
             activate_deployment(&deployment, &runtime);
           }
         } else {
-          printf("Receive deployment update from: %s\n",
-                 publication.get_str_attr("publisher_node_id")->data());
+          // printf("Receive deployment update from: %s\n",
+          //       publication.get_str_attr("publisher_node_id")->data());
 
           if (actor_version != deployment.actor_version ||
               actor_type != deployment.actor_type) {
@@ -204,7 +204,8 @@ class DeploymentManager : public NativeActor {
                     runtimes.find(deployment.actor_runtime_type);
                 runtime_list_it != runtimes.end()) {
               Runtime& runtime = runtime_list_it->second.front();
-              start_deployment(&deployment, &runtime);
+              start_deployment(&deployment, &runtime,
+                               (deployment.restarts + 1) * 1000);
             }
           } else {
             deactivate_deployment(&deployment);
@@ -348,7 +349,7 @@ class DeploymentManager : public NativeActor {
   }
 
   void activate_deployment(Deployment* deployment, Runtime* runtime) {
-    printf("DeploymentManager activate deployment\n");
+    // printf("DeploymentManager activate deployment\n");
 
     increment_deployed_actor_type_count(deployment->actor_type);
     deployment->active = true;
@@ -368,16 +369,17 @@ class DeploymentManager : public NativeActor {
   }
 
   void deactivate_deployment(Deployment* deployment) {
-    printf("DeploymentManager deactivate deployment\n");
+    // printf("DeploymentManager deactivate deployment\n");
     if (deployment->active) {
       decrement_deployed_actor_type_count(deployment->actor_type);
-      deployment->active = false;
       stop_deployment(deployment);
     }
+    deployment->active = false;
   }
 
-  void start_deployment(Deployment* deployment, Runtime* runtime) {
-    printf("DeploymentManager start deployment\n");
+  void start_deployment(Deployment* deployment, Runtime* runtime,
+                        size_t delay = 0) {
+    // printf("DeploymentManager start deployment\n");
     uActor::PubSub::Publication spawn_message{};
     spawn_message.set_attr("command", "spawn_lua_actor");
 
@@ -389,12 +391,12 @@ class DeploymentManager : public NativeActor {
     spawn_message.set_attr("node_id", runtime->node_id);
     spawn_message.set_attr("actor_type", runtime->actor_type);
     spawn_message.set_attr("instance_id", runtime->instance_id);
-    publish(std::move(spawn_message));
+    delayed_publish(std::move(spawn_message), delay);
     deployment->restarts++;
   }
 
   void stop_deployment(Deployment* deployment) {
-    printf("DeploymentManager stop deployment\n");
+    // printf("DeploymentManager stop deployment\n");
     uActor::PubSub::Publication exit_message{};
     exit_message.set_attr("type", "exit");
     exit_message.set_attr("node_id", node_id());
@@ -420,7 +422,7 @@ class DeploymentManager : public NativeActor {
   }
 
   void remove_deployment(Deployment* deployment) {
-    printf("DeploymentManager remove deployment\n");
+    // printf("DeploymentManager remove deployment\n");
     assert(!deployment->active);
 
     if (deployment->lifetime_subscription_id > 0) {

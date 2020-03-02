@@ -238,7 +238,7 @@ class ManagedLuaActor : public ManagedActor {
       printf("LUA LOAD ERROR for actor %s.%s.%s\n", node_id(), actor_type(),
              instance_id());
       printf("ERROR: %s\n", lua_tostring(state, -1));
-      lua_pop(state, 3);
+      lua_pop(state, 2);
       return false;
     }
 
@@ -251,12 +251,8 @@ class ManagedLuaActor : public ManagedActor {
     if (error_code) {
       printf("LUA LOAD ERROR for actor %s.%s.%s\n", node_id(), actor_type(),
              instance_id());
-      if (error_code == LUA_ERRRUN) {
         printf("ERROR: %s\n", lua_tostring(state, -1));
         lua_pop(state, 3);
-      } else {
-        lua_pop(state, 2);
-      }
       return false;
     }
 
