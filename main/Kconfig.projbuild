@@ -46,9 +46,14 @@ menu "Board Configuration"
 endmenu
 menu "Benchmark Configuration"
     config BENCHMARK_ENABLED
-        bool "Legacy Benchmark"
+        bool "Enable Benchmark"
         default n
         help
-            Legacy Benchmark Mode
+            Load additional tooling required for benchmarking.
+    config BENCHMARK_BREAKDOWN
+        bool "Enable breakdown"
+        default n
+        help
+            Enable benchmark breakdown
 endmenu
             

@@ -1,6 +1,8 @@
 #ifndef MAIN_INCLUDE_ACTOR_RUNTIME_HPP_
 #define MAIN_INCLUDE_ACTOR_RUNTIME_HPP_
 
+#include <testbed.h>
+
 #include <algorithm>
 #include <cstdint>
 #include <functional>
@@ -210,7 +212,9 @@ class ActorRuntime : public RuntimeApi {
         uint32_t task = ready_queue.front();
         ready_queue.pop_front();
         ActorType& actor = actors.at(task);
+        // testbed_start_timekeeping("execution");
         ManagedActor::ReceiveResult result = actor.receive_next_internal();
+        // testbed_stop_timekeeping("execution");
         if (result.exit) {
           actors.erase(task);
         } else if (result.next_timeout == 0) {

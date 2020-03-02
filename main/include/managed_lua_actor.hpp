@@ -1,7 +1,8 @@
 #ifndef MAIN_INCLUDE_MANAGED_LUA_ACTOR_HPP_
 #define MAIN_INCLUDE_MANAGED_LUA_ACTOR_HPP_
 
-#ifdef IDF
+#include "sdkconfig.h"
+#if CONFIG_BENCHMARK_ENABLED
 #include <testbed.h>
 #endif
 
@@ -23,17 +24,9 @@ class ManagedLuaActor : public ManagedActor {
         state(global_state) {}
 
   ~ManagedLuaActor() {
-    if (initialized()) {
-      printf("before collect: %d %d\n", lua_gc(state, LUA_GCCOUNT, 0),
-             lua_gc(state, LUA_GCCOUNTB, 0));
-
       lua_pushnil(state);
       lua_setglobal(state, std::to_string(id()).data());
       lua_gc(state, LUA_GCCOLLECT, 0);
-
-      printf("after collect: %d %d\n", lua_gc(state, LUA_GCCOUNT, 0),
-             lua_gc(state, LUA_GCCOUNTB, 0));
-    }
   }
 
   bool receive(const uActor::PubSub::Publication& m) {
@@ -65,14 +58,13 @@ class ManagedLuaActor : public ManagedActor {
     if (error_code) {
       printf("LUA ERROR for actor %s.%s.%s\n", node_id(), actor_type(),
              instance_id());
-      if (error_code == LUA_ERRRUN) {
         printf("ERROR: %s\n", lua_tostring(state, -1));
         lua_pop(state, 1);
-      }
       return false;
     }
 
     lua_gc(state, LUA_GCCOLLECT, 0);
+
     return true;
   }
 
@@ -132,7 +124,7 @@ class ManagedLuaActor : public ManagedActor {
     return 1;
   }
 
-#ifdef IDF
+#if CONFIG_BENCHMARK_ENABLED
   static int testbed_log_integer_wrapper(lua_State* state) {
     const char* variable = lua_tostring(state, 1);
     uint32_t value = lua_tointeger(state, 2);
@@ -179,7 +171,7 @@ class ManagedLuaActor : public ManagedActor {
       {"subscribe", &subscribe_wrapper},
       {"unsubscribe", &unsubscribe_wrapper},
       {"now", &now_wrapper},
-#ifdef IDF
+#if CONFIG_BENCHMARK_ENABLED
       {"testbed_log_integer", &testbed_log_integer_wrapper},
       {"testbed_log_double", &testbed_log_double_wrapper},
       {"testbed_log_string", &testbed_log_string_wrapper},
@@ -189,8 +181,6 @@ class ManagedLuaActor : public ManagedActor {
       {NULL, NULL}};
 
   bool createActorEnvironment(const char* receive_function) {
-    printf("before create: %d %d\n", lua_gc(state, LUA_GCCOUNT, 0),
-           lua_gc(state, LUA_GCCOUNTB, 0));
     lua_createtable(state, 0, 16);       // 1
     lua_pushlightuserdata(state, this);  // 2
     luaL_setfuncs(state, core, 1);       // 1
@@ -212,6 +202,14 @@ class ManagedLuaActor : public ManagedActor {
 
     lua_getglobal(state, "tonumber");
     lua_setfield(state, -2, "tonumber");
+
+    // Benchmarking
+    lua_getglobal(state, "collectgarbage");
+    lua_setfield(state, -2, "collectgarbage");
+
+    lua_getglobal(state, "math");
+    assert(lua_istable(state, -1));
+    lua_setfield(state, -2, "math");
 
     for (uint32_t i = 1; i <= uActor::PubSub::ConstraintPredicates::MAX_INDEX;
          i++) {
@@ -264,9 +262,6 @@ class ManagedLuaActor : public ManagedActor {
     lua_pop(state, 1);  // 1
 
     lua_setglobal(state, std::to_string(id()).data());  // 0
-
-    printf("after create: %d %d\n", lua_gc(state, LUA_GCCOUNT, 0),
-           lua_gc(state, LUA_GCCOUNTB, 0));
     return true;
   }
 

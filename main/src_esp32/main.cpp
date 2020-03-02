@@ -25,7 +25,7 @@ extern "C" {
 void app_main(void);
 }
 
-#if CONFIG_BENCHMARK_ENABLED
+#if CONFIG_LEGACY_BENCHMARK_ENABLED
 
 #include "../legacy/benchmark_actor.hpp"
 #include "../legacy/benchmark_configuration.hpp"

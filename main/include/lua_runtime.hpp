@@ -49,6 +49,8 @@ class LuaRuntime : public ActorRuntime<ManagedLuaActor, LuaRuntime> {
     lua_State* lua_state = luaL_newstate();
     luaL_requiref(lua_state, "_G", luaopen_base, 1);
     lua_pop(lua_state, 1);
+    luaL_requiref(lua_state, "math", luaopen_math, 1);
+    lua_pop(lua_state, 1);
     lua_gc(lua_state, LUA_GCSETSTEPMUL, 200);
     lua_gc(lua_state, LUA_GCSETPAUSE, 50);
     return lua_state;

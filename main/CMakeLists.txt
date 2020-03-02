@@ -5,4 +5,4 @@ idf_component_register(
   REQUIRES "lua" "nvs_flash" "msgpack" "wpa_supplicant" "testbed" "bmp180"
   EMBED_TXTFILES ./binary/eduroam.pem
 )
-target_compile_options(${COMPONENT_LIB} PRIVATE -std=c++17 -DIDF)
+target_compile_options(${COMPONENT_LIB} PRIVATE -std=c++17)
