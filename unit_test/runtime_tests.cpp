@@ -42,7 +42,7 @@ uActor::PubSub::ReceiverHandle subscription_handle_with_default_subscription() {
 std::thread start_runtime_thread() {
   Params params = {.node_id = "node_1", .instance_id = "1"};
   std::thread runtime_thread = std::thread(&LuaRuntime::os_task, &params);
-  usleep(200);
+  usleep(10000000);
   return std::move(runtime_thread);
 }
 
@@ -67,7 +67,7 @@ TEST(RuntimeSystem, pingPong) {
   ping.set_attr("message", "ping");
   uActor::PubSub::Router::get_instance().publish(std::move(ping));
 
-  auto result = root_handle.receive(1000);
+  auto result = root_handle.receive(10000);
   ASSERT_TRUE(result);
   ASSERT_STREQ(
       std::get<std::string_view>(result->publication.get_attr("message"))
