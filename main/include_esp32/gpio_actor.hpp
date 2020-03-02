@@ -98,8 +98,8 @@ class GPIOActor {
  public:
   static void os_task(void* args) {
     GPIOActor gpio = GPIOActor();
-    xTaskCreate(gpio_queue_reader, "interrupt_reader_task", 2048,
-                reinterpret_cast<void*>(&gpio), 10, NULL);
+    xTaskCreatePinnedToCore(gpio_queue_reader, "interrupt_reader_task", 2048,
+                            reinterpret_cast<void*>(&gpio), 4, NULL, 0);
     while (true) {
       auto result = gpio.handle.receive(BoardFunctions::SLEEP_FOREVER);
       if (result) {

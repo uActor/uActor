@@ -103,18 +103,98 @@ void app_main(void) {
 }
 #else
 
+#if CONFIG_BENCHMARK_LOCAL
+void main_task_local(void*) {
+  printf("InitialHeap: %d \n", xPortGetFreeHeapSize());
+
+  Params params = {.node_id = BoardFunctions::NODE_ID, .instance_id = "1"};
+
+  xTaskCreatePinnedToCore(&NativeRuntime::os_task, "BASIC_RUNTIME", 6168,
+                          &params, 5, nullptr, 0);
+
+  BoardFunctions::epoch = 0;
+
+  vTaskDelay(4000 / portTICK_PERIOD_MS);
+
+  auto create_deployment_manager =
+      uActor::PubSub::Publication(BoardFunctions::NODE_ID, "root", "1");
+  create_deployment_manager.set_attr("command", "spawn_native_actor");
+  create_deployment_manager.set_attr("spawn_code", "");
+  create_deployment_manager.set_attr("spawn_node_id", BoardFunctions::NODE_ID);
+  create_deployment_manager.set_attr("spawn_actor_type", "deployment_manager");
+  create_deployment_manager.set_attr("spawn_instance_id", "1");
+  create_deployment_manager.set_attr("node_id", BoardFunctions::NODE_ID);
+  create_deployment_manager.set_attr("actor_type", "native_runtime");
+  create_deployment_manager.set_attr("instance_id", "1");
+  uActor::PubSub::Router::get_instance().publish(
+      std::move(create_deployment_manager));
+
+  vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+  {
+    uActor::PubSub::Publication label_update(BoardFunctions::NODE_ID, "root",
+                                             "1");
+    label_update.set_attr("type", "label_update");
+    label_update.set_attr("command", "upsert");
+    label_update.set_attr("node_id", BoardFunctions::NODE_ID);
+    label_update.set_attr("key", "node_id");
+    label_update.set_attr("value", BoardFunctions::NODE_ID);
+    uActor::PubSub::Router::get_instance().publish(std::move(label_update));
+  }
+
+  for (const auto label : BoardFunctions::node_labels()) {
+    uActor::PubSub::Publication label_update(BoardFunctions::NODE_ID, "root",
+                                             "1");
+    label_update.set_attr("type", "label_update");
+    label_update.set_attr("command", "upsert");
+    label_update.set_attr("node_id", BoardFunctions::NODE_ID);
+    label_update.set_attr("key", label.first);
+    label_update.set_attr("value", label.second);
+    uActor::PubSub::Router::get_instance().publish(std::move(label_update));
+  }
+
+  xTaskCreatePinnedToCore(&LuaRuntime::os_task, "LUA_RUNTIME", 8192, &params,
+                          10, nullptr, 1);
+
+  xTaskCreatePinnedToCore(&GPIOActor::os_task, "GPIO_ACTOR", 4192, nullptr, 5,
+                          nullptr, 0);
+
+  printf("StaticHeap: %d \n", xPortGetFreeHeapSize());
+
+  vTaskDelay(5000 / portTICK_PERIOD_MS);
+
+  auto example_deployment = uActor::PubSub::Publication("foo", "root", "1");
+  example_deployment.set_attr("type", "deployment");
+  example_deployment.set_attr("deployment_name", "example");
+  example_deployment.set_attr("deployment_actor_type", "foo");
+  example_deployment.set_attr("deployment_actor_version", "0.1");
+  example_deployment.set_attr("deployment_actor_runtime_type", "lua");
+  example_deployment.set_attr("deployment_actor_code", R"(
+-- code here
+  )");
+  example_deployment.set_attr("deployment_required_actors", "core.io.gpio");
+  example_deployment.set_attr("deployment_ttl", 0);
+  example_deployment.set_attr("_internal_sequence_number", 1);
+  example_deployment.set_attr("_internal_epoch", 0);
+
+  uActor::PubSub::Router::get_instance().publish(std::move(example_deployment));
+
+  vTaskDelete(nullptr);
+}
+#endif
+
 void main_task(void*) {
   printf("InitialHeap: %d \n", xPortGetFreeHeapSize());
 
   xTaskCreatePinnedToCore(&uActor::PubSub::Router::os_task, "Router", 4192,
-                          nullptr, 4, nullptr, 0);
+                          nullptr, 3, nullptr, 0);
 
   Params params = {.node_id = BoardFunctions::NODE_ID, .instance_id = "1"};
 
   xTaskCreatePinnedToCore(&WifiStack::os_task, "WIFI_STACK", 4192, nullptr, 4,
-                          nullptr, 1);
+                          nullptr, 0);
   xTaskCreatePinnedToCore(&NativeRuntime::os_task, "BASIC_RUNTIME", 6168,
-                          &params, 4, nullptr, 0);
+                          &params, 5, nullptr, 0);
 
   time_t t = 0;
   while (t < 1577836800) {
@@ -193,20 +273,23 @@ void main_task(void*) {
     uActor::PubSub::Router::get_instance().publish(std::move(label_update));
   }
 
-  xTaskCreatePinnedToCore(&LuaRuntime::os_task, "LUA_RUNTIME", 6168, &params, 4,
-                          nullptr, 1);
+  xTaskCreatePinnedToCore(&LuaRuntime::os_task, "LUA_RUNTIME", 8192, &params,
+                          configMAX_PRIORITIES - 1, nullptr, 1);
 
-  xTaskCreatePinnedToCore(&GPIOActor::os_task, "GPIO_ACTOR", 4192, nullptr, 4,
-                          nullptr, 1);
+  xTaskCreatePinnedToCore(&GPIOActor::os_task, "GPIO_ACTOR", 4192, nullptr, 5,
+                          nullptr, 0);
 
   xTaskCreatePinnedToCore(&TCPForwarder::os_task, "TCP", 4192, nullptr, 4,
-                          nullptr, 1);
+                          nullptr, 0);
 
   printf("StaticHeap: %d \n", xPortGetFreeHeapSize());
-  while (true) {
-    vTaskDelay(5000 / portTICK_PERIOD_MS);
-    printf("Heap: %d \n", xPortGetFreeHeapSize());
-  }
+
+  vTaskDelete(nullptr);
+
+  // while (true) {
+  //   vTaskDelay(5000 / portTICK_PERIOD_MS);
+  //   printf("Heap: %d \n", xPortGetFreeHeapSize());
+  // }
 }
 
 void app_main(void) {
@@ -218,7 +301,7 @@ void app_main(void) {
   }
   ESP_ERROR_CHECK(ret);
 
-  xTaskCreatePinnedToCore(&main_task, "MAIN", 4192, nullptr, 5, nullptr, 1);
+  xTaskCreatePinnedToCore(&main_task, "MAIN", 4192, nullptr, 5, nullptr, 0);
 }
 
 #endif
