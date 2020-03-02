@@ -1,6 +1,6 @@
 function receive(message)
   if(message.type == "init") then
-    subscribe({message="ping"})
+    subscribe({message="ping", publisher_node_id=node_id})
   end
   if(message.message == "ping") then
     print("ping")

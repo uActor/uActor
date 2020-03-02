@@ -5,8 +5,8 @@ actor_type:  xyz.hetzel.actor.lightbulb
 actor_runtime_type:  lua
 actor_version:  "0.1"
 actor_code_file:  "lightbulb.lua"
-constraints:
-  - "xyz.hetzel.lighting.device_type": "lightbulb"
+# constraints:
+#   - "xyz.hetzel.lighting.device_type": "lightbulb"
 required_actors:
   - "core.io.gpio"
 ---
@@ -17,7 +17,9 @@ actor_type:  xyz.hetzel.actor.lightswitch
 actor_runtime_type:  lua
 actor_version:  "0.1"
 actor_code_file:  "lightswitch.lua"
+# constraints:
+#   - "xyz.hetzel.lighting.device_type": "lightswitch"
 constraints:
-  - "xyz.hetzel.lighting.device_type": "lightswitch"
+    - "node_id": "node_16"
 required_actors:
   - "core.io.gpio"

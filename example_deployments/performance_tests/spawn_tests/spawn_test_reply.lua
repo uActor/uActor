@@ -1,15 +1,17 @@
-NUM_NODES = 3
-HOST_NODE = "node_home"
+NUM_NODES = 16
+HOST_NODE = "node_1"
 
 function receive(message)
   code = [[function receive(message)
     if(message.type == "init") then
+      publish({node_id=node_id, actor_type="core.io.gpio", command="gpio_output_set_level", gpio_pin=27, gpio_level=0})
       publish({node_id="]]..HOST_NODE..[[", actor_type="spawn_test_host", instance_id="spawn_test_deployment", data="pong"})
+      publish({node_id=node_id, actor_type="core.io.gpio", command="gpio_output_set_level", gpio_pin=27, gpio_level=1})
     end
   end]]
   if(message.type == "init" and node_id == HOST_NODE) then
     -- wait until the subscription for the backwards pass is forwarded to all nodes 
-    delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="ready"}, 1000)
+    delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="ready"}, 2000)
   elseif(message.type == "ready") then
     start = now()
     count = 0
@@ -22,7 +24,7 @@ function receive(message)
       deployment_ttl=5000
     })
   elseif(node_id == HOST_NODE and message.data == "pong") then
-    t= now() - start
+    t = now() - start
     testbed_log_integer("time_"..message.publisher_node_id, t)
     testbed_log_integer("time", t)
     count = count + 1

@@ -7,7 +7,7 @@ function receive(message)
     receive_count = receive_count + 1
     if(receive_count == count) then
       testbed_stop_timekeeping(1, iteration_name)
-      delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="trigger"}, 20000 + math.random(0, 199))
+      delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="trigger"}, 5000 + math.random(0, 199))
     end
   end
 

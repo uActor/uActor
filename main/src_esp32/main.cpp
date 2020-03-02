@@ -260,7 +260,7 @@ void main_task(void*) {
     label_update.set_attr("type", "label_update");
     label_update.set_attr("command", "upsert");
     label_update.set_attr("node_id", BoardFunctions::NODE_ID);
-    label_update.set_attr("key", "core.node_id");
+    label_update.set_attr("key", "node_id");
     label_update.set_attr("value", BoardFunctions::NODE_ID);
     uActor::PubSub::Router::get_instance().publish(std::move(label_update));
   }

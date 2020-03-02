@@ -6,7 +6,7 @@ actor_runtime_type:  lua
 actor_version:  "0.1"
 actor_code_file:  "messaging_test_distributed_hop_count.lua"
 constraints:
-  - "core.node_id": "node_1"
+  - "node_id": "node_1"
 ---
 type: deployment
 name: test_deployment_echo
