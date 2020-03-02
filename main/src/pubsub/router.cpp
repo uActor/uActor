@@ -17,7 +17,6 @@ void Router::os_task(void*) {
     if (router.updated.compare_exchange_weak(t, false)) {
       Publication update{BoardFunctions::NODE_ID, "router", "1"};
       update.set_attr("type", "local_subscription_update");
-      update.set_attr("node_id", BoardFunctions::NODE_ID);
       router.publish(std::move(update));
     }
   }

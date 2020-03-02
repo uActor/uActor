@@ -34,5 +34,6 @@ struct ConstraintIndex {
   void check(std::variant<std::string, int32_t, float> value, Counter* counter);
 };
 
-#endif  //   MAIN_INCLUDE_PUBSUB_CONSTRAINT_INDEX_HPP_
 }  //  namespace uActor::PubSub
+
+#endif  //   MAIN_INCLUDE_PUBSUB_CONSTRAINT_INDEX_HPP_

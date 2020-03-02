@@ -26,6 +26,7 @@ extern "C" {
 
 #include "board_functions.hpp"
 #include "pubsub/router.hpp"
+#include "remote/sequence_info.hpp"
 
 class TCPForwarder;
 
@@ -85,9 +86,7 @@ class RemoteConnection {
 
   void handle_subscription_update_notification(
       const uActor::PubSub::Publication& update_message) {
-    if (update_message.get_str_attr("node_id") == BoardFunctions::NODE_ID) {
-      send_routing_info();
-    }
+    send_routing_info();
   }
 
   void send_routing_info() {
@@ -166,12 +165,8 @@ class RemoteConnection {
             auto sequence_info_it =
                 sequence_infos.find(std::string(*publisher_node_id));
             if (sequence_info_it == sequence_infos.end() ||
-                (epoch_number && sequence_number &&
-                 (*epoch_number > sequence_info_it->second.epoch ||
-                  (*epoch_number == sequence_info_it->second.epoch &&
-                   *sequence_number >
-                       sequence_info_it->second.sequence_number)))) {
-              auto new_sequence_info = SequenceInfo(
+                (epoch_number && sequence_number && sequence_info_it->second.is_older_than(*sequence_number, *epoch_number))) {
+              auto new_sequence_info = uActor::Remote::SequenceInfo(
                   *sequence_number, *epoch_number, BoardFunctions::timestamp());
               if (sequence_info_it != sequence_infos.end()) {
                 sequence_info_it->second = std::move(new_sequence_info);
@@ -196,13 +191,17 @@ class RemoteConnection {
               }
 
             } else {
+              std::string mtype = "";
+              if (p->has_attr("type")) {
+                mtype = std::string(*p->get_str_attr("type"));
+              }
               printf(
                   "message dropped from %s: message: %d - %d, local %d, %d, "
-                  "forwared_by: %s\n",
+                  "forwared_by: %s, message.type: %s \n",
                   publisher_node_id->data(), *epoch_number, *sequence_number,
                   sequence_info_it->second.epoch,
                   sequence_info_it->second.sequence_number,
-                  partner_node_id.data());
+                  partner_node_id.data(), mtype.data());
             }
           }
           publication_buffer.clear();
@@ -218,18 +217,6 @@ class RemoteConnection {
   static std::atomic<uint32_t> sequence_number;
 
  private:
-  struct SequenceInfo {
-    SequenceInfo(uint32_t sequence_number, uint32_t epoch,
-                 uint32_t last_timestamp)
-        : sequence_number(sequence_number),
-          epoch(epoch),
-          last_timestamp(last_timestamp) {}
-
-    uint32_t sequence_number;
-    uint32_t epoch;
-    uint32_t last_timestamp;
-  };
-
   // TCP Related
   // TODO(raphaelhetzel) potentially move this to a seperate
   // wrapper once we have more types of forwarders
@@ -256,8 +243,11 @@ class RemoteConnection {
   uint32_t publicaton_full_size{0};
   std::vector<char> publication_buffer;
 
-  static std::unordered_map<std::string, SequenceInfo> sequence_infos;
+  static std::unordered_map<std::string, uActor::Remote::SequenceInfo>
+      sequence_infos;
   static std::mutex mtx;
+
+  std::map<std::string, uActor::Remote::SequenceInfo> connection_sequence_infos;
 
   void update_subscriptions(uActor::PubSub::Publication&& p) {
     std::string_view new_partner_id = *p.get_str_attr("subscription_node_id");
