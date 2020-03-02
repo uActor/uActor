@@ -208,8 +208,10 @@ void main_task(void*) {
     printf("epoch %ld\n", t);
   } else {
     printf("Epoch not set\n");
+    BoardFunctions::epoch = 0;
   }
 
+  vTaskDelay(2000 / portTICK_PERIOD_MS);
   auto create_deployment_manager =
       uActor::PubSub::Publication(BoardFunctions::NODE_ID, "root", "1");
   create_deployment_manager.set_attr("command", "spawn_native_actor");

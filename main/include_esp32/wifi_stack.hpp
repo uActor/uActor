@@ -7,6 +7,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/event_groups.h>
 #include <freertos/task.h>
+#include <sdkconfig.h>
 #include <testbed.h>
 
 extern "C" {
@@ -81,8 +82,12 @@ class WifiStack {
     ESP_ERROR_CHECK(esp_wifi_start());
 
     sntp_setoperatingmode(SNTP_OPMODE_POLL);
+#if CONFIG_BENCHMARK_ENABLED
+    sntp_setservername(0, "192.168.50.2");
+#else
     sntp_setservername(0, "ntp1.lrz.de");
     sntp_setservername(1, "ntp3.lrz.de");
+#endif
     sntp_set_sync_mode(SNTP_SYNC_MODE_IMMED);
     sntp_set_time_sync_notification_cb(&sntp_synced);
     sntp_init();
