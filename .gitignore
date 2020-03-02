@@ -6,3 +6,5 @@ sdkconfig
 sdkconfig.old
 .python-version
 experiments/
+old_snippets/
+*.pyc

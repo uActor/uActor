@@ -48,7 +48,7 @@ def main():
             sequence_number += 1
 
         while min_ttl > 0 and arguments.refresh:
-            sleep_time = min_ttl/1000.0 - 1 if min_ttl > 2000 else 1000
+            sleep_time = min_ttl/1000.0 - 2 if min_ttl > 3000 else 1
             time.sleep(sleep_time)
             epoch = int(time.time())
             for deployment in deployments:
