@@ -1,0 +1,9 @@
+type: deployment
+name: spawn_test_deployment
+ttl:  30000
+actor_type:  spawn_test_host
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "local_io_test.lua"
+constraints:
+  - "node_id": "node_16"
