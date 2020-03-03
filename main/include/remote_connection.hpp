@@ -165,7 +165,9 @@ class RemoteConnection {
             auto sequence_info_it =
                 sequence_infos.find(std::string(*publisher_node_id));
             if (sequence_info_it == sequence_infos.end() ||
-                (epoch_number && sequence_number && sequence_info_it->second.is_older_than(*sequence_number, *epoch_number))) {
+                (epoch_number && sequence_number &&
+                 sequence_info_it->second.is_older_than(*sequence_number,
+                                                        *epoch_number))) {
               auto new_sequence_info = uActor::Remote::SequenceInfo(
                   *sequence_number, *epoch_number, BoardFunctions::timestamp());
               if (sequence_info_it != sequence_infos.end()) {

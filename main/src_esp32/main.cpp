@@ -197,9 +197,12 @@ void main_task(void*) {
                           &params, 5, nullptr, 0);
 
   time_t t = 0;
-  while (t < 1577836800) {
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
-    time(&t);
+  time(&t);
+
+  size_t retries = 0;
+  while (t < 1577836800 && retries < 60) {
+    printf("waiting for time\n");
+    retries++;
   }
 
   if (t > 1577836800) {
@@ -207,7 +210,7 @@ void main_task(void*) {
     BoardFunctions::epoch = t;
     printf("epoch %ld\n", t);
   } else {
-    printf("Epoch not set\n");
+    printf("Epoch not set according to time\n");
     BoardFunctions::epoch = 0;
   }
 

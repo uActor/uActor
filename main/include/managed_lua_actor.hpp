@@ -1,7 +1,7 @@
 #ifndef MAIN_INCLUDE_MANAGED_LUA_ACTOR_HPP_
 #define MAIN_INCLUDE_MANAGED_LUA_ACTOR_HPP_
 
-#include "sdkconfig.h"
+#include <sdkconfig.h>
 #if CONFIG_BENCHMARK_ENABLED
 #include <testbed.h>
 #endif
@@ -24,9 +24,9 @@ class ManagedLuaActor : public ManagedActor {
         state(global_state) {}
 
   ~ManagedLuaActor() {
-      lua_pushnil(state);
-      lua_setglobal(state, std::to_string(id()).data());
-      lua_gc(state, LUA_GCCOLLECT, 0);
+    lua_pushnil(state);
+    lua_setglobal(state, std::to_string(id()).data());
+    lua_gc(state, LUA_GCCOLLECT, 0);
   }
 
   bool receive(const uActor::PubSub::Publication& m) {
@@ -58,8 +58,8 @@ class ManagedLuaActor : public ManagedActor {
     if (error_code) {
       printf("LUA ERROR for actor %s.%s.%s\n", node_id(), actor_type(),
              instance_id());
-        printf("ERROR: %s\n", lua_tostring(state, -1));
-        lua_pop(state, 1);
+      printf("ERROR: %s\n", lua_tostring(state, -1));
+      lua_pop(state, 1);
       return false;
     }
 
@@ -165,20 +165,21 @@ class ManagedLuaActor : public ManagedActor {
 #endif
 
   static constexpr luaL_Reg core[] = {
-      {"publish", &publish_wrapper},
-      {"delayed_publish", &delayed_publish_wrapper},
-      {"deferred_block_for", &deferred_block_for_wrapper},
-      {"subscribe", &subscribe_wrapper},
-      {"unsubscribe", &unsubscribe_wrapper},
-      {"now", &now_wrapper},
+    {"publish", &publish_wrapper},
+    {"delayed_publish", &delayed_publish_wrapper},
+    {"deferred_block_for", &deferred_block_for_wrapper},
+    {"subscribe", &subscribe_wrapper},
+    {"unsubscribe", &unsubscribe_wrapper},
+    {"now", &now_wrapper},
 #if CONFIG_BENCHMARK_ENABLED
-      {"testbed_log_integer", &testbed_log_integer_wrapper},
-      {"testbed_log_double", &testbed_log_double_wrapper},
-      {"testbed_log_string", &testbed_log_string_wrapper},
-      {"testbed_start_timekeeping", &testbed_start_timekeeping_wrapper},
-      {"testbed_stop_timekeeping", &testbed_stop_timekeeping_wrapper},
+    {"testbed_log_integer", &testbed_log_integer_wrapper},
+    {"testbed_log_double", &testbed_log_double_wrapper},
+    {"testbed_log_string", &testbed_log_string_wrapper},
+    {"testbed_start_timekeeping", &testbed_start_timekeeping_wrapper},
+    {"testbed_stop_timekeeping", &testbed_stop_timekeeping_wrapper},
 #endif
-      {NULL, NULL}};
+    {NULL, NULL}
+  };
 
   bool createActorEnvironment(const char* receive_function) {
     lua_createtable(state, 0, 16);       // 1
@@ -249,8 +250,8 @@ class ManagedLuaActor : public ManagedActor {
     if (error_code) {
       printf("LUA LOAD ERROR for actor %s.%s.%s\n", node_id(), actor_type(),
              instance_id());
-        printf("ERROR: %s\n", lua_tostring(state, -1));
-        lua_pop(state, 3);
+      printf("ERROR: %s\n", lua_tostring(state, -1));
+      lua_pop(state, 3);
       return false;
     }
 
