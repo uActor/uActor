@@ -1,0 +1,3 @@
+CONFIG_NODE_ID="node_13"
+CONFIG_NODE_LABELS="core.location.room=room1"
+CONFIG_SERVER_NODE="node_5"
