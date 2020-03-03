@@ -6,4 +6,4 @@ actor_runtime_type:  lua
 actor_version:  "0.1"
 actor_code_file:  "local_io_test.lua"
 constraints:
-  - "node_id": "node_16"
+  - "node_id": "node_10"
