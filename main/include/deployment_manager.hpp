@@ -195,7 +195,7 @@ class DeploymentManager : public NativeActor {
       if (const auto deployment_it = deployments.find(deployment_id);
           deployment_it != deployments.end()) {
         Deployment& deployment = deployment_it->second;
-        if (deployment.lifetime_end < now()) {
+        if (deployment.lifetime_end > 0 && deployment.lifetime_end < now()) {
           // Already deactivated
           remove_deployment(&deployment);
         } else if (*publication.get_str_attr("exit_reason") != "clean_exit") {
