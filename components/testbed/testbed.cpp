@@ -1,5 +1,6 @@
 #include "include/testbed.h"
 
+#include <sdkconfig.h>
 #include <esp_timer.h>
 
 #ifdef CONFIG_TESTBED_NETWORK_UTILS
@@ -12,6 +13,11 @@ extern "C" {
 #include <cstdio>
 #include <cstring>
 #include <ctime>
+#if CONFIG_BENCHMARK_BREAKDOWN
+#include <vector>
+#include <string>
+#include <utility>
+#endif
 
 namespace testbed {
 
@@ -24,7 +30,11 @@ class TestBed {
     return instance;
   }
 
-  TestBed() : sequence_number(0) { semaphore = xSemaphoreCreateMutex(); }
+  TestBed() : sequence_number(0) {
+#if CONFIG_BENCHMARK_BREAKDOWN
+    times.reserve(10);
+#endif
+  }
 
   void log_integer(const char* variable, int64_t value,
                    bool runtime_value = false) {
@@ -57,15 +67,24 @@ class TestBed {
     timekeeping[variable] = esp_timer_get_time();
   }
 
+#if CONFIG_BENCHMARK_BREAKDOWN
+  void stop_timekeeping_inner(size_t variable, const char* name) {
+    uint64_t timestamp = esp_timer_get_time();
+    times.emplace_back(std::string(name), timestamp - timekeeping[variable]);
+  }
+#endif
+
   void stop_timekeeping(size_t variable, const char* name) {
     uint64_t timestamp = esp_timer_get_time();
-    std::string var_name;
-    if (name) {
-      var_name = var_name = std::string(name);
-    } else {
-      var_name = std::to_string(variable);
-    }
-    log_integer(var_name.data(), timestamp - timekeeping[variable], false);
+
+#if CONFIG_BENCHMARK_BREAKDOWN
+  for (const auto t : times) {
+    log_integer(t.first.data(), t.second, false);
+  }
+  times.clear();
+#endif
+
+    log_integer(name, timestamp - timekeeping[variable], false);
   }
 
 #ifdef CONFIG_TESTBED_NETWORK_UTILS
@@ -77,18 +96,17 @@ class TestBed {
 #endif
 
  private:
-  uint64_t sequence_number;
-  SemaphoreHandle_t semaphore;
+uint64_t sequence_number;
   std::array<uint64_t, 10> timekeeping;
+#if CONFIG_BENCHMARK_BREAKDOWN
+  std::vector<std::pair<std::string, uint64_t>> times;
+#endif
 
   template <class T>
   void log_generic(const char* variable, const char* format, T value) {
-    time_t timestamp;
-    time(&timestamp);
-    if (xSemaphoreTake(semaphore, portMAX_DELAY)) {
-      printf(format, variable, sequence_number++, timestamp, value);
-      xSemaphoreGive(semaphore);
-    }
+    // time_t timestamp;
+    // time(&timestamp);
+    printf(format, variable, sequence_number++, 0, value);
   }
 };
 }  // namespace testbed
@@ -110,6 +128,11 @@ void testbed_log_double(const char* variable, double value,
 
 void testbed_start_timekeeping(size_t variable) {
   testbed::TestBed::get_instance().start_timekeeping(variable);
+}
+void testbed_stop_timekeeping_inner(size_t variable, const char* name) {
+#if CONFIG_BENCHMARK_BREAKDOWN
+  testbed::TestBed::get_instance().stop_timekeeping_inner(variable, name);
+#endif
 }
 
 void testbed_stop_timekeeping(size_t variable, const char* name) {

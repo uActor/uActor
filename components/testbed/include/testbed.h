@@ -5,6 +5,7 @@
 extern "C" {
 #endif
 
+// #include <sdkconfig.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 #include <stdint.h>
@@ -24,7 +25,8 @@ void testbed_log_ipv4_gateway(esp_ip4_addr_t gateway);
 #endif
 
 void testbed_start_timekeeping(size_t variable);
-void testbed_stop_timekeeping(size_t variable, const char* name = NULL);
+void testbed_stop_timekeeping(size_t variable, const char* name);
+void testbed_stop_timekeeping_inner(size_t variable, const char* name);
 
 #ifdef __cplusplus
 }

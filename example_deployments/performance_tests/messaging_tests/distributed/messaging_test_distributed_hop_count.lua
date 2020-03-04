@@ -3,8 +3,12 @@ MAX_DISTANCE = 15
 function receive(message)
 
   if(message.type == "pong") then
-    testbed_stop_timekeeping(1, iteration_name)
-    delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="trigger"}, 1000 + math.random(0, 199))
+    testbed_stop_timekeeping(1, "latency")
+    if(iteration % 10 == 0) then
+      delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="setup"}, 1000 + math.random(0, 199))
+    else
+      delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="trigger"}, 1000 + math.random(0, 199))
+    end
   end
 
   if(message.type == "init") then
@@ -12,33 +16,32 @@ function receive(message)
     for i=1,3 do
       math.random()
     end
-    delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="trigger"}, 5000)
     distance = -1
     iteration = 0
   end
   
-  if(message.type == "trigger") then
+  if(message.type == "init" or message.type == "setup") then
 
-    if(iteration % 10 == 0) then
-      iteration = 0
-      distance = distance + 1
-      if(distance > MAX_DISTANCE) then
-        testbed_log_string("done" , "true")
-        return
-      end
-      iteration_name = "latency_distance_"..tostring(distance)
-      publish_iteration_name = "publish_distance_"..tostring(distance)
+    iteration = 0
+    distance = distance + 1
+    
+    if(distance > MAX_DISTANCE) then
+      testbed_log_string("done" , "true")
+      return
     end
 
-    local receiver_id = "node_"..tostring(distance+1)
+    testbed_log_string("_logger_test_postfix", distance)
+    collectgarbage()
+    delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="trigger"}, 2000 + math.random(0, 199))
+  end
 
+  if(message.type == "trigger") then
     iteration = iteration + 1
+    
+    local receiver_id = "node_"..tostring(distance+1)
 
     collectgarbage()
     testbed_start_timekeeping(1)
-
-    -- testbed_start_timekeeping(3) -- breakdown measurement
     publish({node_id=receiver_id, actor_type="test_echo_actor", instance_id="test_deployment_echo", type="ping"})
-    -- testbed_stop_timekeeping(3, publish_iteration_name) -- breakdown measurement
   end
 end

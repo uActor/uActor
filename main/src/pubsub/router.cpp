@@ -1,5 +1,7 @@
 #include "pubsub/router.hpp"
 
+#include <testbed.h>
+
 #include <utility>
 
 #include "board_functions.hpp"
@@ -37,9 +39,10 @@ void Router::os_task(void*) {
 
 void Router::publish(Publication&& publication) {
   Counter c;
+#if CONFIG_BENCHMARK_BREAKDOWN
+  testbed_start_timekeeping(2);
+#endif
   std::unique_lock lock(mtx);
-
-  // testbed_start_timekeeping("search");
 
   if (publication.get_str_attr("publisher_node_id") ==
           BoardFunctions::NODE_ID &&
@@ -47,7 +50,6 @@ void Router::publish(Publication&& publication) {
     int32_t seq = static_cast<int32_t>(RemoteConnection::sequence_number++);
     publication.set_attr("_internal_sequence_number", seq);
     publication.set_attr("_internal_epoch", BoardFunctions::epoch);
-    // printf("publish %d\n", seq);
   }
 
   for (const auto& [attribute, value] : publication) {
@@ -56,9 +58,6 @@ void Router::publish(Publication&& publication) {
       constraint_it->second.check(value, &c);
     }
   }
-
-  // testbed_stop_timekeeping("search");
-  // testbed_start_timekeeping("match");
 
   for (const auto& [subscription_ptr, counts] : c) {
     auto& subscription = *subscription_ptr;
@@ -84,8 +83,12 @@ void Router::publish(Publication&& publication) {
       }
     }
   }
-
-  // testbed_stop_timekeeping("match");
+#if CONFIG_BENCHMARK_BREAKDOWN
+  if (publication.get_str_attr("type") == "ping") {
+    testbed_stop_timekeeping_inner(2, "publish");
+    testbed_start_timekeeping(6);
+  }
+#endif
 }
 
 std::string Router::subscriptions_for(std::string_view node_id) {

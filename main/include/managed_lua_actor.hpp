@@ -42,6 +42,12 @@ class ManagedLuaActor : public ManagedActor {
     }
     lua_replace(state, 1);
 
+#if CONFIG_BENCHMARK_ENABLED
+    if (m.get_str_attr("type") == "ping") {
+      testbed_stop_timekeeping_inner(6, "scheduling");
+      testbed_start_timekeeping(4);
+    }
+#endif
     lua_newtable(state);
     for (const auto& value : m) {
       if (std::holds_alternative<std::string>(value.second)) {
@@ -53,6 +59,11 @@ class ManagedLuaActor : public ManagedActor {
       }
       lua_setfield(state, -2, value.first.c_str());
     }
+#if CONFIG_BENCHMARK_ENABLED
+    if (m.get_str_attr("type") == "ping") {
+      testbed_stop_timekeeping_inner(4, "prepare_message");
+    }
+#endif
 
     int error_code = lua_pcall(state, 1, 0, 0);
     if (error_code) {
@@ -162,6 +173,13 @@ class ManagedLuaActor : public ManagedActor {
     return 0;
   }
 
+  static int testbed_stop_timekeeping_inner_wrapper(lua_State* state) {
+    size_t variable = lua_tointeger(state, 1);
+    const char* name = lua_tostring(state, 2);
+    testbed_stop_timekeeping_inner(variable, name);
+    return 0;
+  }
+
 #endif
 
   static constexpr luaL_Reg core[] = {
@@ -177,6 +195,7 @@ class ManagedLuaActor : public ManagedActor {
     {"testbed_log_string", &testbed_log_string_wrapper},
     {"testbed_start_timekeeping", &testbed_start_timekeeping_wrapper},
     {"testbed_stop_timekeeping", &testbed_stop_timekeeping_wrapper},
+    {"testbed_stop_timekeeping_inner", &testbed_stop_timekeeping_inner_wrapper},
 #endif
     {NULL, NULL}
   };
@@ -330,6 +349,9 @@ class ManagedLuaActor : public ManagedActor {
   static uActor::PubSub::Publication parse_publication(ManagedLuaActor* actor,
                                                        lua_State* state,
                                                        size_t index) {
+#if CONFIG_BENCHMARK_ENABLED
+    testbed_start_timekeeping(5);
+#endif
     auto p = uActor::PubSub::Publication(actor->node_id(), actor->actor_type(),
                                          actor->instance_id());
 
@@ -354,6 +376,11 @@ class ManagedLuaActor : public ManagedActor {
       lua_pop(state, 2);
     }
     lua_pop(state, 1);
+#if CONFIG_BENCHMARK_ENABLED
+    if (p.get_str_attr("type") == "ping") {
+      testbed_stop_timekeeping_inner(5, "parse_publication");
+    }
+#endif
     return std::move(p);
   }
 };

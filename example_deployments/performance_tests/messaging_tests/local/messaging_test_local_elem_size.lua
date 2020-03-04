@@ -1,10 +1,14 @@
-MAX_FACTOR = 16
+MAX_FACTOR = 15
 
 function receive(message)
 
   if(message.type == "ping") then
-    testbed_stop_timekeeping(1, iteration_name)
-    delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="trigger"}, 1000 + math.random(0, 199))
+    testbed_stop_timekeeping(1, "latency")
+    if(iteration % 10 == 0) then
+      delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="setup"}, 1000 + math.random(0, 199))
+    else
+      delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="trigger"}, 1000 + math.random(0, 199))
+    end
   end
 
   if(message.type == "init") then
@@ -16,28 +20,30 @@ function receive(message)
     factor = -1
   end
 
-  if(message.type == "init" or message.type == "trigger") then
 
-    local publication
-
-    if(iteration % 10 == 0) then
-      iteration = 0
-      factor = factor + 1
-      if(factor > MAX_FACTOR) then
-        testbed_log_string("done" , "true")
-        return
-      end
-      if(factor > 0) then
-        iteration_name = "latency_size_"..tostring(2^(factor-1))
-        publish_iteration_name = "publish_size_"..tostring(2^(factor-2))
-      else
-        iteration_name = "latency_size_"..tostring(0)
-        publish_iteration_name = "publish_size_"..tostring(0) 
-      end
+  if(message.type == "init" or message.type == "setup") then
+    iteration = 0
+    factor = factor + 1
+    if(factor > MAX_FACTOR) then
+      testbed_log_string("done" , "true")
+      return
+    end
+    if(factor > 0) then
+      testbed_log_string("_logger_test_postfix", tostring(2^(factor-1)))
+    else
+      testbed_log_string("_logger_test_postfix", tostring(0.0))
     end
 
-    publication = {node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="ping"}
+    collectgarbage()
+    delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="trigger"}, 1000 + math.random(0, 199))
+  end
+
+  if(message.type == "trigger") then
     
+    iteration = iteration + 1
+
+    local publication = {node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="ping"}
+  
     if (factor > 0) then
       local buffer = "A"
       for x=2,factor do
@@ -46,14 +52,11 @@ function receive(message)
       publication["payload"] = buffer
     end
 
-
-    iteration = iteration + 1
-
     collectgarbage()
     testbed_start_timekeeping(1)
     
     -- testbed_start_timekeeping(3) -- breakdown measurement
     publish(publication)
-    -- testbed_stop_timekeeping(3, publish_iteration_name) -- breakdown measurement
+    -- testbed_stop_timekeeping_inner(3, publish_iteration_name) -- breakdown measurement
   end
 end

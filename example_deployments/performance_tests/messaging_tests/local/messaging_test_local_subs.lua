@@ -3,8 +3,12 @@ MAX_SUB_COUNT = 208
 function receive(message)
 
   if(message.type == "ping") then
-    testbed_stop_timekeeping(1, iteration_name)
-    delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="trigger"}, 1000 + math.random(0, 199))
+    testbed_stop_timekeeping(1, "latency")
+    if(iteration % 10 == 0) then
+      delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="setup"}, 1000 + math.random(0, 199))
+    else
+      delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="trigger"}, 1000 + math.random(0, 199))
+    end
   end
 
   if(message.type == "init") then
@@ -16,45 +20,47 @@ function receive(message)
     count = - 1
   end
 
-  if(message.type == "init" or message.type == "trigger") then
+  if(message.type == "init" or message.type == "setup") then
 
     local publication
 
-    if(iteration % 10 == 0) then
-      iteration = 0
-      
-      if(count == -1) then
-        count = 0
-      else
-        count = count + 16
-      end
 
-      if(count > MAX_SUB_COUNT) then
-        testbed_log_string("done" , "true")
-        return
-      end
-
-      for i=1,16 do
-        if(i % 4 == 0) then
-          subscribe({"type", "value"..(count-16+i)})
-        else
-          subscribe({"key_"..i, "value"..(count-16+i)})
-        end
-      end
-
-      iteration_name = "latency_subs_"..tostring(count)
-      publish_iteration_name = "publish_subs_"..tostring(count)
+    iteration = 0
+    
+    if(count == -1) then
+      count = 0
+    else
+      count = count + 16
     end
 
-    publication = {node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="ping"}
+    if(count > MAX_SUB_COUNT) then
+      testbed_log_string("done" , "true")
+      return
+    end
 
+    for i=1,16 do
+      if(i % 4 == 0) then
+        subscribe({"type", "value"..(count-16+i)})
+      else
+        subscribe({"key_"..i, "value"..(count-16+i)})
+      end
+    end
+
+    testbed_log_string("_logger_test_postfix", count)
+
+    collectgarbage()
+    delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="trigger"}, 1000 + math.random(0, 199))
+  end
+
+  if(message.type == "trigger") then
     iteration = iteration + 1
+
+    local publication = {node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="ping"}
+
 
     collectgarbage()
     testbed_start_timekeeping(1)
     
-    -- testbed_start_timekeeping(3) -- breakdown measurement
     publish(publication)
-    -- testbed_stop_timekeeping(3, publish_iteration_name) -- breakdown measurement
   end
 end
