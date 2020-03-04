@@ -13,8 +13,7 @@ void Router::os_task(void*) {
   Router& router = get_instance();
   while (true) {
     BoardFunctions::sleep(500);
-    bool t = true;
-    if (router.updated.compare_exchange_weak(t, false)) {
+    if (router.updated.exchange(false)) {
       Publication update{BoardFunctions::NODE_ID, "router", "1"};
       update.set_attr("type", "local_subscription_update");
       router.publish(std::move(update));
@@ -140,9 +139,10 @@ uint32_t Router::add_subscription(Filter&& f, Receiver* r,
                        [&](const auto& sub) { return sub.second.filter == f; });
       it != subscriptions.end()) {
     Subscription& sub = it->second;
-    sub.add_receiver(r, subscriber_node_id);
-    if (sub.nodes.size() == 2 ||
-        (sub.nodes.size() == 1 && sub.nodes.begin()->first == "local")) {
+    bool updated = sub.add_receiver(r, subscriber_node_id);
+    if (updated &&
+        (sub.nodes.size() == 2 ||
+         (sub.nodes.size() == 1 && sub.nodes.begin()->first == "local"))) {
       publish_subscription_update();
     }
     return sub.subscription_id;

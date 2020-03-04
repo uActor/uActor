@@ -14,7 +14,7 @@ namespace uActor::PubSub {
 struct Subscription {
   Subscription(uint32_t id, Filter f, std::string node_id, Receiver* r);
 
-  void add_receiver(Receiver* receiver, std::string source_node_id);
+  bool add_receiver(Receiver* receiver, std::string source_node_id);
 
   std::pair<bool, size_t> remove_receiver(Receiver* receiver_ptr,
                                           std::string source_node_id);

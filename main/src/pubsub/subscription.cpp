@@ -11,7 +11,7 @@ Subscription::Subscription(uint32_t id, Filter f, std::string node_id,
   count_optional = filter.optional.size();
 }
 
-void Subscription::add_receiver(Receiver* receiver,
+bool Subscription::add_receiver(Receiver* receiver,
                                 std::string source_node_id) {
   auto [receiver_it, inserted_receiver] = receivers.try_emplace(
       receiver, std::list<std::string>{std::string(source_node_id)});
@@ -29,7 +29,10 @@ void Subscription::add_receiver(Receiver* receiver,
         node_it->second.end()) {
       node_it->second.push_back(receiver);
     }
+  } else {
+    return true;
   }
+  return false;
 }
 
 std::pair<bool, size_t> Subscription::remove_receiver(
