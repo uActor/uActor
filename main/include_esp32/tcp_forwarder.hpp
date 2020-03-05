@@ -118,6 +118,14 @@ class TCPForwarder : public ForwarderSubscriptionAPI {
     auto receivers = subscription_mapping.find(m.subscription_id);
     if (receivers != subscription_mapping.end()) {
       auto sub_ids = receivers->second;
+#if CONFIG_BENCHMARK_BREAKDOWN
+      timeval tv;
+      gettimeofday(&tv, NULL);
+      m.publication.set_attr(
+          "_benchmark_send_time",
+          static_cast<int32_t>(tv.tv_sec * 1000LL + (tv.tv_usec / 1000LL) -
+                               1583245913000));
+#endif
       std::string serialized = m.publication.to_msg_pack();
       int size = htonl(serialized.size());
       for (uint32_t subscriber_id : sub_ids) {

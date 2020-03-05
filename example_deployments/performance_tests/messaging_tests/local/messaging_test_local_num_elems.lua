@@ -1,4 +1,5 @@
 EXTRA_ELEMENT_COUNTS =  {0, 1, 2, 4, 8, 16, 32, 64, 128, 256, 384}
+MAX_COUNT = 384
 
 function receive(message)
 
@@ -17,7 +18,7 @@ function receive(message)
       math.random()
     end
     iteration = 0
-    count_index = 0
+    count = -8
   end
 
   if(message.type == "init" or message.type == "setup") then
@@ -26,13 +27,13 @@ function receive(message)
     local buffer
 
     iteration = 0
-    count_index = count_index + 1
-    if(count_index > #EXTRA_ELEMENT_COUNTS) then
+    count = count + 8
+    if(count > MAX_COUNT) then
       testbed_log_string("done" , "true")
       return
     end
 
-    testbed_log_string("_logger_test_postfix", tostring(EXTRA_ELEMENT_COUNTS[count_index]))
+    testbed_log_string("_logger_test_postfix", tostring(count))
     
     collectgarbage()
     delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="trigger"}, 1000 + math.random(0, 199))
@@ -44,7 +45,7 @@ function receive(message)
     
     local publication = {node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="ping"}
     
-    for x=1,EXTRA_ELEMENT_COUNTS[count_index],1 do
+    for x=1,count,1 do
       if(x % 7 == 0) then
         publication["dummy_int_"..tostring(x)] = x
       elseif(x % 8 == 0) then
