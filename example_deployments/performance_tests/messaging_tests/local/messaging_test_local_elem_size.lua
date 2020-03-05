@@ -1,4 +1,4 @@
-MAX_FACTOR = 15
+MAX_SIZE = 65536
 
 function receive(message)
 
@@ -17,22 +17,18 @@ function receive(message)
       math.random()
     end
     iteration = 0
-    factor = -1
+    size = -156
   end
 
 
   if(message.type == "init" or message.type == "setup") then
     iteration = 0
-    factor = factor + 1
-    if(factor > MAX_FACTOR) then
+    size = size + 256
+    if(size > MAX_SIZE) then
       testbed_log_string("done" , "true")
       return
     end
-    if(factor > 0) then
-      testbed_log_string("_logger_test_postfix", tostring(2^(factor-1)))
-    else
-      testbed_log_string("_logger_test_postfix", tostring(0.0))
-    end
+    testbed_log_string("_logger_test_postfix", size)
 
     collectgarbage()
     delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="trigger"}, 1000 + math.random(0, 199))
@@ -44,10 +40,14 @@ function receive(message)
 
     local publication = {node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="ping"}
   
-    if (factor > 0) then
-      local buffer = "A"
-      for x=2,factor do
-        buffer = buffer .. buffer
+    if (size > 0) then
+      local elem_256 = "A"
+      for x=1,8 do
+        elem_256 = elem_256 .. elem_256
+      end
+      local buffer = ""
+      for x=1, size / 256 do
+        buffer = buffer .. elem_256
       end
       publication["payload"] = buffer
     end
@@ -55,8 +55,6 @@ function receive(message)
     collectgarbage()
     testbed_start_timekeeping(1)
     
-    -- testbed_start_timekeeping(3) -- breakdown measurement
     publish(publication)
-    -- testbed_stop_timekeeping_inner(3, publish_iteration_name) -- breakdown measurement
   end
 end
