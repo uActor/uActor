@@ -203,6 +203,7 @@ void main_task(void*) {
   while (t < 1577836800 && retries < 60) {
     printf("waiting for time\n");
     vTaskDelay(1000 / portTICK_PERIOD_MS);
+    time(&t);
     retries++;
   }
 
