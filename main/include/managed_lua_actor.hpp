@@ -30,6 +30,12 @@ class ManagedLuaActor : public ManagedActor {
   }
 
   bool receive(const uActor::PubSub::Publication& m) {
+
+#if CONFIG_BENCHMARK_ENABLED
+    if (m.get_str_attr("type") == "ping") {
+      testbed_stop_timekeeping_inner(6, "scheduling");
+    }
+#endif
     if (!initialized()) {
       printf("Actor not initialized, can't process message\n");
       return false;
@@ -44,7 +50,6 @@ class ManagedLuaActor : public ManagedActor {
 
 #if CONFIG_BENCHMARK_ENABLED
     if (m.get_str_attr("type") == "ping") {
-      testbed_stop_timekeeping_inner(6, "scheduling");
       testbed_start_timekeeping(4);
     }
 #endif
