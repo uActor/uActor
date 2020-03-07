@@ -164,8 +164,8 @@ class ActorRuntime : public RuntimeApi {
             for (uint32_t receiver_id : receivers->second) {
               auto actor = actors.find(receiver_id);
               if (actor != actors.end()) {
-                if (actor->second.enqueue(uActor::PubSub::Publication(
-                        publication->publication))) {
+                if (actor->second.enqueue(uActor::PubSub::Publication(std::move(
+                        publication->publication)))) {
                   if (std::find(ready_queue.begin(), ready_queue.end(),
                                 receiver_id) == ready_queue.end()) {
                     ready_queue.push_back(receiver_id);

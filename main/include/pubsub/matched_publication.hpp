@@ -9,7 +9,7 @@ namespace uActor::PubSub {
 
 struct MatchedPublication {
   MatchedPublication(Publication&& p, uint32_t subscription_id)
-      : publication(p), subscription_id(subscription_id) {}
+      : publication(std::move(p)), subscription_id(subscription_id) {}
 
   MatchedPublication() : publication(), subscription_id(0) {}
   Publication publication;

@@ -19,7 +19,7 @@ class Receiver::Queue {
   ~Queue() { vQueueDelete(queue); }
 
   void send_message(MatchedPublication&& publication) {
-    MatchedPublication* p = new MatchedPublication(publication);
+    MatchedPublication* p = new MatchedPublication(std::move(publication));
     xQueueSend(queue, &p, portMAX_DELAY);
   }
 
@@ -27,7 +27,7 @@ class Receiver::Queue {
     MatchedPublication* pub = nullptr;
 
     if (xQueueReceive(queue, &pub, timeout)) {
-      MatchedPublication out = MatchedPublication(*pub);
+      MatchedPublication out = MatchedPublication(std::move(*pub));
       delete pub;
       return std::move(out);
     }

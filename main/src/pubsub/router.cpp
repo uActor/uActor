@@ -3,6 +3,7 @@
 #include <testbed.h>
 
 #include <utility>
+#include <list>
 
 #include "board_functions.hpp"
 #include "pubsub/constraint.hpp"
@@ -39,6 +40,7 @@ void Router::os_task(void*) {
 
 void Router::publish(Publication&& publication) {
   Counter c;
+  std::list<std::pair<Receiver*, uint32_t>> current_receivers;
 #if CONFIG_BENCHMARK_BREAKDOWN
   testbed_start_timekeeping(2);
 #endif
@@ -65,8 +67,7 @@ void Router::publish(Publication&& publication) {
       if (counts.optional == subscription.count_optional ||
           subscription.filter.check_optionals(publication)) {
         for (auto& receiver : subscription.receivers) {
-          receiver.first->publish(MatchedPublication(
-              Publication(publication), subscription.subscription_id));
+          current_receivers.push_back(std::make_pair(receiver.first, subscription.subscription_id));
         }
       }
     }
@@ -77,14 +78,24 @@ void Router::publish(Publication&& publication) {
     if (c.find(sub) == c.end()) {
       if (sub->filter.check_optionals(publication)) {
         for (auto& receiver : sub->receivers) {
-          receiver.first->publish(MatchedPublication(Publication(publication),
-                                                     sub->subscription_id));
+          current_receivers.push_back(std::make_pair(receiver.first, sub->subscription_id));
         }
       }
     }
   }
+
+  bool is_type = publication.get_str_attr("type") == "ping";
+  auto rec_it = current_receivers.begin();
+  for(;rec_it != std::prev(current_receivers.end()); ++rec_it) {
+    rec_it->first->publish(MatchedPublication(Publication(publication),
+                                                     rec_it->second));
+  }
+  if(rec_it != current_receivers.end()) {
+    rec_it->first->publish(MatchedPublication(std::move(publication),
+                                                  rec_it->second));
+  }
 #if CONFIG_BENCHMARK_BREAKDOWN
-  if (publication.get_str_attr("type") == "ping") {
+  if (is_type) {
     testbed_stop_timekeeping_inner(2, "publish");
     testbed_start_timekeeping(6);
   }
