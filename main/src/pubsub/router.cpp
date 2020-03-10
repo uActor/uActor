@@ -87,8 +87,9 @@ void Router::publish(Publication&& publication) {
       }
     }
   }
-
+#if CONFIG_BENCHMARK_BREAKDOWN
   bool is_type = publication.get_str_attr("type") == "ping";
+#endif
   auto rec_it = current_receivers.begin();
   for(;rec_it != std::prev(current_receivers.end()); ++rec_it) {
     rec_it->first->publish(MatchedPublication(Publication(publication),
