@@ -1,10 +1,10 @@
-MAX_SUB_COUNT = 208
+MAX_SUB_COUNT = 400
 
 function receive(message)
 
   if(message.type == "ping") then
     testbed_stop_timekeeping(1, "latency")
-    if(iteration % 10 == 0) then
+    if(iteration % 25 == 0) then
       delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="setup"}, 1000 + math.random(0, 199))
     else
       delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="trigger"}, 1000 + math.random(0, 199))
@@ -40,7 +40,7 @@ function receive(message)
 
     for i=1,16 do
       if(i % 4 == 0) then
-        subscribe({"type", "value"..(count-16+i)})
+       subscribe({"type", "value"..(count-16+i)})
       else
         subscribe({"key_"..i, "value"..(count-16+i)})
       end
@@ -57,7 +57,16 @@ function receive(message)
 
     local publication = {node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="ping"}
 
-
+    -- for x=1,64,1 do
+    --   if(x % 7 == 0) then
+    --     publication["dummy_int_"..tostring(x)] = x
+    --   elseif(x % 8 == 0) then
+    --     publication["dummy_float_"..tostring(x)] = 0.1*x
+    --   else
+    --     publication["dummy_"..tostring(x)] = "ABCD"
+    --   end
+    -- end
+    
     collectgarbage()
     testbed_start_timekeeping(1)
     

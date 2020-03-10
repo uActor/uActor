@@ -4,7 +4,7 @@ function receive(message)
 
   if(message.type == "ping") then
     testbed_stop_timekeeping(1, "latency")
-    if(iteration % 10 == 0) then
+    if(iteration % 25 == 0) then
       delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="setup"}, 1000 + math.random(0, 199))
     else
       delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="trigger"}, 1000 + math.random(0, 199))
@@ -17,7 +17,7 @@ function receive(message)
       math.random()
     end
     iteration = 0
-    size = -156
+    size = -256
   end
 
 

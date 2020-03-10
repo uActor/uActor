@@ -1,4 +1,4 @@
-MAX_COUNT = 100
+MAX_COUNT = 105
 
 function receive(message)
 
@@ -6,7 +6,7 @@ function receive(message)
     receive_count = receive_count + 1
     if(receive_count == count) then
       testbed_stop_timekeeping(1, "latency")
-      if(iteration % 10 == 0) then
+      if(iteration % 25 == 0) then
         delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="setup"}, 1000 + math.random(0, 199))
       else
         delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="trigger"}, 1000 + math.random(0, 199))

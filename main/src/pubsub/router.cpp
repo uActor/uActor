@@ -54,13 +54,17 @@ void Router::publish(Publication&& publication) {
     publication.set_attr("_internal_epoch", BoardFunctions::epoch);
   }
 
+  testbed_start_timekeeping(7);
   for (const auto& [attribute, value] : publication) {
     if (auto constraint_it = constraints.find(attribute);
         constraint_it != constraints.end()) {
       constraint_it->second.check(value, &c);
     }
   }
-
+  if (publication.get_str_attr("type") == "ping") {
+    testbed_stop_timekeeping_inner(7, "search");
+  }
+  testbed_start_timekeeping(7);
   for (const auto& [subscription_ptr, counts] : c) {
     auto& subscription = *subscription_ptr;
     if (counts.required == subscription.count_required) {
@@ -96,6 +100,7 @@ void Router::publish(Publication&& publication) {
   }
 #if CONFIG_BENCHMARK_BREAKDOWN
   if (is_type) {
+    testbed_stop_timekeeping_inner(7, "bcast");
     testbed_stop_timekeeping_inner(2, "publish");
     testbed_start_timekeeping(6);
   }
