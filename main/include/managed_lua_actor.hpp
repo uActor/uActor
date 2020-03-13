@@ -31,7 +31,7 @@ class ManagedLuaActor : public ManagedActor {
 
   bool receive(const uActor::PubSub::Publication& m) {
 
-#if CONFIG_BENCHMARK_ENABLED
+#if CONFIG_BENCHMARK_BREAKDOWN
     if (m.get_str_attr("type") == "ping") {
       testbed_stop_timekeeping_inner(6, "scheduling");
     }
@@ -48,7 +48,7 @@ class ManagedLuaActor : public ManagedActor {
     }
     lua_replace(state, 1);
 
-#if CONFIG_BENCHMARK_ENABLED
+#if CONFIG_BENCHMARK_BREAKDOWN
     if (m.get_str_attr("type") == "ping") {
       testbed_start_timekeeping(4);
     }
@@ -64,7 +64,7 @@ class ManagedLuaActor : public ManagedActor {
       }
       lua_setfield(state, -2, value.first.c_str());
     }
-#if CONFIG_BENCHMARK_ENABLED
+#if CONFIG_BENCHMARK_BREAKDOWN
     if (m.get_str_attr("type") == "ping") {
       testbed_stop_timekeeping_inner(4, "prepare_message");
     }
@@ -354,7 +354,7 @@ class ManagedLuaActor : public ManagedActor {
   static uActor::PubSub::Publication parse_publication(ManagedLuaActor* actor,
                                                        lua_State* state,
                                                        size_t index) {
-#if CONFIG_BENCHMARK_ENABLED
+#if CONFIG_BENCHMARK_BREAKDOWN
     testbed_start_timekeeping(5);
 #endif
     auto p = uActor::PubSub::Publication(actor->node_id(), actor->actor_type(),
@@ -381,7 +381,7 @@ class ManagedLuaActor : public ManagedActor {
       lua_pop(state, 2);
     }
     lua_pop(state, 1);
-#if CONFIG_BENCHMARK_ENABLED
+#if CONFIG_BENCHMARK_BREAKDOWN
     if (p.get_str_attr("type") == "ping") {
       testbed_stop_timekeeping_inner(5, "parse_publication");
     }

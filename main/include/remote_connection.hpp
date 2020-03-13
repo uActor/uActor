@@ -109,8 +109,6 @@ class RemoteConnection {
     uint32_t bytes_remaining = len;
     while (bytes_remaining > 0) {
       if (state == empty) {
-        // testbed_start_timekeeping((std::string("receive") +
-        // std::to_string(local_id)).data());
         if (bytes_remaining >= 4) {
           publicaton_full_size = ntohl(
               *reinterpret_cast<uint32_t*>(data + (len - bytes_remaining)));
@@ -153,8 +151,6 @@ class RemoteConnection {
         bytes_remaining -= to_move;
         publicaton_remaining_bytes -= to_move;
         if (publicaton_remaining_bytes == 0) {
-          // testbed_stop_timekeeping((std::string("receive") +
-          // std::to_string(local_id)).data());
 #if CONFIG_BENCHMARK_BREAKDOWN
           timeval tv;
           gettimeofday(&tv, NULL);

@@ -53,18 +53,21 @@ void Router::publish(Publication&& publication) {
     publication.set_attr("_internal_sequence_number", seq);
     publication.set_attr("_internal_epoch", BoardFunctions::epoch);
   }
-
+#if CONFIG_BENCHMARK_BREAKDOWN
   testbed_start_timekeeping(7);
+#endif
   for (const auto& [attribute, value] : publication) {
     if (auto constraint_it = constraints.find(attribute);
         constraint_it != constraints.end()) {
       constraint_it->second.check(value, &c);
     }
   }
+#if CONFIG_BENCHMARK_BREAKDOWN
   if (publication.get_str_attr("type") == "ping") {
     testbed_stop_timekeeping_inner(7, "search");
   }
   testbed_start_timekeeping(7);
+#endif
   for (const auto& [subscription_ptr, counts] : c) {
     auto& subscription = *subscription_ptr;
     if (counts.required == subscription.count_required) {
