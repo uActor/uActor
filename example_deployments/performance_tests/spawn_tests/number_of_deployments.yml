@@ -1,0 +1,7 @@
+type: deployment
+name: spawn_test_deployment
+ttl:  0
+actor_type:  spawn_test_host
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "number_of_deployments_large.lua"

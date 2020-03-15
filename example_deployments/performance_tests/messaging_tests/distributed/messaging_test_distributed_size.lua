@@ -1,13 +1,12 @@
-PEER_ID = "node_1"
-
+PEER_ID = "node_5"
 MAX_SIZE = 65536
 
 function receive(message)
 
   if(message.type == "pong") then
     testbed_stop_timekeeping(1, "latency")
-    if(iteration % 10 == 0) then
-      delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="setup"}, 1000 + math.random(0, 199))
+    if(iteration % 25 == 0) then
+      publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="setup"})
     else
       delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="trigger"}, 1000 + math.random(0, 199))
     end
@@ -33,7 +32,7 @@ function receive(message)
     testbed_log_string("_logger_test_postfix", size)
 
     collectgarbage()
-    delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="trigger"}, 5000 + math.random(0, 199))
+    delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="trigger"}, 2000 + math.random(0, 199))
   end
 
   if(message.type == "trigger") then
