@@ -32,12 +32,13 @@ function receive(message)
   if(message.type == "init" or message.type == "setup") then
     
     iteration = 0
-    
-    if(count == 0) then
-      count = 1
-    else
-      count = 15
-    end
+   
+    count = count + 1
+    -- if(count == 0) then
+    --   count = 1
+    -- else
+    --   count = count + 19
+    -- end
 
     if(count > 50) then
       testbed_log_string("done" , "true")
