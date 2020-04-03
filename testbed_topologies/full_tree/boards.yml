@@ -40,7 +40,7 @@ boards:
     sdkconfig: ../../sdkconfig
     sdkconfig_overrides: sdkconfig.overrides.10_tree
   node_11:
-    serial_device: "/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_TUM11-if00-port0"
+    serial_device: "/dev/serial/by-id/usb-Silicon_Labs_CP2102N_USB_to_UART_Bridge_Controller_609ee56fd469e91198ae6dd63ca6d3af-if00-port0"
     sdkconfig: ../../sdkconfig
     sdkconfig_overrides: sdkconfig.overrides.11_tree
     remote:
@@ -48,7 +48,7 @@ boards:
       user: "pi"
       root_directory: "/home/pi/remote_testbed"
   node_12:
-    serial_device: "/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_TUM12-if00-port0"
+    serial_device: "/dev/serial/by-id/usb-Silicon_Labs_CP2102N_USB_to_UART_Bridge_Controller_2634494dc969e911b0fd6ad63ca6d3af-if00-port0"
     sdkconfig: ../../sdkconfig
     sdkconfig_overrides: sdkconfig.overrides.12_tree
     remote:
@@ -56,7 +56,7 @@ boards:
       user: "pi"
       root_directory: "/home/pi/remote_testbed"
   node_13:
-    serial_device: "/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_TUM13-if00-port0"
+    serial_device: "/dev/serial/by-id/usb-Silicon_Labs_CP2102N_USB_to_UART_Bridge_Controller_6cf086e6c368e9119e476dd63ca6d3af-if00-port0"
     sdkconfig: ../../sdkconfig
     sdkconfig_overrides: sdkconfig.overrides.13_tree
     remote:
@@ -64,7 +64,7 @@ boards:
       user: "pi"
       root_directory: "/home/pi/remote_testbed"
   node_14:
-    serial_device: "/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_TUM14-if00-port0"
+    serial_device: "/dev/serial/by-id/usb-Silicon_Labs_CP2102N_USB_to_UART_Bridge_Controller_a8a1f6d9d669e9119d266fd63ca6d3af-if00-port0"
     sdkconfig: ../../sdkconfig
     sdkconfig_overrides: sdkconfig.overrides.14_tree
     remote:
@@ -72,7 +72,7 @@ boards:
       user: "pi"
       root_directory: "/home/pi/remote_testbed"
   node_15:
-    serial_device: "/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_TUM15-if00-port0"
+    serial_device: "/dev/serial/by-id/usb-Silicon_Labs_CP2102N_USB_to_UART_Bridge_Controller_865b07a4c468e911b54f70d63ca6d3af-if00-port0"
     sdkconfig: ../../sdkconfig
     sdkconfig_overrides: sdkconfig.overrides.15_tree
     remote:
@@ -80,7 +80,7 @@ boards:
       user: "pi"
       root_directory: "/home/pi/remote_testbed"
   node_16:
-    serial_device: "/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_TUM16-if00-port0"
+    serial_device: "/dev/serial/by-id/usb-Silicon_Labs_CP2102N_USB_to_UART_Bridge_Controller_32975bc3d268e9119c546ad63ca6d3af-if00-port0"
     sdkconfig: ../../sdkconfig
     sdkconfig_overrides: sdkconfig.overrides.16_tree
     remote:
