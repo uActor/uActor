@@ -1,18 +1,18 @@
-#ifndef MAIN_INCLUDE_LUA_RUNTIME_HPP_
-#define MAIN_INCLUDE_LUA_RUNTIME_HPP_
+#ifndef MAIN_INCLUDE_LUA_EXECUTOR_HPP_
+#define MAIN_INCLUDE_LUA_EXECUTOR_HPP_
 
 #include <lua.hpp>
 #include <utility>
 
-#include "actor_runtime.hpp"
+#include "executor.hpp"
 #include "managed_actor.hpp"
 #include "managed_lua_actor.hpp"
 
-class LuaRuntime : public ActorRuntime<ManagedLuaActor, LuaRuntime> {
+class LuaExecutor : public Executor<ManagedLuaActor, LuaExecutor> {
  public:
-  LuaRuntime(uActor::PubSub::Router* router, const char* node_id,
+  LuaExecutor(uActor::PubSub::Router* router, const char* node_id,
              const char* id)
-      : ActorRuntime<ManagedLuaActor, LuaRuntime>(router, node_id,
+      : Executor<ManagedLuaActor, LuaExecutor>(router, node_id,
                                                   "lua_runtime", id) {
     state = create_lua_state();
 
@@ -27,7 +27,7 @@ class LuaRuntime : public ActorRuntime<ManagedLuaActor, LuaRuntime> {
     uActor::PubSub::Router::get_instance().publish(std::move(p));
   }
 
-  ~LuaRuntime() {
+  ~LuaExecutor() {
     uActor::PubSub::Publication p{BoardFunctions::NODE_ID, "lua_runtime", "1"};
     p.set_attr("type", "runtime_update");
     p.set_attr("command", "deregister");
@@ -60,7 +60,7 @@ class LuaRuntime : public ActorRuntime<ManagedLuaActor, LuaRuntime> {
     add_actor_base<lua_State*>(publication, state);
   }
 
-  friend ActorRuntime;
+  friend Executor;
 };
 
-#endif  // MAIN_INCLUDE_LUA_RUNTIME_HPP_
+#endif  // MAIN_INCLUDE_LUA_EXECUTOR_HPP_

@@ -1,18 +1,18 @@
-#ifndef MAIN_INCLUDE_RUNTIME_API_HPP_
-#define MAIN_INCLUDE_RUNTIME_API_HPP_
+#ifndef MAIN_INCLUDE_EXECUTOR_API_HPP_
+#define MAIN_INCLUDE_EXECUTOR_API_HPP_
 
 #include <cstdint>
 
 #include "pubsub/filter.hpp"
 #include "pubsub/publication.hpp"
 
-struct RuntimeApi {
+struct ExecutorApi {
   virtual uint32_t add_subscription(uint32_t local_id,
                                     uActor::PubSub::Filter&& filter) = 0;
   virtual void remove_subscription(uint32_t local_id, uint32_t sub_id) = 0;
   virtual void delayed_publish(uActor::PubSub::Publication&& publication,
                                uint32_t delay) = 0;
-  virtual ~RuntimeApi() {}
+  virtual ~ExecutorApi() {}
 };
 
-#endif  // MAIN_INCLUDE_RUNTIME_API_HPP_
+#endif  // MAIN_INCLUDE_EXECUTOR_API_HPP_

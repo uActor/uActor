@@ -2,7 +2,7 @@
 
 #define ACTOR_QUEUE_SOFTLIMIT 100
 
-ManagedActor::ManagedActor(RuntimeApi* api, uint32_t unique_id,
+ManagedActor::ManagedActor(ExecutorApi* api, uint32_t unique_id,
                            const char* node_id, const char* actor_type,
                            const char* instance_id, const char* code)
     : _id(unique_id),

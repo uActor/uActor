@@ -25,7 +25,7 @@ struct ConstraintIndex {
   std::map<std::string, std::map<Subscription*, bool>> string_equal;
 
   // Fallback to linar scan for all other types of constraints
-  std::list<std::pair<Constraint, std::map<Subscription*, bool>>> data;
+  std::list<std::pair<Constraint, std::map<Subscription*, bool>>> index;
 
   void insert(Constraint c, Subscription* sub_ptr, bool opt);
 

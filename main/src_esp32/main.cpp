@@ -15,9 +15,9 @@ extern "C" {
 #include "board_functions.hpp"
 #include "gpio_actor.hpp"
 #include "lua.hpp"
-#include "lua_runtime.hpp"
+#include "lua_executor.hpp"
 #include "managed_actor.hpp"
-#include "native_runtime.hpp"
+#include "native_executor.hpp"
 #include "pubsub/router.hpp"
 #include "tcp_forwarder.hpp"
 #include "wifi_stack.hpp"
@@ -109,7 +109,7 @@ void main_task_local(void*) {
 
   Params params = {.node_id = BoardFunctions::NODE_ID, .instance_id = "1"};
 
-  xTaskCreatePinnedToCore(&NativeRuntime::os_task, "BASIC_RUNTIME", 6168,
+  xTaskCreatePinnedToCore(&NativeExecutor::os_task, "NATIVE_EXECUTOR", 6168,
                           &params, 5, nullptr, 0);
 
   BoardFunctions::epoch = 0;
@@ -153,7 +153,7 @@ void main_task_local(void*) {
     uActor::PubSub::Router::get_instance().publish(std::move(label_update));
   }
 
-  xTaskCreatePinnedToCore(&LuaRuntime::os_task, "LUA_RUNTIME", 8192, &params,
+  xTaskCreatePinnedToCore(&LuaExecutor::os_task, "LUA_EXECUTOR", 8192, &params,
                           10, nullptr, 1);
 
   xTaskCreatePinnedToCore(&GPIOActor::os_task, "GPIO_ACTOR", 4192, nullptr, 5,
@@ -193,7 +193,7 @@ void main_task(void*) {
 
   xTaskCreatePinnedToCore(&WifiStack::os_task, "WIFI_STACK", 4192, nullptr, 4,
                           nullptr, 0);
-  xTaskCreatePinnedToCore(&NativeRuntime::os_task, "BASIC_RUNTIME", 6168,
+  xTaskCreatePinnedToCore(&NativeExecutor::os_task, "NATIVE_EXECUTOR", 6168,
                           &params, 5, nullptr, 0);
 
   time_t t = 0;
@@ -280,7 +280,7 @@ void main_task(void*) {
     uActor::PubSub::Router::get_instance().publish(std::move(label_update));
   }
 
-  xTaskCreatePinnedToCore(&LuaRuntime::os_task, "LUA_RUNTIME", 8192, &params,
+  xTaskCreatePinnedToCore(&LuaExecutor::os_task, "LUA_EXECUTOR", 8192, &params,
                           configMAX_PRIORITIES - 1, nullptr, 1);
 
   xTaskCreatePinnedToCore(&GPIOActor::os_task, "GPIO_ACTOR", 4192, nullptr, 5,

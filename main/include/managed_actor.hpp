@@ -13,7 +13,7 @@
 #include <utility>
 
 #include "pubsub/router.hpp"
-#include "runtime_api.hpp"
+#include "executor_api.hpp"
 
 class Pattern {
  public:
@@ -37,7 +37,7 @@ class ManagedActor {
 
   ManagedActor(const ManagedActor&) = delete;
 
-  ManagedActor(RuntimeApi* api, uint32_t unique_id, const char* node_id,
+  ManagedActor(ExecutorApi* api, uint32_t unique_id, const char* node_id,
                const char* actor_type, const char* instance_id,
                const char* code);
 
@@ -116,7 +116,7 @@ class ManagedActor {
 
   std::deque<uActor::PubSub::Publication> message_queue;
   std::set<uint32_t> subscriptions;
-  RuntimeApi* api;
+  ExecutorApi* api;
 
   bool _initialized = false;
 

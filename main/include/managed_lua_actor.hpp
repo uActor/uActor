@@ -17,7 +17,7 @@
 
 class ManagedLuaActor : public ManagedActor {
  public:
-  ManagedLuaActor(RuntimeApi* api, uint32_t unique_id, const char* node_id,
+  ManagedLuaActor(ExecutorApi* api, uint32_t unique_id, const char* node_id,
                   const char* actor_type, const char* instance_id,
                   const char* code, lua_State* global_state)
       : ManagedActor(api, unique_id, node_id, actor_type, instance_id, code),

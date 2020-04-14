@@ -1,5 +1,5 @@
-#ifndef MAIN_INCLUDE_ACTOR_RUNTIME_HPP_
-#define MAIN_INCLUDE_ACTOR_RUNTIME_HPP_
+#ifndef MAIN_INCLUDE_EXECUTOR_HPP_
+#define MAIN_INCLUDE_EXECUTOR_HPP_
 
 #include <testbed.h>
 
@@ -15,29 +15,29 @@
 #include "board_functions.hpp"
 #include "managed_actor.hpp"
 #include "pubsub/router.hpp"
-#include "runtime_api.hpp"
+#include "executor_api.hpp"
 
 struct Params {
   const char* node_id;
   const char* instance_id;
 };
 
-template <typename ActorType, typename RuntimeType>
-class ActorRuntime : public RuntimeApi {
+template <typename ActorType, typename ExecutorType>
+class Executor : public ExecutorApi {
  public:
   static void os_task(void* params) {
     auto* router = &uActor::PubSub::Router::get_instance();
     const char* instance_id = ((struct Params*)params)->instance_id;
     const char* node_id = ((struct Params*)params)->node_id;
 
-    RuntimeType* runtime = new RuntimeType(router, node_id, instance_id);
-    runtime->event_loop();
-    delete runtime;
+    ExecutorType* executor = new ExecutorType(router, node_id, instance_id);
+    executor->event_loop();
+    delete executor;
 
     BoardFunctions::exit_thread();
   }
 
-  ActorRuntime(uActor::PubSub::Router* router, const char* node_id,
+  Executor(uActor::PubSub::Router* router, const char* node_id,
                const char* actor_type, const char* instance_id)
       : _node_id(node_id),
         _actor_type(actor_type),
@@ -47,7 +47,7 @@ class ActorRuntime : public RuntimeApi {
         uActor::PubSub::Constraint(std::string("node_id"), node_id),
         uActor::PubSub::Constraint(std::string("actor_type"), actor_type),
         uActor::PubSub::Constraint(std::string("instance_id"), instance_id)};
-    runtime_subscription_id = router_handle.subscribe(primary_filter);
+    executor_subscription_id = router_handle.subscribe(primary_filter);
   }
 
  protected:
@@ -128,7 +128,7 @@ class ActorRuntime : public RuntimeApi {
   std::list<uint32_t> ready_queue;
   std::list<std::pair<uint32_t, uint32_t>> timeouts;
   std::multimap<uint32_t, uActor::PubSub::Publication> delayed_messages;
-  uint32_t runtime_subscription_id;
+  uint32_t executor_subscription_id;
 
   void event_loop() {
     while (true) {
@@ -151,7 +151,7 @@ class ActorRuntime : public RuntimeApi {
       }
       auto publication = router_handle.receive(wait_time);
       if (publication) {
-        if (publication->subscription_id == runtime_subscription_id) {
+        if (publication->subscription_id == executor_subscription_id) {
           if (publication->publication.has_attr("spawn_actor_type")) {
             add_actor_wrapper(publication->publication);
           } else {
@@ -228,7 +228,7 @@ class ActorRuntime : public RuntimeApi {
   }
 
   void add_actor_wrapper(const uActor::PubSub::Publication& publication) {
-    static_cast<RuntimeType*>(this)->add_actor(
+    static_cast<ExecutorType*>(this)->add_actor(
         uActor::PubSub::Publication(publication));
   }
 
@@ -237,4 +237,4 @@ class ActorRuntime : public RuntimeApi {
   }
 };
 
-#endif  //  MAIN_INCLUDE_ACTOR_RUNTIME_HPP_
+#endif  //  MAIN_INCLUDE_EXECUTOR_HPP_
