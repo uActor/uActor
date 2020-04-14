@@ -13,9 +13,9 @@
 #include <utility>
 
 #include "board_functions.hpp"
+#include "executor_api.hpp"
 #include "managed_actor.hpp"
 #include "pubsub/router.hpp"
-#include "executor_api.hpp"
 
 struct Params {
   const char* node_id;
@@ -38,7 +38,7 @@ class Executor : public ExecutorApi {
   }
 
   Executor(uActor::PubSub::Router* router, const char* node_id,
-               const char* actor_type, const char* instance_id)
+           const char* actor_type, const char* instance_id)
       : _node_id(node_id),
         _actor_type(actor_type),
         _instance_id(instance_id),
@@ -164,8 +164,8 @@ class Executor : public ExecutorApi {
             for (uint32_t receiver_id : receivers->second) {
               auto actor = actors.find(receiver_id);
               if (actor != actors.end()) {
-                if (actor->second.enqueue(uActor::PubSub::Publication(std::move(
-                        publication->publication)))) {
+                if (actor->second.enqueue(uActor::PubSub::Publication(
+                        std::move(publication->publication)))) {
                   if (std::find(ready_queue.begin(), ready_queue.end(),
                                 receiver_id) == ready_queue.end()) {
                     ready_queue.push_back(receiver_id);

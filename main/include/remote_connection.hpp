@@ -158,9 +158,11 @@ class RemoteConnection {
           auto p = uActor::PubSub::Publication::from_msg_pack(std::string_view(
               publication_buffer.data(), publicaton_full_size));
 #if CONFIG_BENCHMARK_BREAKDOWN
-          testbed_log_integer("messaging_time", ((tv.tv_sec * 1000LL +
-          (tv.tv_usec / 1000LL) - 1583245913000) -
-          *p->get_int_attr("_benchmark_send_time"))*1000);
+          testbed_log_integer(
+              "messaging_time",
+              ((tv.tv_sec * 1000LL + (tv.tv_usec / 1000LL) - 1583245913000) -
+               *p->get_int_attr("_benchmark_send_time")) *
+                  1000);
 #endif
           if (p && p->has_attr("publisher_node_id") &&
               p->get_str_attr("publisher_node_id") != BoardFunctions::NODE_ID) {

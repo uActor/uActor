@@ -2,6 +2,7 @@
 #define MAIN_INCLUDE_PUBSUB_MATCHED_PUBLICATION_HPP_
 
 #include <cstdint>
+#include <utility>
 
 #include "publication.hpp"
 

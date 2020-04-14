@@ -11,9 +11,9 @@
 class LuaExecutor : public Executor<ManagedLuaActor, LuaExecutor> {
  public:
   LuaExecutor(uActor::PubSub::Router* router, const char* node_id,
-             const char* id)
-      : Executor<ManagedLuaActor, LuaExecutor>(router, node_id,
-                                                  "lua_runtime", id) {
+              const char* id)
+      : Executor<ManagedLuaActor, LuaExecutor>(router, node_id, "lua_runtime",
+                                               id) {
     state = create_lua_state();
 
     uActor::PubSub::Publication p{BoardFunctions::NODE_ID, "lua_runtime", "1"};

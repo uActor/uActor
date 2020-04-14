@@ -30,7 +30,6 @@ class ManagedLuaActor : public ManagedActor {
   }
 
   bool receive(const uActor::PubSub::Publication& m) {
-
 #if CONFIG_BENCHMARK_BREAKDOWN
     if (m.get_str_attr("type") == "ping") {
       testbed_stop_timekeeping_inner(6, "scheduling");

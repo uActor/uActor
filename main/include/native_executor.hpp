@@ -10,9 +10,9 @@
 class NativeExecutor : public Executor<ManagedNativeActor, NativeExecutor> {
  public:
   NativeExecutor(uActor::PubSub::Router* router, const char* node_id,
-                const char* id)
+                 const char* id)
       : Executor<ManagedNativeActor, NativeExecutor>(router, node_id,
-                                                        "native_runtime", id) {}
+                                                     "native_runtime", id) {}
 
   ~NativeExecutor() { actors.clear(); }
 

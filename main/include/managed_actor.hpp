@@ -12,8 +12,8 @@
 #include <string>
 #include <utility>
 
-#include "pubsub/router.hpp"
 #include "executor_api.hpp"
+#include "pubsub/router.hpp"
 
 class Pattern {
  public:

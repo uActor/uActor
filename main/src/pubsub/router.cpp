@@ -2,8 +2,8 @@
 
 #include <testbed.h>
 
-#include <utility>
 #include <list>
+#include <utility>
 
 #include "board_functions.hpp"
 #include "pubsub/constraint.hpp"
@@ -74,7 +74,8 @@ void Router::publish(Publication&& publication) {
       if (counts.optional == subscription.count_optional ||
           subscription.filter.check_optionals(publication)) {
         for (auto& receiver : subscription.receivers) {
-          current_receivers.push_back(std::make_pair(receiver.first, subscription.subscription_id));
+          current_receivers.push_back(
+              std::make_pair(receiver.first, subscription.subscription_id));
         }
       }
     }
@@ -85,7 +86,8 @@ void Router::publish(Publication&& publication) {
     if (c.find(sub) == c.end()) {
       if (sub->filter.check_optionals(publication)) {
         for (auto& receiver : sub->receivers) {
-          current_receivers.push_back(std::make_pair(receiver.first, sub->subscription_id));
+          current_receivers.push_back(
+              std::make_pair(receiver.first, sub->subscription_id));
         }
       }
     }
@@ -94,13 +96,13 @@ void Router::publish(Publication&& publication) {
   bool is_type = publication.get_str_attr("type") == "ping";
 #endif
   auto rec_it = current_receivers.begin();
-  for(;rec_it != std::prev(current_receivers.end()); ++rec_it) {
-    rec_it->first->publish(MatchedPublication(Publication(publication),
-                                                     rec_it->second));
+  for (; rec_it != std::prev(current_receivers.end()); ++rec_it) {
+    rec_it->first->publish(
+        MatchedPublication(Publication(publication), rec_it->second));
   }
-  if(rec_it != current_receivers.end()) {
-    rec_it->first->publish(MatchedPublication(std::move(publication),
-                                                  rec_it->second));
+  if (rec_it != current_receivers.end()) {
+    rec_it->first->publish(
+        MatchedPublication(std::move(publication), rec_it->second));
   }
 #if CONFIG_BENCHMARK_BREAKDOWN
   if (is_type) {
