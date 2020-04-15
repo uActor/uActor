@@ -1,7 +1,9 @@
 #ifndef MAIN_INCLUDE_MANAGED_LUA_ACTOR_HPP_
 #define MAIN_INCLUDE_MANAGED_LUA_ACTOR_HPP_
 
+#ifdef ESP_IDF
 #include <sdkconfig.h>
+#endif
 #if CONFIG_BENCHMARK_ENABLED
 #include <testbed.h>
 #endif

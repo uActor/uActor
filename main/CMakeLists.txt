@@ -6,3 +6,4 @@ idf_component_register(
   EMBED_TXTFILES ./binary/eduroam.pem
 )
 target_compile_options(${COMPONENT_LIB} PRIVATE -std=c++17)
+target_compile_options(${COMPONENT_LIB} PUBLIC -DESP_IDF)

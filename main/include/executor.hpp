@@ -1,7 +1,9 @@
 #ifndef MAIN_INCLUDE_EXECUTOR_HPP_
 #define MAIN_INCLUDE_EXECUTOR_HPP_
 
+#if CONFIG_BENCHMARK_BREAKDOWN
 #include <testbed.h>
+#endif
 
 #include <algorithm>
 #include <cstdint>

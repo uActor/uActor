@@ -1,6 +1,8 @@
 #include "pubsub/router.hpp"
 
+#if CONFIG_BENCHMARK_BREAKDOWN
 #include <testbed.h>
+#endif
 
 #include <list>
 #include <utility>

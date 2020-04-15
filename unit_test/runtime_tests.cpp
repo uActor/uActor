@@ -42,7 +42,7 @@ uActor::PubSub::ReceiverHandle subscription_handle_with_default_subscription() {
 std::thread start_runtime_thread() {
   Params params = {.node_id = "node_1", .instance_id = "1"};
   std::thread runtime_thread = std::thread(&LuaExecutor::os_task, &params);
-  usleep(10000000);
+  usleep(1000);
   return std::move(runtime_thread);
 }
 

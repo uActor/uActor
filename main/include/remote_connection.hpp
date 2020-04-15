@@ -1,7 +1,9 @@
 #ifndef MAIN_INCLUDE_REMOTE_CONNECTION_HPP_
 #define MAIN_INCLUDE_REMOTE_CONNECTION_HPP_
 
+#if CONFIG_BENCHMARK_BREAKDOWN
 #include <testbed.h>
+#endif
 
 extern "C" {
 #ifdef ESP32
