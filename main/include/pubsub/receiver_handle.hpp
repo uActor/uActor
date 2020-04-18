@@ -12,7 +12,7 @@
 #include "matched_publication.hpp"
 #include "publication.hpp"
 #include "receiver.hpp"
-#include "string_helper.hpp"
+#include "support/string_helper.hpp"
 
 namespace uActor::PubSub {
 

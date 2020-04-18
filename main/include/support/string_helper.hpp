@@ -1,10 +1,11 @@
-#ifndef MAIN_INCLUDE_STRING_HELPER_HPP_
-#define MAIN_INCLUDE_STRING_HELPER_HPP_
+#ifndef MAIN_INCLUDE_SUPPORT_STRING_HELPER_HPP_
+#define MAIN_INCLUDE_SUPPORT_STRING_HELPER_HPP_
 
 #include <list>
 #include <string_view>
 #include <utility>
 
+namespace uActor::Support {
 struct StringHelper {
   // Adapted string_view substring algorithm from
   // https://www.bfilipek.com/2018/07/string-view-perf-followup.html
@@ -26,4 +27,6 @@ struct StringHelper {
   }
 };
 
-#endif  //  MAIN_INCLUDE_STRING_HELPER_HPP_
+}  // namespace uActor::Support
+
+#endif  //  MAIN_INCLUDE_SUPPORT_STRING_HELPER_HPP_

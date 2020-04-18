@@ -6,6 +6,8 @@
 #include <string>
 #include <utility>
 
+namespace uActor {
+
 struct BoardFunctions {
   static const uint32_t SLEEP_FOREVER;
   static uint32_t timestamp();
@@ -18,5 +20,7 @@ struct BoardFunctions {
 
   static void sleep(uint32_t sleep_ms);
 };
+
+}  // namespace uActor
 
 #endif  // MAIN_INCLUDE_BOARD_FUNCTIONS_HPP_

@@ -4,6 +4,8 @@
 
 #include "board_functions.hpp"
 
+namespace uActor {
+
 const uint32_t BoardFunctions::SLEEP_FOREVER = UINT32_MAX;
 
 uint32_t BoardFunctions::timestamp() {
@@ -21,3 +23,5 @@ void BoardFunctions::sleep(uint32_t sleep_ms) {
 }
 
 int32_t BoardFunctions::epoch = 0;
+
+}  // namespace uActor

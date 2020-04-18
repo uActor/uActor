@@ -12,15 +12,15 @@ extern "C" {
 #include <cstring>
 #include <utility>
 
+#include "actor_runtime/lua_executor.hpp"
+#include "actor_runtime/managed_actor.hpp"
+#include "actor_runtime/native_executor.hpp"
 #include "board_functions.hpp"
-#include "gpio_actor.hpp"
+#include "io/gpio_actor.hpp"
 #include "lua.hpp"
-#include "lua_executor.hpp"
-#include "managed_actor.hpp"
-#include "native_executor.hpp"
 #include "pubsub/router.hpp"
-#include "tcp_forwarder.hpp"
-#include "wifi_stack.hpp"
+#include "remote/tcp_forwarder.hpp"
+#include "remote/wifi_stack.hpp"
 extern "C" {
 void app_main(void);
 }
@@ -103,98 +103,20 @@ void app_main(void) {
 }
 #else
 
-#if CONFIG_BENCHMARK_LOCAL
-void main_task_local(void*) {
-  printf("InitialHeap: %d \n", xPortGetFreeHeapSize());
-
-  Params params = {.node_id = BoardFunctions::NODE_ID, .instance_id = "1"};
-
-  xTaskCreatePinnedToCore(&NativeExecutor::os_task, "NATIVE_EXECUTOR", 6168,
-                          &params, 5, nullptr, 0);
-
-  BoardFunctions::epoch = 0;
-
-  vTaskDelay(4000 / portTICK_PERIOD_MS);
-
-  auto create_deployment_manager =
-      uActor::PubSub::Publication(BoardFunctions::NODE_ID, "root", "1");
-  create_deployment_manager.set_attr("command", "spawn_native_actor");
-  create_deployment_manager.set_attr("spawn_code", "");
-  create_deployment_manager.set_attr("spawn_node_id", BoardFunctions::NODE_ID);
-  create_deployment_manager.set_attr("spawn_actor_type", "deployment_manager");
-  create_deployment_manager.set_attr("spawn_instance_id", "1");
-  create_deployment_manager.set_attr("node_id", BoardFunctions::NODE_ID);
-  create_deployment_manager.set_attr("actor_type", "native_runtime");
-  create_deployment_manager.set_attr("instance_id", "1");
-  uActor::PubSub::Router::get_instance().publish(
-      std::move(create_deployment_manager));
-
-  vTaskDelay(1000 / portTICK_PERIOD_MS);
-
-  {
-    uActor::PubSub::Publication label_update(BoardFunctions::NODE_ID, "root",
-                                             "1");
-    label_update.set_attr("type", "label_update");
-    label_update.set_attr("command", "upsert");
-    label_update.set_attr("node_id", BoardFunctions::NODE_ID);
-    label_update.set_attr("key", "node_id");
-    label_update.set_attr("value", BoardFunctions::NODE_ID);
-    uActor::PubSub::Router::get_instance().publish(std::move(label_update));
-  }
-
-  for (const auto label : BoardFunctions::node_labels()) {
-    uActor::PubSub::Publication label_update(BoardFunctions::NODE_ID, "root",
-                                             "1");
-    label_update.set_attr("type", "label_update");
-    label_update.set_attr("command", "upsert");
-    label_update.set_attr("node_id", BoardFunctions::NODE_ID);
-    label_update.set_attr("key", label.first);
-    label_update.set_attr("value", label.second);
-    uActor::PubSub::Router::get_instance().publish(std::move(label_update));
-  }
-
-  xTaskCreatePinnedToCore(&LuaExecutor::os_task, "LUA_EXECUTOR", 8192, &params,
-                          10, nullptr, 1);
-
-  xTaskCreatePinnedToCore(&GPIOActor::os_task, "GPIO_ACTOR", 4192, nullptr, 5,
-                          nullptr, 0);
-
-  printf("StaticHeap: %d \n", xPortGetFreeHeapSize());
-
-  vTaskDelay(5000 / portTICK_PERIOD_MS);
-
-  auto example_deployment = uActor::PubSub::Publication("foo", "root", "1");
-  example_deployment.set_attr("type", "deployment");
-  example_deployment.set_attr("deployment_name", "example");
-  example_deployment.set_attr("deployment_actor_type", "foo");
-  example_deployment.set_attr("deployment_actor_version", "0.1");
-  example_deployment.set_attr("deployment_actor_runtime_type", "lua");
-  example_deployment.set_attr("deployment_actor_code", R"(
--- code here
-  )");
-  example_deployment.set_attr("deployment_required_actors", "core.io.gpio");
-  example_deployment.set_attr("deployment_ttl", 0);
-  example_deployment.set_attr("_internal_sequence_number", 1);
-  example_deployment.set_attr("_internal_epoch", 0);
-
-  uActor::PubSub::Router::get_instance().publish(std::move(example_deployment));
-
-  vTaskDelete(nullptr);
-}
-#endif
-
 void main_task(void*) {
   printf("InitialHeap: %d \n", xPortGetFreeHeapSize());
 
   xTaskCreatePinnedToCore(&uActor::PubSub::Router::os_task, "Router", 4192,
                           nullptr, 3, nullptr, 0);
 
-  Params params = {.node_id = BoardFunctions::NODE_ID, .instance_id = "1"};
+  uActor::ActorRuntime::ExecutorSettings executor_settings = {
+      .node_id = uActor::BoardFunctions::NODE_ID, .instance_id = "1"};
 
-  xTaskCreatePinnedToCore(&WifiStack::os_task, "WIFI_STACK", 4192, nullptr, 4,
+  xTaskCreatePinnedToCore(&uActor::ESP32::Remote::WifiStack::os_task,
+                          "WIFI_STACK", 4192, nullptr, 4, nullptr, 0);
+  xTaskCreatePinnedToCore(&uActor::ActorRuntime::NativeExecutor::os_task,
+                          "NATIVE_EXECUTOR", 6168, &executor_settings, 5,
                           nullptr, 0);
-  xTaskCreatePinnedToCore(&NativeExecutor::os_task, "NATIVE_EXECUTOR", 6168,
-                          &params, 5, nullptr, 0);
 
   time_t t = 0;
   time(&t);
@@ -209,50 +131,54 @@ void main_task(void*) {
 
   if (t > 1577836800) {
     t -= 1577836800;
-    BoardFunctions::epoch = t;
+    uActor::BoardFunctions::epoch = t;
     printf("epoch %ld\n", t);
   } else {
     printf("Epoch not set according to time\n");
-    BoardFunctions::epoch = 0;
+    uActor::BoardFunctions::epoch = 0;
   }
 
   vTaskDelay(2000 / portTICK_PERIOD_MS);
   auto create_deployment_manager =
-      uActor::PubSub::Publication(BoardFunctions::NODE_ID, "root", "1");
+      uActor::PubSub::Publication(uActor::BoardFunctions::NODE_ID, "root", "1");
   create_deployment_manager.set_attr("command", "spawn_native_actor");
   create_deployment_manager.set_attr("spawn_code", "");
-  create_deployment_manager.set_attr("spawn_node_id", BoardFunctions::NODE_ID);
+  create_deployment_manager.set_attr("spawn_node_id",
+                                     uActor::BoardFunctions::NODE_ID);
   create_deployment_manager.set_attr("spawn_actor_type", "deployment_manager");
   create_deployment_manager.set_attr("spawn_instance_id", "1");
-  create_deployment_manager.set_attr("node_id", BoardFunctions::NODE_ID);
-  create_deployment_manager.set_attr("actor_type", "native_runtime");
+  create_deployment_manager.set_attr("node_id",
+                                     uActor::BoardFunctions::NODE_ID);
+  create_deployment_manager.set_attr("actor_type", "native_executor");
   create_deployment_manager.set_attr("instance_id", "1");
   uActor::PubSub::Router::get_instance().publish(
       std::move(create_deployment_manager));
 
   auto create_topology_manager =
-      uActor::PubSub::Publication(BoardFunctions::NODE_ID, "root", "1");
+      uActor::PubSub::Publication(uActor::BoardFunctions::NODE_ID, "root", "1");
   create_topology_manager.set_attr("command", "spawn_native_actor");
   create_topology_manager.set_attr("spawn_code", "");
-  create_topology_manager.set_attr("spawn_node_id", BoardFunctions::NODE_ID);
+  create_topology_manager.set_attr("spawn_node_id",
+                                   uActor::BoardFunctions::NODE_ID);
   create_topology_manager.set_attr("spawn_actor_type", "topology_manager");
   create_topology_manager.set_attr("spawn_instance_id", "1");
-  create_topology_manager.set_attr("node_id", BoardFunctions::NODE_ID);
-  create_topology_manager.set_attr("actor_type", "native_runtime");
+  create_topology_manager.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
+  create_topology_manager.set_attr("actor_type", "native_executor");
   create_topology_manager.set_attr("instance_id", "1");
   uActor::PubSub::Router::get_instance().publish(
       std::move(create_topology_manager));
 
-  if (std::string("node_home") == BoardFunctions::NODE_ID) {
-    auto create_bmp180_sensor =
-        uActor::PubSub::Publication(BoardFunctions::NODE_ID, "root", "1");
+  if (std::string("node_home") == uActor::BoardFunctions::NODE_ID) {
+    auto create_bmp180_sensor = uActor::PubSub::Publication(
+        uActor::BoardFunctions::NODE_ID, "root", "1");
     create_bmp180_sensor.set_attr("command", "spawn_native_actor");
     create_bmp180_sensor.set_attr("spawn_code", "");
-    create_bmp180_sensor.set_attr("spawn_node_id", BoardFunctions::NODE_ID);
+    create_bmp180_sensor.set_attr("spawn_node_id",
+                                  uActor::BoardFunctions::NODE_ID);
     create_bmp180_sensor.set_attr("spawn_actor_type", "bmp180_sensor");
     create_bmp180_sensor.set_attr("spawn_instance_id", "1");
-    create_bmp180_sensor.set_attr("node_id", BoardFunctions::NODE_ID);
-    create_bmp180_sensor.set_attr("actor_type", "native_runtime");
+    create_bmp180_sensor.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
+    create_bmp180_sensor.set_attr("actor_type", "native_executor");
     create_bmp180_sensor.set_attr("instance_id", "1");
     uActor::PubSub::Router::get_instance().publish(
         std::move(create_bmp180_sensor));
@@ -260,34 +186,35 @@ void main_task(void*) {
 
   vTaskDelay(50 / portTICK_PERIOD_MS);
   {
-    uActor::PubSub::Publication label_update(BoardFunctions::NODE_ID, "root",
-                                             "1");
+    uActor::PubSub::Publication label_update(uActor::BoardFunctions::NODE_ID,
+                                             "root", "1");
     label_update.set_attr("type", "label_update");
     label_update.set_attr("command", "upsert");
-    label_update.set_attr("node_id", BoardFunctions::NODE_ID);
+    label_update.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
     label_update.set_attr("key", "node_id");
-    label_update.set_attr("value", BoardFunctions::NODE_ID);
+    label_update.set_attr("value", uActor::BoardFunctions::NODE_ID);
     uActor::PubSub::Router::get_instance().publish(std::move(label_update));
   }
-  for (const auto label : BoardFunctions::node_labels()) {
-    uActor::PubSub::Publication label_update(BoardFunctions::NODE_ID, "root",
-                                             "1");
+  for (const auto label : uActor::BoardFunctions::node_labels()) {
+    uActor::PubSub::Publication label_update(uActor::BoardFunctions::NODE_ID,
+                                             "root", "1");
     label_update.set_attr("type", "label_update");
     label_update.set_attr("command", "upsert");
-    label_update.set_attr("node_id", BoardFunctions::NODE_ID);
+    label_update.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
     label_update.set_attr("key", label.first);
     label_update.set_attr("value", label.second);
     uActor::PubSub::Router::get_instance().publish(std::move(label_update));
   }
 
-  xTaskCreatePinnedToCore(&LuaExecutor::os_task, "LUA_EXECUTOR", 8192, &params,
+  xTaskCreatePinnedToCore(&uActor::ActorRuntime::LuaExecutor::os_task,
+                          "LUA_EXECUTOR", 8192, &executor_settings,
                           configMAX_PRIORITIES - 1, nullptr, 1);
 
-  xTaskCreatePinnedToCore(&GPIOActor::os_task, "GPIO_ACTOR", 4192, nullptr, 5,
-                          nullptr, 0);
+  xTaskCreatePinnedToCore(&uActor::ESP32::IO::GPIOActor::os_task, "GPIO_ACTOR",
+                          4192, nullptr, 5, nullptr, 0);
 
-  xTaskCreatePinnedToCore(&TCPForwarder::os_task, "TCP", 4192, nullptr, 4,
-                          nullptr, 0);
+  xTaskCreatePinnedToCore(&uActor::ESP32::Remote::TCPForwarder::os_task, "TCP",
+                          4192, nullptr, 4, nullptr, 0);
 
   printf("StaticHeap: %d \n", xPortGetFreeHeapSize());
 

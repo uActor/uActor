@@ -4,7 +4,11 @@
 
 #include "pubsub/router.hpp"
 
-namespace uActor::PubSub {
+namespace uActor::Test {
+
+using PubSub::Filter, PubSub::Router, PubSub::Constraint, PubSub::Publication,
+    PubSub::ConstraintPredicates;
+
 TEST(ROUTERV3, base) {
   Router router{};
   auto r = router.new_subscriber();
@@ -330,4 +334,4 @@ TEST(Publication, msgpack) {
 
   ASSERT_TRUE(p == decoded);
 }
-}  // namespace uActor::PubSub
+}  // namespace uActor::Test

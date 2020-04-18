@@ -1,9 +1,5 @@
-#ifndef MAIN_INCLUDE_EXECUTOR_HPP_
-#define MAIN_INCLUDE_EXECUTOR_HPP_
-
-#if CONFIG_BENCHMARK_BREAKDOWN
-#include <testbed.h>
-#endif
+#ifndef MAIN_INCLUDE_ACTOR_RUNTIME_EXECUTOR_HPP_
+#define MAIN_INCLUDE_ACTOR_RUNTIME_EXECUTOR_HPP_
 
 #include <algorithm>
 #include <cstdint>
@@ -19,7 +15,9 @@
 #include "managed_actor.hpp"
 #include "pubsub/router.hpp"
 
-struct Params {
+namespace uActor::ActorRuntime {
+
+struct ExecutorSettings {
   const char* node_id;
   const char* instance_id;
 };
@@ -27,10 +25,10 @@ struct Params {
 template <typename ActorType, typename ExecutorType>
 class Executor : public ExecutorApi {
  public:
-  static void os_task(void* params) {
-    auto* router = &uActor::PubSub::Router::get_instance();
-    const char* instance_id = ((struct Params*)params)->instance_id;
-    const char* node_id = ((struct Params*)params)->node_id;
+  static void os_task(void* settings) {
+    auto* router = &PubSub::Router::get_instance();
+    const char* instance_id = ((struct ExecutorSettings*)settings)->instance_id;
+    const char* node_id = ((struct ExecutorSettings*)settings)->node_id;
 
     ExecutorType* executor = new ExecutorType(router, node_id, instance_id);
     executor->event_loop();
@@ -39,23 +37,22 @@ class Executor : public ExecutorApi {
     BoardFunctions::exit_thread();
   }
 
-  Executor(uActor::PubSub::Router* router, const char* node_id,
-           const char* actor_type, const char* instance_id)
+  Executor(PubSub::Router* router, const char* node_id, const char* actor_type,
+           const char* instance_id)
       : _node_id(node_id),
         _actor_type(actor_type),
         _instance_id(instance_id),
         router_handle(router->new_subscriber()) {
-    uActor::PubSub::Filter primary_filter{
-        uActor::PubSub::Constraint(std::string("node_id"), node_id),
-        uActor::PubSub::Constraint(std::string("actor_type"), actor_type),
-        uActor::PubSub::Constraint(std::string("instance_id"), instance_id)};
+    PubSub::Filter primary_filter{
+        PubSub::Constraint(std::string("node_id"), node_id),
+        PubSub::Constraint(std::string("actor_type"), actor_type),
+        PubSub::Constraint(std::string("instance_id"), instance_id)};
     executor_subscription_id = router_handle.subscribe(primary_filter);
   }
 
  protected:
   template <typename... Args>
-  void add_actor_base(const uActor::PubSub::Publication& publication,
-                      Args... args) {
+  void add_actor_base(const PubSub::Publication& publication, Args... args) {
     const char* node_id =
         std::get<std::string_view>(publication.get_attr("spawn_node_id"))
             .data();
@@ -76,20 +73,19 @@ class Executor : public ExecutorApi {
         success) {
       if (actor_it->second.initialize()) {
         auto init_message =
-            uActor::PubSub::Publication(_node_id, _actor_type, _instance_id);
+            PubSub::Publication(_node_id, _actor_type, _instance_id);
         init_message.set_attr("node_id", node_id);
         init_message.set_attr("actor_type", actor_type);
         init_message.set_attr("instance_id", instance_id);
         init_message.set_attr("type", "init");
-        uActor::PubSub::Router::get_instance().publish(std::move(init_message));
+        PubSub::Router::get_instance().publish(std::move(init_message));
       } else {
         actors.erase(actor_it);
       }
     }
   }
 
-  uint32_t add_subscription(uint32_t local_id,
-                            uActor::PubSub::Filter&& filter) {
+  uint32_t add_subscription(uint32_t local_id, PubSub::Filter&& filter) {
     uint32_t sub_id = router_handle.subscribe(filter);
     auto entry = subscription_mapping.find(sub_id);
     if (entry != subscription_mapping.end()) {
@@ -111,8 +107,7 @@ class Executor : public ExecutorApi {
     }
   }
 
-  void delayed_publish(uActor::PubSub::Publication&& publication,
-                       uint32_t delay) {
+  void delayed_publish(PubSub::Publication&& publication, uint32_t delay) {
     delayed_messages.emplace(BoardFunctions::timestamp() + delay,
                              std::move(publication));
   }
@@ -124,12 +119,12 @@ class Executor : public ExecutorApi {
   std::string _node_id;
   std::string _actor_type;
   std::string _instance_id;
-  uActor::PubSub::ReceiverHandle router_handle;
+  PubSub::ReceiverHandle router_handle;
   uint32_t next_id = 1;
   std::map<uint32_t, std::set<uint32_t>> subscription_mapping;
   std::list<uint32_t> ready_queue;
   std::list<std::pair<uint32_t, uint32_t>> timeouts;
-  std::multimap<uint32_t, uActor::PubSub::Publication> delayed_messages;
+  std::multimap<uint32_t, PubSub::Publication> delayed_messages;
   uint32_t executor_subscription_id;
 
   void event_loop() {
@@ -166,7 +161,7 @@ class Executor : public ExecutorApi {
             for (uint32_t receiver_id : receivers->second) {
               auto actor = actors.find(receiver_id);
               if (actor != actors.end()) {
-                if (actor->second.enqueue(uActor::PubSub::Publication(
+                if (actor->second.enqueue(PubSub::Publication(
                         std::move(publication->publication)))) {
                   if (std::find(ready_queue.begin(), ready_queue.end(),
                                 receiver_id) == ready_queue.end()) {
@@ -193,7 +188,7 @@ class Executor : public ExecutorApi {
 
       while (delayed_messages.begin() != delayed_messages.end() &&
              delayed_messages.begin()->first < BoardFunctions::timestamp()) {
-        uActor::PubSub::Router::get_instance().publish(
+        PubSub::Router::get_instance().publish(
             std::move(delayed_messages.begin()->second));
         delayed_messages.erase(delayed_messages.begin());
       }
@@ -229,14 +224,16 @@ class Executor : public ExecutorApi {
     }
   }
 
-  void add_actor_wrapper(const uActor::PubSub::Publication& publication) {
+  void add_actor_wrapper(const PubSub::Publication& publication) {
     static_cast<ExecutorType*>(this)->add_actor(
-        uActor::PubSub::Publication(publication));
+        PubSub::Publication(publication));
   }
 
-  void add_actor(const uActor::PubSub::Publication& publication) {
+  void add_actor(const PubSub::Publication& publication) {
     add_actor_base<>(publication);
   }
 };
 
-#endif  //  MAIN_INCLUDE_EXECUTOR_HPP_
+}  //  namespace uActor::ActorRuntime
+
+#endif  //  MAIN_INCLUDE_ACTOR_RUNTIME_EXECUTOR_HPP_

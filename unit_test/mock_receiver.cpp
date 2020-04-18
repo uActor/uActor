@@ -6,6 +6,7 @@
 #include "pubsub/router.hpp"
 
 namespace uActor::PubSub {
+
 class Receiver::Queue {
  public:
   void send_message(MatchedPublication&& publication) {

@@ -3,7 +3,7 @@
 #include <utility>
 #include <variant>
 
-#include "string_helper.hpp"
+#include "support/string_helper.hpp"
 
 namespace uActor::PubSub {
 
@@ -134,7 +134,7 @@ std::optional<Filter> Filter::deserialize(std::string_view serialized) {
   std::string_view required_args = serialized.substr(0, optional_index);
 
   for (std::string_view constraint_string :
-       StringHelper::string_split(required_args, "^")) {
+       Support::StringHelper::string_split(required_args, "^")) {
     auto constraint = Constraint::deserialize(constraint_string, false);
     if (constraint) {
       filter.required.emplace_back(std::move(*constraint));
@@ -146,7 +146,7 @@ std::optional<Filter> Filter::deserialize(std::string_view serialized) {
   if (optional_index != std::string_view::npos) {
     std::string_view optional_args = serialized.substr(optional_index);
     for (std::string_view constraint_string :
-         StringHelper::string_split(optional_args, "^")) {
+         Support::StringHelper::string_split(optional_args, "^")) {
       auto constraint = Constraint::deserialize(constraint_string, true);
       if (constraint) {
         filter.optional.emplace_back(std::move(*constraint));

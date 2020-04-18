@@ -6,7 +6,9 @@
 
 #include <string_view>
 
-#include "string_helper.hpp"
+#include "support/string_helper.hpp"
+
+namespace uActor {
 
 const uint32_t BoardFunctions::SLEEP_FOREVER = portMAX_DELAY;
 
@@ -23,7 +25,8 @@ int32_t BoardFunctions::epoch = 0;
 std::list<std::pair<std::string, std::string>> BoardFunctions::node_labels() {
   std::string_view raw_labels = std::string_view(CONFIG_NODE_LABELS);
   std::list<std::pair<std::string, std::string>> labels;
-  for (std::string_view raw_label : StringHelper::string_split(raw_labels)) {
+  for (std::string_view raw_label :
+       Support::StringHelper::string_split(raw_labels)) {
     uint32_t split_pos = raw_label.find_first_of("=");
     std::string_view key = raw_label.substr(0, split_pos);
     std::string_view value = raw_label.substr(split_pos + 1);
@@ -36,3 +39,5 @@ std::list<std::pair<std::string, std::string>> BoardFunctions::node_labels() {
 void BoardFunctions::sleep(uint32_t sleep_ms) {
   vTaskDelay(sleep_ms / portTICK_PERIOD_MS);
 }
+
+}  // namespace uActor
