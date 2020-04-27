@@ -152,12 +152,14 @@ int ManagedLuaActor::testbed_stop_timekeeping_wrapper(lua_State* state) {
   return 0;
 }
 
+#if CONFIG_TESTBED_NESTED_TIMEKEEPING
 int ManagedLuaActor::testbed_stop_timekeeping_inner_wrapper(lua_State* state) {
   size_t variable = lua_tointeger(state, 1);
   const char* name = lua_tostring(state, 2);
   testbed_stop_timekeeping_inner(variable, name);
   return 0;
 }
+#endif
 #endif
 
 bool ManagedLuaActor::createActorEnvironment(const char* receive_function) {
@@ -355,7 +357,9 @@ luaL_Reg ManagedLuaActor::actor_core[] = {
     {"testbed_log_string", &testbed_log_string_wrapper},
     {"testbed_start_timekeeping", &testbed_start_timekeeping_wrapper},
     {"testbed_stop_timekeeping", &testbed_stop_timekeeping_wrapper},
+#if CONFIG_TESTBED_NESTED_TIMEKEEPING
     {"testbed_stop_timekeeping_inner", &testbed_stop_timekeeping_inner_wrapper},
+#endif
 #endif
     {NULL, NULL}};
 

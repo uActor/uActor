@@ -31,7 +31,7 @@ WifiStack::WifiStack() {
 }
 
 void WifiStack::sntp_synced(timeval* tv) {
-  testbed_log_integer("syncronized", 1, true);
+  testbed_log_rt_integer("syncronized", 1);
 }
 
 void WifiStack::init(void) {

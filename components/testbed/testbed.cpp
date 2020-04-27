@@ -13,7 +13,7 @@ extern "C" {
 #include <cstdio>
 #include <cstring>
 #include <ctime>
-#if CONFIG_BENCHMARK_BREAKDOWN
+#if CONFIG_TESTBED_NESTED_TIMEKEEPING
 #include <vector>
 #include <string>
 #include <utility>
@@ -31,7 +31,7 @@ class TestBed {
   }
 
   TestBed() : sequence_number(0) {
-#if CONFIG_BENCHMARK_BREAKDOWN
+#if CONFIG_TESTBED_NESTED_TIMEKEEPING
     times.reserve(10);
 #endif
   }
@@ -67,7 +67,7 @@ class TestBed {
     timekeeping[variable] = esp_timer_get_time();
   }
 
-#if CONFIG_BENCHMARK_BREAKDOWN
+#if CONFIG_TESTBED_NESTED_TIMEKEEPING
   void stop_timekeeping_inner(size_t variable, const char* name) {
     uint64_t timestamp = esp_timer_get_time();
     times.emplace_back(std::string(name), timestamp - timekeeping[variable]);
@@ -77,7 +77,7 @@ class TestBed {
   void stop_timekeeping(size_t variable, const char* name) {
     uint64_t timestamp = esp_timer_get_time();
 
-#if CONFIG_BENCHMARK_BREAKDOWN
+#if CONFIG_TESTBED_NESTED_TIMEKEEPING
   for (const auto t : times) {
     log_integer(t.first.data(), t.second, false);
   }
@@ -98,7 +98,7 @@ class TestBed {
  private:
 uint64_t sequence_number;
   std::array<uint64_t, 10> timekeeping;
-#if CONFIG_BENCHMARK_BREAKDOWN
+#if CONFIG_TESTBED_NESTED_TIMEKEEPING
   std::vector<std::pair<std::string, uint64_t>> times;
 #endif
 
@@ -111,26 +111,35 @@ uint64_t sequence_number;
 };
 }  // namespace testbed
 
-void testbed_log_integer(const char* variable, uint64_t value,
-                         bool runtime_value) {
-  testbed::TestBed::get_instance().log_integer(variable, value, runtime_value);
+void testbed_log_integer(const char* variable, uint64_t value) {
+  testbed::TestBed::get_instance().log_integer(variable, value, false);
 }
 
-void testbed_log_string(const char* variable, const char* value,
-                        bool runtime_value) {
-  testbed::TestBed::get_instance().log_string(variable, value, runtime_value);
+void testbed_log_string(const char* variable, const char* value) {
+  testbed::TestBed::get_instance().log_string(variable, value, false);
 }
 
-void testbed_log_double(const char* variable, double value,
-                        bool runtime_value) {
-  testbed::TestBed::get_instance().log_double(variable, value, runtime_value);
+void testbed_log_double(const char* variable, double value) {
+  testbed::TestBed::get_instance().log_double(variable, value, false);
+}
+
+void testbed_log_rt_integer(const char* variable, uint64_t value) {
+  testbed::TestBed::get_instance().log_integer(variable, value, true);
+}
+
+void testbed_log_rt_string(const char* variable, const char* value) {
+  testbed::TestBed::get_instance().log_string(variable, value, true);
+}
+
+void testbed_log_rt_double(const char* variable, double value) {
+  testbed::TestBed::get_instance().log_double(variable, value, true);
 }
 
 void testbed_start_timekeeping(size_t variable) {
   testbed::TestBed::get_instance().start_timekeeping(variable);
 }
 void testbed_stop_timekeeping_inner(size_t variable, const char* name) {
-#if CONFIG_BENCHMARK_BREAKDOWN
+#if CONFIG_TESTBED_NESTED_TIMEKEEPING
   testbed::TestBed::get_instance().stop_timekeeping_inner(variable, name);
 #endif
 }

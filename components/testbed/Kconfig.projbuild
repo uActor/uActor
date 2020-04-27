@@ -4,4 +4,9 @@ menu "Testbed Configuration"
         default y
         help
           Enable loggers for values related to networking.
+    config TESTBED_NESTED_TIMEKEEPING
+      bool "Testbed Nested Timekeeping"
+      default n
+      help
+        Enable nested timekeeping. This enabled the stop_timekeeping_inner method and required the normal stop_timekeeping method to flush the queued inner values.
 endmenu
