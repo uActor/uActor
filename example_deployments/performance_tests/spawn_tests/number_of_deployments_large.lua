@@ -80,7 +80,7 @@ function receive(message)
       deployment_actor_runtime_type="lua",
       deployment_actor_version="0.1",
       deployment_actor_code=code,
-      deployment_required_actors="core.io.gpio",
+      deployment_required_actors="",
       deployment_ttl=1000000
     })
     delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="trigger"}, 5000)

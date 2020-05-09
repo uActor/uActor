@@ -5,9 +5,13 @@
 extern "C" {
 #endif
 
-// #include <sdkconfig.h>
+#ifdef ESP_IDF
+#include <sdkconfig.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
+#endif
+
+#include <stddef.h>
 #include <stdint.h>
 
 #ifdef CONFIG_TESTBED_NETWORK_UTILS

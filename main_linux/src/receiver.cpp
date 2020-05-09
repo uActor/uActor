@@ -1,4 +1,7 @@
 #include <list>
+#include <condition_variable>
+#include <mutex>
+#include <chrono>
 
 #include "board_functions.hpp"
 #include "pubsub/matched_publication.hpp"
@@ -10,21 +13,31 @@ namespace uActor::PubSub {
 class Receiver::Queue {
  public:
   void send_message(MatchedPublication&& publication) {
+    std::unique_lock lock(mtx);
+    auto was_empty = queue.begin() == queue.end();
     queue.emplace_back(std::move(publication));
+    if(was_empty) {
+      queue_cv.notify_one();
+    }
   }
 
   std::optional<MatchedPublication> receive_message(uint32_t timeout) {
-    do {
-      if (queue.begin() != queue.end()) {
+
+    std::unique_lock lock(mtx);
+
+    queue_cv.wait_for(lock, std::chrono::milliseconds(timeout), [&](){return queue.begin() != queue.end();});
+    if (queue.begin() != queue.end()) {
         MatchedPublication pub = std::move(*queue.begin());
         queue.pop_front();
         return std::move(pub);
-      }
-    } while (BoardFunctions::timestamp() < timeout);
-    return std::nullopt;
+    } else {
+      return std::nullopt;
+    }
   }
 
   std::list<MatchedPublication> queue;
+  std::mutex mtx;
+  std::condition_variable queue_cv;
 };
 
 Receiver::Receiver(Router* router) : router(router) {
@@ -40,7 +53,7 @@ Receiver::~Receiver() {
 }
 
 std::optional<MatchedPublication> Receiver::receive(uint32_t timeout) {
-  return queue->receive_message(BoardFunctions::timestamp() + timeout);
+  return queue->receive_message(timeout);
 }
 
 void Receiver::publish(MatchedPublication&& publication) {
