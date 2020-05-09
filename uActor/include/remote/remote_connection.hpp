@@ -22,6 +22,11 @@ namespace uActor::ESP32::Remote {
 class TCPForwarder;
 }  // namespace uActor::ESP32::Remote
 
+namespace uActor::Linux::Remote {
+class TCPForwarder;
+}  // namespace uActor::Linux::Remote
+
+
 namespace uActor::Remote {
 
 class RemoteConnection {
@@ -85,6 +90,7 @@ class RemoteConnection {
 
   void update_subscriptions(PubSub::Publication&& p);
   friend uActor::ESP32::Remote::TCPForwarder;
+  friend uActor::Linux::Remote::TCPForwarder;
 };
 
 }  // namespace uActor::Remote

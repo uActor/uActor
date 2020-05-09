@@ -134,7 +134,6 @@ void RemoteConnection::process_data(uint32_t len, char* data) {
           auto publisher_node_id = p->get_str_attr("publisher_node_id");
           auto sequence_number = p->get_int_attr("_internal_sequence_number");
           auto epoch_number = p->get_int_attr("_internal_epoch");
-
           std::unique_lock lck(mtx);
           auto sequence_info_it =
               sequence_infos.find(std::string(*publisher_node_id));

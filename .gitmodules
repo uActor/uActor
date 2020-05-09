@@ -1,9 +1,9 @@
 [submodule "components/lua/lua"]
-	path = components/lua/lua
+	path = vendor/lua/lua
 	url = https://github.com/lua/lua.git
 [submodule "unit_test/googletest"]
 	path = unit_test/googletest
 	url = https://github.com/google/googletest.git
 [submodule "components/msgpack/msgpack-c"]
-	path = components/msgpack/msgpack-c
+	path = vendor/msgpack/msgpack-c
 	url = git@github.com:msgpack/msgpack-c.git
