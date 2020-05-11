@@ -1,7 +1,7 @@
-#include "testbed.h"
+#include "support/testbed.h"
 
-#include <sdkconfig.h>
 #include <esp_timer.h>
+#include <sdkconfig.h>
 
 #ifdef CONFIG_TESTBED_NETWORK_UTILS
 extern "C" {
@@ -14,9 +14,9 @@ extern "C" {
 #include <cstring>
 #include <ctime>
 #if CONFIG_TESTBED_NESTED_TIMEKEEPING
-#include <vector>
 #include <string>
 #include <utility>
+#include <vector>
 #endif
 
 namespace testbed {
@@ -78,10 +78,10 @@ class TestBed {
     uint64_t timestamp = esp_timer_get_time();
 
 #if CONFIG_TESTBED_NESTED_TIMEKEEPING
-  for (const auto t : times) {
-    log_integer(t.first.data(), t.second, false);
-  }
-  times.clear();
+    for (const auto t : times) {
+      log_integer(t.first.data(), t.second, false);
+    }
+    times.clear();
 #endif
 
     log_integer(name, timestamp - timekeeping[variable], false);
@@ -96,7 +96,7 @@ class TestBed {
 #endif
 
  private:
-uint64_t sequence_number;
+  uint64_t sequence_number;
   std::array<uint64_t, 10> timekeeping;
 #if CONFIG_TESTBED_NESTED_TIMEKEEPING
   std::vector<std::pair<std::string, uint64_t>> times;

@@ -1,5 +1,5 @@
-#ifndef MAIN_INCLUDE_PUBSUB_PUBLICATION_HPP_
-#define MAIN_INCLUDE_PUBSUB_PUBLICATION_HPP_
+#ifndef UACTOR_INCLUDE_PUBSUB_PUBLICATION_HPP_
+#define UACTOR_INCLUDE_PUBSUB_PUBLICATION_HPP_
 
 #include <optional>
 #include <string>
@@ -76,4 +76,4 @@ class Publication {
 
 }  //  namespace uActor::PubSub
 
-#endif  // MAIN_INCLUDE_PUBSUB_PUBLICATION_HPP_
+#endif  // UACTOR_INCLUDE_PUBSUB_PUBLICATION_HPP_

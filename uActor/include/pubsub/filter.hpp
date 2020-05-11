@@ -1,5 +1,5 @@
-#ifndef MAIN_INCLUDE_PUBSUB_FILTER_HPP_
-#define MAIN_INCLUDE_PUBSUB_FILTER_HPP_
+#ifndef UACTOR_INCLUDE_PUBSUB_FILTER_HPP_
+#define UACTOR_INCLUDE_PUBSUB_FILTER_HPP_
 
 #include <list>
 #include <optional>
@@ -44,4 +44,4 @@ class Filter {
 };
 }  // namespace uActor::PubSub
 
-#endif  //  MAIN_INCLUDE_PUBSUB_FILTER_HPP_
+#endif  //  UACTOR_INCLUDE_PUBSUB_FILTER_HPP_

@@ -1,5 +1,5 @@
-#ifndef MAIN_INCLUDE_REMOTE_FORWARDER_API_HPP_
-#define MAIN_INCLUDE_REMOTE_FORWARDER_API_HPP_
+#ifndef UACTOR_INCLUDE_REMOTE_FORWARDER_API_HPP_
+#define UACTOR_INCLUDE_REMOTE_FORWARDER_API_HPP_
 
 #include "pubsub/filter.hpp"
 
@@ -16,4 +16,4 @@ struct ForwarderSubscriptionAPI {
 
 }  // namespace uActor::Remote
 
-#endif  //  MAIN_INCLUDE_REMOTE_FORWARDER_API_HPP_
+#endif  //  UACTOR_INCLUDE_REMOTE_FORWARDER_API_HPP_

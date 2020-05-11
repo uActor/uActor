@@ -1,5 +1,5 @@
-#ifndef MAIN_INCLUDE_PUBSUB_RECEIVER_HANDLE_HPP_
-#define MAIN_INCLUDE_PUBSUB_RECEIVER_HANDLE_HPP_
+#ifndef UACTOR_INCLUDE_PUBSUB_RECEIVER_HANDLE_HPP_
+#define UACTOR_INCLUDE_PUBSUB_RECEIVER_HANDLE_HPP_
 
 #include <cstdint>
 #include <memory>
@@ -42,4 +42,4 @@ class ReceiverHandle {
 };
 }  // namespace uActor::PubSub
 
-#endif  //  MAIN_INCLUDE_PUBSUB_RECEIVER_HANDLE_HPP_
+#endif  //  UACTOR_INCLUDE_PUBSUB_RECEIVER_HANDLE_HPP_

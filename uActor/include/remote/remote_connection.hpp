@@ -1,5 +1,5 @@
-#ifndef MAIN_INCLUDE_REMOTE_REMOTE_CONNECTION_HPP_
-#define MAIN_INCLUDE_REMOTE_REMOTE_CONNECTION_HPP_
+#ifndef UACTOR_INCLUDE_REMOTE_REMOTE_CONNECTION_HPP_
+#define UACTOR_INCLUDE_REMOTE_REMOTE_CONNECTION_HPP_
 
 extern "C" {
 #include <arpa/inet.h>
@@ -25,7 +25,6 @@ class TCPForwarder;
 namespace uActor::Linux::Remote {
 class TCPForwarder;
 }  // namespace uActor::Linux::Remote
-
 
 namespace uActor::Remote {
 
@@ -95,4 +94,4 @@ class RemoteConnection {
 
 }  // namespace uActor::Remote
 
-#endif  // MAIN_INCLUDE_REMOTE_REMOTE_CONNECTION_HPP_
+#endif  // UACTOR_INCLUDE_REMOTE_REMOTE_CONNECTION_HPP_

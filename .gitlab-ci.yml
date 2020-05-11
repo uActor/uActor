@@ -1,3 +1,3 @@
 linter:
   image: python:3-alpine
-  script: pip install cpplint && cpplint --recursive --root=. --filter -legal,-build/c++11 --exclude="components/lua/lua/*" --exclude="components/lua/lua/testes/libs/*" main/ components/lua unit_test/*.*pp
+  script: pip install cpplint && cpplint --recursive --root=. --filter -legal,-build/c++11 $(find main_linux uActor main -name '*.*pp')

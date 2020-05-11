@@ -1,20 +1,20 @@
 // TODO(raphaelhetzel) unify with the ESP32 version
 
-#include "testbed.h"
+#include "support/testbed.h"
 
 #ifdef ESP_IDF
 #include <sdkconfig.h>
 #endif
 
 #include <array>
-#include <cstdio>
-#include <cstring>
 #include <chrono>
 #include <cstdint>
+#include <cstdio>
+#include <cstring>
 #if CONFIG_TESTBED_NESTED_TIMEKEEPING
-#include <vector>
 #include <string>
 #include <utility>
+#include <vector>
 #endif
 
 namespace testbed {
@@ -68,7 +68,10 @@ class TestBed {
 #if CONFIG_TESTBED_NESTED_TIMEKEEPING
   void stop_timekeeping_inner(size_t variable, const char* name) {
     uint64_t timestamp = std::chrono::high_resolution_clock::now();
-    times.emplace_back(std::string(name), std::chrono::duration_cast<std::chrono::microseconds>(timestamp - timekeeping[variable]).count());
+    times.emplace_back(std::string(name),
+                       std::chrono::duration_cast<std::chrono::microseconds>(
+                           timestamp - timekeeping[variable])
+                           .count());
   }
 #endif
 
@@ -76,18 +79,23 @@ class TestBed {
     auto timestamp = std::chrono::high_resolution_clock::now();
 
 #if CONFIG_TESTBED_NESTED_TIMEKEEPING
-  for (const auto t : times) {
-    log_integer(t.first.data(), t.second, false);
-  }
-  times.clear();
+    for (const auto t : times) {
+      log_integer(t.first.data(), t.second, false);
+    }
+    times.clear();
 #endif
 
-    log_integer(name, std::chrono::duration_cast<std::chrono::microseconds>(timestamp - timekeeping[variable]).count(), false);
+    log_integer(name,
+                std::chrono::duration_cast<std::chrono::microseconds>(
+                    timestamp - timekeeping[variable])
+                    .count(),
+                false);
   }
 
  private:
-uint64_t sequence_number;
-  std::array<std::chrono::time_point<std::chrono::high_resolution_clock>, 10> timekeeping;
+  uint64_t sequence_number;
+  std::array<std::chrono::time_point<std::chrono::high_resolution_clock>, 10>
+      timekeeping;
 #if CONFIG_TESTBED_NESTED_TIMEKEEPING
   std::vector<std::pair<std::string, uint64_t>> times;
 #endif

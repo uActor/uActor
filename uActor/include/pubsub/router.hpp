@@ -1,5 +1,5 @@
-#ifndef MAIN_INCLUDE_PUBSUB_ROUTER_HPP_
-#define MAIN_INCLUDE_PUBSUB_ROUTER_HPP_
+#ifndef UACTOR_INCLUDE_PUBSUB_ROUTER_HPP_
+#define UACTOR_INCLUDE_PUBSUB_ROUTER_HPP_
 
 #include <atomic>
 #include <list>
@@ -67,4 +67,4 @@ class Router {
 };
 
 }  // namespace uActor::PubSub
-#endif  //  MAIN_INCLUDE_PUBSUB_ROUTER_HPP_
+#endif  //  UACTOR_INCLUDE_PUBSUB_ROUTER_HPP_

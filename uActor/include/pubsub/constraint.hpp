@@ -1,5 +1,5 @@
-#ifndef MAIN_INCLUDE_PUBSUB_CONSTRAINT_HPP_
-#define MAIN_INCLUDE_PUBSUB_CONSTRAINT_HPP_
+#ifndef UACTOR_INCLUDE_PUBSUB_CONSTRAINT_HPP_
+#define UACTOR_INCLUDE_PUBSUB_CONSTRAINT_HPP_
 
 #include <cstdint>
 #include <functional>
@@ -122,4 +122,4 @@ class Constraint {
 };
 }  //  namespace uActor::PubSub
 
-#endif  //  MAIN_INCLUDE_PUBSUB_CONSTRAINT_HPP_
+#endif  //  UACTOR_INCLUDE_PUBSUB_CONSTRAINT_HPP_

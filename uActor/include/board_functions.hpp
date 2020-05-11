@@ -1,5 +1,5 @@
-#ifndef MAIN_INCLUDE_BOARD_FUNCTIONS_HPP_
-#define MAIN_INCLUDE_BOARD_FUNCTIONS_HPP_
+#ifndef UACTOR_INCLUDE_BOARD_FUNCTIONS_HPP_
+#define UACTOR_INCLUDE_BOARD_FUNCTIONS_HPP_
 
 #include <cstdint>
 #include <list>
@@ -25,4 +25,4 @@ struct BoardFunctions {
 
 }  // namespace uActor
 
-#endif  // MAIN_INCLUDE_BOARD_FUNCTIONS_HPP_
+#endif  // UACTOR_INCLUDE_BOARD_FUNCTIONS_HPP_

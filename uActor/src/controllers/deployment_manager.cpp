@@ -187,8 +187,8 @@ void DeploymentManager::receive_label_update(const PubSub::Publication& pub) {
     constraints.emplace_back(label.first, label.second,
                              PubSub::ConstraintPredicates::Predicate::EQ, true);
   }
-  uint32_t new_deployment_sub_id = 
-    subscribe(PubSub::Filter{std::move(constraints)});
+  uint32_t new_deployment_sub_id =
+      subscribe(PubSub::Filter{std::move(constraints)});
 
   if (new_deployment_sub_id != deployment_sub_id) {
     if (deployment_sub_id > 0) {

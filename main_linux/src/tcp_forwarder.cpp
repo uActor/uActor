@@ -8,22 +8,22 @@
 #endif
 
 extern "C" {
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/select.h>
-#include <netinet/in.h>
 #include <arpa/inet.h>
-#include <unistd.h>
+#include <netinet/in.h>
 #include <netinet/tcp.h>
+#include <sys/select.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
 }
 
 #include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <set>
+#include <thread>
 #include <utility>
 #include <vector>
-#include <thread>
 
 namespace uActor::Linux::Remote {
 
@@ -215,7 +215,8 @@ void TCPForwarder::remove_subscription(uint32_t local_id, uint32_t sub_id,
 bool TCPForwarder::write(int sock, int len, const char* message) {
   int to_write = len;
   while (to_write > 0) {
-    int written = send(sock, message + (len - to_write), to_write, MSG_NOSIGNAL);
+    int written =
+        send(sock, message + (len - to_write), to_write, MSG_NOSIGNAL);
     if (written < 0) {
       printf("Error occurred during sending: errno %d\n", errno);
       return true;
@@ -241,6 +242,10 @@ void TCPForwarder::tcp_reader() {
     printf("Unable to create socket: errno %d\n", errno);
     return;
   }
+
+  int reuseaddr = 1;
+  setsockopt(listen_sock, IPPROTO_TCP, SO_REUSEADDR,
+             static_cast<void*>(&reuseaddr), sizeof(reuseaddr));
 
   int err = bind(listen_sock, (struct sockaddr*)&dest_addr, sizeof(dest_addr));
   if (err != 0) {
@@ -272,7 +277,8 @@ void TCPForwarder::tcp_reader() {
     timeout.tv_sec = 5;  // to be added by other threads
 
     remote_lock.unlock();
-    int num_ready = select(max_val + 1, &sockets_to_read, nullptr, nullptr, &timeout);
+    int num_ready =
+        select(max_val + 1, &sockets_to_read, nullptr, nullptr, &timeout);
     remote_lock.lock();
 
     if (num_ready > 0) {
@@ -305,7 +311,7 @@ void TCPForwarder::create_tcp_client(std::string_view peer_ip, uint32_t port) {
     return;
   }
   printf("Socket created, connecting to %s:%d\n", peer_ip.data(),
-           ntohs(dest_addr.sin_port));
+         ntohs(dest_addr.sin_port));
 
   int err = connect(sock, (struct sockaddr*)&dest_addr, sizeof(dest_addr));
   if (err != 0) {
@@ -372,4 +378,4 @@ void TCPForwarder::data_handler(uActor::Remote::RemoteConnection* remote) {
   remotes.erase(remote->local_id);
 }
 
-}  // namespace uActor::ESP32::Remote
+}  // namespace uActor::Linux::Remote

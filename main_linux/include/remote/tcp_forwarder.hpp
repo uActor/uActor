@@ -1,5 +1,5 @@
-#ifndef MAIN_INCLUDE_LINUX_REMOTE_TCP_FORWARDER_HPP_
-#define MAIN_INCLUDE_LINUX_REMOTE_TCP_FORWARDER_HPP_
+#ifndef MAIN_LINUX_INCLUDE_REMOTE_TCP_FORWARDER_HPP_
+#define MAIN_LINUX_INCLUDE_REMOTE_TCP_FORWARDER_HPP_
 
 #include <map>
 #include <mutex>
@@ -18,7 +18,7 @@ class TCPForwarder : public uActor::Remote::ForwarderSubscriptionAPI {
  public:
   constexpr static const char* TAG = "tcp_forwarder";
 
-  TCPForwarder(uint32_t port);
+  explicit TCPForwarder(uint32_t port);
 
   static void os_task(void* args);
 
@@ -57,6 +57,6 @@ class TCPForwarder : public uActor::Remote::ForwarderSubscriptionAPI {
   void data_handler(uActor::Remote::RemoteConnection* remote);
 };
 
-}  // namespace uActor::LINUX::Remote
+}  // namespace uActor::Linux::Remote
 
-#endif  //  MAIN_INCLUDE_LINUX_REMOTE_TCP_FORWARDER_HPP_
+#endif  //  MAIN_LINUX_INCLUDE_REMOTE_TCP_FORWARDER_HPP_

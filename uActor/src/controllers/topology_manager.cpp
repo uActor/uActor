@@ -63,9 +63,11 @@ void TopologyManager::receive_peer_update(
 
 bool TopologyManager::should_connect(std::string_view peer_id) {
   if (reachable_peers.find(std::string(peer_id)) == reachable_peers.end()) {
-    
-    // todo(raphaelhetzel) Store the server nodes directly in the topology manager (message-based interface)
-    if (std::find(BoardFunctions::SERVER_NODES.begin(), BoardFunctions::SERVER_NODES.end(), peer_id) != BoardFunctions::SERVER_NODES.end()) {
+    // todo(raphaelhetzel) Store the server nodes directly in the topology
+    // manager (message-based interface)
+    if (std::find(BoardFunctions::SERVER_NODES.begin(),
+                  BoardFunctions::SERVER_NODES.end(),
+                  peer_id) != BoardFunctions::SERVER_NODES.end()) {
       return true;
     }
   }

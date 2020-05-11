@@ -1,5 +1,5 @@
-#ifndef MAIN_INCLUDE_ACTOR_RUNTIME_LUA_EXECUTOR_HPP_
-#define MAIN_INCLUDE_ACTOR_RUNTIME_LUA_EXECUTOR_HPP_
+#ifndef UACTOR_INCLUDE_ACTOR_RUNTIME_LUA_EXECUTOR_HPP_
+#define UACTOR_INCLUDE_ACTOR_RUNTIME_LUA_EXECUTOR_HPP_
 
 #include <lua.hpp>
 
@@ -29,4 +29,4 @@ class LuaExecutor : public Executor<ManagedLuaActor, LuaExecutor> {
 
 }  //  namespace uActor::ActorRuntime
 
-#endif  // MAIN_INCLUDE_ACTOR_RUNTIME_LUA_EXECUTOR_HPP_
+#endif  // UACTOR_INCLUDE_ACTOR_RUNTIME_LUA_EXECUTOR_HPP_

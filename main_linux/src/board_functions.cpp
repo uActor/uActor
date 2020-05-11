@@ -1,8 +1,8 @@
+#include "board_functions.hpp"
+
 #include <chrono>
 #include <cstdint>
 #include <thread>
-
-#include "board_functions.hpp"
 
 namespace uActor {
 
@@ -18,7 +18,8 @@ void BoardFunctions::exit_thread() {}
 
 const char* BoardFunctions::NODE_ID = "node_linux";
 
-std::vector<std::string> BoardFunctions::SERVER_NODES = std::vector<std::string>{};
+std::vector<std::string> BoardFunctions::SERVER_NODES =
+    std::vector<std::string>{};
 
 void BoardFunctions::sleep(uint32_t sleep_ms) {
   std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms));

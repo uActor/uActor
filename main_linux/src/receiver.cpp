@@ -1,11 +1,12 @@
-#include <list>
-#include <condition_variable>
-#include <mutex>
+#include "pubsub/receiver.hpp"
+
 #include <chrono>
+#include <condition_variable>
+#include <list>
+#include <mutex>
 
 #include "board_functions.hpp"
 #include "pubsub/matched_publication.hpp"
-#include "pubsub/receiver.hpp"
 #include "pubsub/router.hpp"
 
 namespace uActor::PubSub {
@@ -16,20 +17,20 @@ class Receiver::Queue {
     std::unique_lock lock(mtx);
     auto was_empty = queue.begin() == queue.end();
     queue.emplace_back(std::move(publication));
-    if(was_empty) {
+    if (was_empty) {
       queue_cv.notify_one();
     }
   }
 
   std::optional<MatchedPublication> receive_message(uint32_t timeout) {
-
     std::unique_lock lock(mtx);
 
-    queue_cv.wait_for(lock, std::chrono::milliseconds(timeout), [&](){return queue.begin() != queue.end();});
+    queue_cv.wait_for(lock, std::chrono::milliseconds(timeout),
+                      [&]() { return queue.begin() != queue.end(); });
     if (queue.begin() != queue.end()) {
-        MatchedPublication pub = std::move(*queue.begin());
-        queue.pop_front();
-        return std::move(pub);
+      MatchedPublication pub = std::move(*queue.begin());
+      queue.pop_front();
+      return std::move(pub);
     } else {
       return std::nullopt;
     }
