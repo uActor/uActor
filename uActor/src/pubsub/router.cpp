@@ -4,7 +4,7 @@
 #include <sdkconfig.h>
 #endif
 #if CONFIG_BENCHMARK_BREAKDOWN
-#include <testbed.h>
+#include <support/testbed.h>
 #endif
 
 #include <list>

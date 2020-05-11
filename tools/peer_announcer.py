@@ -16,7 +16,7 @@ import testbed_client
 
 def main():
   nodes = testbed_client.node_adresses()
-  nodes += [("node_3", "192.168.50.254", 1337), ("node_4", "192.168.50.254", 1338)]
+  nodes += [("node_laptop", "192.168.50.254", 1337), ("node_cloud", "192.168.50.254", 1338)]
   t = int(time.time())
   for node_id, node_ip, node_port in nodes:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:

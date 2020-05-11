@@ -3,7 +3,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <sdkconfig.h>
-#include <testbed.h>
+#include <support/testbed.h>
 
 extern "C" {
 #include <esp_event.h>

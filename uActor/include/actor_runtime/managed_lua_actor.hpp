@@ -5,7 +5,7 @@
 #include <sdkconfig.h>
 #endif
 #if CONFIG_BENCHMARK_ENABLED
-#include <testbed.h>
+#include <support/testbed.h>
 #endif
 
 #include <cstdio>
