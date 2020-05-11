@@ -22,7 +22,7 @@ def fetch_data(host=DEFAULT_HOST, port=DEFAULT_PORT):
 
 
 def node_adresses(host=DEFAULT_HOST, port=DEFAULT_PORT):
-  return [(node_id, node["address"]) for node_id, node in fetch_data().items()]
+  return [(node_id, node["address"], 1337) for node_id, node in fetch_data().items()]
 
 if __name__ == "__main__":
   print(fetch_data())

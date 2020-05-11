@@ -62,14 +62,13 @@ void TopologyManager::receive_peer_update(
 }
 
 bool TopologyManager::should_connect(std::string_view peer_id) {
-// todo(raphaelhetzel) We need a configuration source that works across devices
-#ifdef ESP_IDF
   if (reachable_peers.find(std::string(peer_id)) == reachable_peers.end()) {
-    if (peer_id == CONFIG_SERVER_NODE) {
+    
+    // todo(raphaelhetzel) Store the server nodes directly in the topology manager (message-based interface)
+    if (std::find(BoardFunctions::SERVER_NODES.begin(), BoardFunctions::SERVER_NODES.end(), peer_id) != BoardFunctions::SERVER_NODES.end()) {
       return true;
     }
   }
-#endif
   return false;
 }
 }  // namespace uActor::Controllers

@@ -27,8 +27,8 @@ extern "C" {
 
 namespace uActor::Linux::Remote {
 
-TCPForwarder::TCPForwarder()
-    : handle(PubSub::Router::get_instance().new_subscriber()) {
+TCPForwarder::TCPForwarder(uint32_t port)
+    : handle(PubSub::Router::get_instance().new_subscriber()), _port(port) {
   PubSub::Filter primary_filter{
       PubSub::Constraint(std::string("node_id"), BoardFunctions::NODE_ID),
       PubSub::Constraint(std::string("actor_type"), "forwarder"),
@@ -50,7 +50,8 @@ TCPForwarder::TCPForwarder()
 }
 
 void TCPForwarder::os_task(void* args) {
-  TCPForwarder fwd = TCPForwarder();
+  uint32_t port = *reinterpret_cast<uint32_t*>(args);
+  TCPForwarder fwd = TCPForwarder(port);
   auto reader = std::thread(&tcp_reader_task, reinterpret_cast<void*>(&fwd));
   while (true) {
     auto result = fwd.handle.receive(BoardFunctions::SLEEP_FOREVER);
@@ -233,7 +234,7 @@ void TCPForwarder::tcp_reader() {
   sockaddr_in dest_addr;
   dest_addr.sin_addr.s_addr = htonl(INADDR_ANY);
   dest_addr.sin_family = AF_INET;
-  dest_addr.sin_port = htons(1337);
+  dest_addr.sin_port = htons(_port);
 
   listen_sock = socket(addr_family, SOCK_STREAM, ip_protocol);
   if (listen_sock < 0) {

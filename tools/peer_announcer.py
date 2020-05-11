@@ -16,11 +16,12 @@ import testbed_client
 
 def main():
   nodes = testbed_client.node_adresses()
+  nodes += [("node_3", "192.168.50.254", 1337), ("node_4", "192.168.50.254", 1338)]
   t = int(time.time())
-  for node_id, node_ip in nodes:
+  for node_id, node_ip, node_port in nodes:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-      s.connect((node_ip, 1337))
-      for peer_id, peer_ip in nodes:
+      s.connect((node_ip, node_port))
+      for peer_id, peer_ip, peer_port in nodes:
         peer_message = {}
         peer_message["publisher_node_id"] = "bootstrap_server"
         peer_message["publisher_actor_type"] = "peer_announcer"
@@ -32,7 +33,7 @@ def main():
         peer_message["peer_type"] = "tcp_server"
 
         peer_message["peer_ip"] = peer_ip
-        peer_message["peer_port"] = 1337
+        peer_message["peer_port"] = peer_port
         peer_message["peer_node_id"] = peer_id
 
         peer_msg = msgpack.packb(peer_message)

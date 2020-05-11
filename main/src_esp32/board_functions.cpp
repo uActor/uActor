@@ -20,6 +20,8 @@ void BoardFunctions::exit_thread() { vTaskDelete(nullptr); }
 
 const char* BoardFunctions::NODE_ID = CONFIG_NODE_ID;
 
+std::vector<std::string> BoardFunctions::SERVER_NODES = std::vector<std::string>{std::string(CONFIG_SERVER_NODE)};
+
 int32_t BoardFunctions::epoch = 0;
 
 std::list<std::pair<std::string, std::string>> BoardFunctions::node_labels() {

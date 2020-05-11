@@ -18,12 +18,7 @@ class TCPForwarder : public uActor::Remote::ForwarderSubscriptionAPI {
  public:
   constexpr static const char* TAG = "tcp_forwarder";
 
-  static TCPForwarder& get_instance() {
-    static TCPForwarder instance;
-    return instance;
-  }
-
-  TCPForwarder();
+  TCPForwarder(uint32_t port);
 
   static void os_task(void* args);
 
@@ -41,6 +36,7 @@ class TCPForwarder : public uActor::Remote::ForwarderSubscriptionAPI {
   int forwarder_subscription_id;
   int peer_announcement_subscription_id;
   int subscription_update_subscription_id;
+  uint32_t _port;
   PubSub::ReceiverHandle handle;
 
   uint32_t next_local_id = 0;

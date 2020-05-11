@@ -5,6 +5,7 @@
 #include <list>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace uActor {
 
@@ -13,6 +14,7 @@ struct BoardFunctions {
   static uint32_t timestamp();
   static void exit_thread();
   static const char* NODE_ID;
+  static std::vector<std::string> SERVER_NODES;
 
   static int32_t epoch;
 
