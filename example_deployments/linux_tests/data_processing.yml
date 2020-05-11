@@ -1,0 +1,29 @@
+type: deployment
+name: test_deployment_processor
+ttl: 0
+actor_type:  test_data_processor
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "data_processor.lua"
+constraints:
+  - "node_id": "node_cloud"
+---
+type: deployment
+name: test_deployment_generator
+ttl:  0
+actor_type:  test_data_generator
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "data_generator.lua"
+constraints:
+  - "core.location.room": "room1"
+---
+type: deployment
+name: test_deployment_printer
+ttl:  0
+actor_type:  test_data_printer
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "data_printer.lua"
+constraints:
+  - "node_id": "node_cloud"
