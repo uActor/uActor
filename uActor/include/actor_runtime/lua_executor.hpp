@@ -20,6 +20,8 @@ class LuaExecutor : public Executor<ManagedLuaActor, LuaExecutor> {
 
   lua_State* create_lua_state();
 
+  void luaopen_uactor_publication(lua_State* state);
+
   void add_actor(uActor::PubSub::Publication&& publication) {
     add_actor_base<lua_State*>(publication, state);
   }

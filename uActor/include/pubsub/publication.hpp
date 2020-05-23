@@ -26,6 +26,8 @@ class Publication {
 
   Publication();
 
+  explicit Publication(size_t size_hint);
+
   ~Publication();
 
   std::string to_msg_pack();

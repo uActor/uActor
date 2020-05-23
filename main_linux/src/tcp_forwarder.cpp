@@ -244,10 +244,10 @@ void TCPForwarder::tcp_reader() {
   }
 
   int reuse = 1;
-  setsockopt(listen_sock, SOL_SOCKET, SO_REUSEADDR,
-             static_cast<void*>(&reuse), sizeof(reuse));
-  setsockopt(listen_sock, SOL_SOCKET, SO_REUSEPORT,
-             static_cast<void*>(&reuse), sizeof(reuse));
+  setsockopt(listen_sock, SOL_SOCKET, SO_REUSEADDR, static_cast<void*>(&reuse),
+             sizeof(reuse));
+  setsockopt(listen_sock, SOL_SOCKET, SO_REUSEPORT, static_cast<void*>(&reuse),
+             sizeof(reuse));
 
   int err = bind(listen_sock, (struct sockaddr*)&dest_addr, sizeof(dest_addr));
   if (err != 0) {

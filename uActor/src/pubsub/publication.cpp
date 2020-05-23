@@ -19,6 +19,10 @@ Publication::Publication(std::string_view publisher_node_id,
 Publication::Publication()
     : attributes(new std::unordered_map<std::string, variant_type>()) {}
 
+Publication::Publication(size_t size_hint)
+    : attributes(new std::unordered_map<std::string, variant_type>(size_hint)) {
+}
+
 Publication::~Publication() {
   if (attributes) {
     attributes->clear();

@@ -33,17 +33,13 @@ bool ManagedLuaActor::receive(const PubSub::Publication& m) {
     testbed_start_timekeeping(4);
   }
 #endif
-  lua_newtable(state);
-  for (const auto& value : m) {
-    if (std::holds_alternative<std::string>(value.second)) {
-      lua_pushstring(state, std::get<std::string>(value.second).c_str());
-    } else if (std::holds_alternative<int32_t>(value.second)) {
-      lua_pushinteger(state, std::get<int32_t>(value.second));
-    } else if (std::holds_alternative<float>(value.second)) {
-      lua_pushnumber(state, std::get<float>(value.second));
-    }
-    lua_setfield(state, -2, value.first.c_str());
-  }
+
+  PubSub::Publication* lua_pub = reinterpret_cast<PubSub::Publication*>(
+      lua_newuserdata(state, sizeof(PubSub::Publication)));
+  new (lua_pub) PubSub::Publication(std::move(m));
+  luaL_getmetatable(state, "uActor.Publication");
+  lua_setmetatable(state, -2);
+
 #if CONFIG_BENCHMARK_BREAKDOWN
   if (m.get_str_attr("type") == "ping") {
     testbed_stop_timekeeping_inner(4, "prepare_message");
@@ -68,7 +64,14 @@ int ManagedLuaActor::publish_wrapper(lua_State* state) {
   ManagedLuaActor* actor = reinterpret_cast<ManagedLuaActor*>(
       lua_touserdata(state, lua_upvalueindex(1)));
 
-  actor->publish(parse_publication(actor, state, 1));
+  if (lua_istable(state, -1)) {
+    printf("using outdated API!\n");
+    actor->publish(parse_publication(actor, state, 1));
+  } else if (lua_isuserdata(state, -1) &&
+             luaL_checkudata(state, -1, "uActor.Publication")) {
+    actor->publish(std::move(
+        *reinterpret_cast<PubSub::Publication*>(lua_touserdata(state, -1))));
+  }
   return 0;
 }
 
@@ -78,7 +81,15 @@ int ManagedLuaActor::delayed_publish_wrapper(lua_State* state) {
 
   uint32_t delay = lua_tointeger(state, 2);
 
-  actor->delayed_publish(parse_publication(actor, state, 1), delay);
+  if (lua_istable(state, 1)) {
+    printf("using outdated API!\n");
+    actor->delayed_publish(parse_publication(actor, state, 1), delay);
+  } else if (lua_isuserdata(state, 1) &&
+             luaL_checkudata(state, 1, "uActor.Publication")) {
+    actor->delayed_publish(std::move(*reinterpret_cast<PubSub::Publication*>(
+                               lua_touserdata(state, 1))),
+                           delay);
+  }
   return 0;
 }
 
@@ -184,6 +195,9 @@ bool ManagedLuaActor::createActorEnvironment(const char* receive_function) {
 
   lua_getglobal(state, "tonumber");
   lua_setfield(state, -2, "tonumber");
+
+  lua_getglobal(state, "Publication");
+  lua_setfield(state, -2, "Publication");
 
   // Benchmarking
   lua_getglobal(state, "collectgarbage");
