@@ -1,10 +1,19 @@
 function receive(message)
   if(message.type == "init") then
     i = 0
+    math.randomseed(now()*1379)
+    for a=1,3 do
+      math.random()
+    end
     subscribe({type="fake_sensor_value"})
   end
   if(message.type == "fake_sensor_value") then
     i = i + 1
+    
+    for a=1,10000 do
+      local a = math.random() * math.random()
+    end
+
     if((i % 10) == 0) then
       i = 0
       publish({type="filtered_sensor_value", value=message.value})

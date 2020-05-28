@@ -5,9 +5,9 @@ function receive(message)
   if(message.type == "ping") then
     testbed_stop_timekeeping(1, "latency")
     if(iteration % 25 == 0) then
-      delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="setup"}, 1000 + math.random(0, 199))
+      delayed_publish(Publication.new("node_id", node_id, "actor_type", actor_type, "instance_id", instance_id, "type", "setup"), 1000 + math.random(0, 199))
     else
-      delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="trigger"}, 1000 + math.random(0, 199))
+      delayed_publish(Publication.new("node_id", node_id, "actor_type", actor_type, "instance_id", instance_id, "type", "trigger"), 1000 + math.random(0, 199))
     end
   end
 
@@ -18,6 +18,7 @@ function receive(message)
     end
     iteration = 0
     size = -256
+    print("test")
   end
 
 
@@ -31,14 +32,14 @@ function receive(message)
     testbed_log_string("_logger_test_postfix", size)
 
     collectgarbage()
-    delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="trigger"}, 1000 + math.random(0, 199))
+    delayed_publish(Publication.new("node_id", node_id, "actor_type", actor_type, "instance_id", instance_id, "type", "trigger"), 1000 + math.random(0, 199))
   end
 
   if(message.type == "trigger") then
     
     iteration = iteration + 1
 
-    local publication = {node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="ping"}
+    local publication = Publication.new("node_id", node_id, "actor_type", actor_type, "instance_id", instance_id, "type", "ping")
   
     if (size > 0) then
       local elem_256 = "A"
