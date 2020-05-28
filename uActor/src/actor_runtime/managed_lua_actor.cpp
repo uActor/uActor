@@ -64,13 +64,18 @@ int ManagedLuaActor::publish_wrapper(lua_State* state) {
   ManagedLuaActor* actor = reinterpret_cast<ManagedLuaActor*>(
       lua_touserdata(state, lua_upvalueindex(1)));
 
-  if (lua_istable(state, -1)) {
+  if (lua_isuserdata(state, 1) && luaL_checkudata(state, 1, "uActor.Publication")) {
+      auto pub = reinterpret_cast<PubSub::Publication*>(lua_touserdata(state, 1));
+      pub->set_attr(std::string_view("publisher_node_id"),
+                    std::string(actor->node_id()));
+      pub->set_attr(std::string_view("publisher_instance_id"),
+                    std::string(actor->instance_id()));
+      pub->set_attr(std::string_view("publisher_actor_type"),
+                    std::string(actor->actor_type()));
+      actor->publish(std::move(*pub));
+  } else if (lua_istable(state, -1)) {
     printf("using outdated API!\n");
     actor->publish(parse_publication(actor, state, 1));
-  } else if (lua_isuserdata(state, -1) &&
-             luaL_checkudata(state, -1, "uActor.Publication")) {
-    actor->publish(std::move(
-        *reinterpret_cast<PubSub::Publication*>(lua_touserdata(state, -1))));
   }
   return 0;
 }
@@ -78,17 +83,22 @@ int ManagedLuaActor::publish_wrapper(lua_State* state) {
 int ManagedLuaActor::delayed_publish_wrapper(lua_State* state) {
   ManagedLuaActor* actor = reinterpret_cast<ManagedLuaActor*>(
       lua_touserdata(state, lua_upvalueindex(1)));
-
+      
   uint32_t delay = lua_tointeger(state, 2);
 
-  if (lua_istable(state, 1)) {
+  if (lua_isuserdata(state, 1) &&
+             luaL_checkudata(state, 1, "uActor.Publication")) {
+      auto pub = reinterpret_cast<PubSub::Publication*>(lua_touserdata(state, 1));
+      pub->set_attr(std::string_view("publisher_node_id"),
+                    std::string(actor->node_id()));
+      pub->set_attr(std::string_view("publisher_instance_id"),
+                    std::string(actor->instance_id()));
+      pub->set_attr(std::string_view("publisher_actor_type"),
+                    std::string(actor->actor_type()));
+      actor->delayed_publish(std::move(*pub), delay);
+  } if (lua_istable(state, 1)) {
     printf("using outdated API!\n");
     actor->delayed_publish(parse_publication(actor, state, 1), delay);
-  } else if (lua_isuserdata(state, 1) &&
-             luaL_checkudata(state, 1, "uActor.Publication")) {
-    actor->delayed_publish(std::move(*reinterpret_cast<PubSub::Publication*>(
-                               lua_touserdata(state, 1))),
-                           delay);
   }
   return 0;
 }
