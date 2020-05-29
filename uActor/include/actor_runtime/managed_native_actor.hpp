@@ -15,7 +15,7 @@ class ManagedNativeActor : public ManagedActor {
                      const char* actor_type, const char* instance_id,
                      const char* code);
 
-  bool receive(const PubSub::Publication& p);
+  bool receive(PubSub::Publication&& p) override;
 
   bool internal_initialize() { return true; }
 

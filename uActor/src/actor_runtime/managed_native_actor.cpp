@@ -30,7 +30,7 @@ ManagedNativeActor::ManagedNativeActor(ExecutorApi* api, uint32_t unique_id,
   }
 }
 
-bool ManagedNativeActor::receive(const PubSub::Publication& p) {
+bool ManagedNativeActor::receive(PubSub::Publication&& p) {
   actor->receive(std::move(p));
   return true;
 }

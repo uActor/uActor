@@ -1,11 +1,10 @@
 #include <unistd.h>
 
+#include <boost/program_options.hpp>
 #include <iostream>
 #include <thread>
 #include <utility>
 #include <vector>
-
-#include <boost/program_options.hpp>
 
 #include "actor_runtime/executor.hpp"
 #include "actor_runtime/lua_executor.hpp"

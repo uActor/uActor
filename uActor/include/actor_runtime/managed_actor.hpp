@@ -34,7 +34,7 @@ class ManagedActor {
     }
   }
 
-  virtual bool receive(const PubSub::Publication& p) = 0;
+  virtual bool receive(PubSub::Publication&& p) = 0;
 
   bool initialize();
 

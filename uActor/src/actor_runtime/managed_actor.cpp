@@ -27,11 +27,13 @@ ManagedActor::ReceiveResult ManagedActor::receive_next_internal() {
   _timeout = UINT32_MAX;
   pattern.clear();
 
-  const auto& next_message = message_queue.front();
-  bool success =
-      this->receive(message_queue.front());  // Exit message is processed to
-                                             // allow for any necessary cleanup
-  if (!success || next_message.get_str_attr("type") == "exit") {
+  auto next_message = std::move(message_queue.front());
+  message_queue.pop_front();
+  bool is_exit = next_message.get_str_attr("type") == "exit";
+  bool success = this->receive(
+      std::move(next_message));  // Exit message is processed to
+                                 // allow for any necessary cleanup
+  if (!success || is_exit) {
     if (success) {
       publish_exit_message("clean_exit");
     } else {
@@ -39,7 +41,6 @@ ManagedActor::ReceiveResult ManagedActor::receive_next_internal() {
     }
     return ManagedActor::ReceiveResult(true, 0);
   }
-  message_queue.pop_front();
   if (waiting) {
     auto it = std::find_if(
         message_queue.begin(), message_queue.end(),

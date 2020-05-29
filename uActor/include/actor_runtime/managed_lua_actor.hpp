@@ -29,7 +29,7 @@ class ManagedLuaActor : public ManagedActor {
 
   ~ManagedLuaActor();
 
-  bool receive(const PubSub::Publication& m);
+  bool receive(PubSub::Publication&& m) override;
 
  protected:
   bool internal_initialize() { return createActorEnvironment(code()); }
