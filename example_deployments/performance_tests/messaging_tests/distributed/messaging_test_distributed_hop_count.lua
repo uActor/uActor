@@ -5,9 +5,9 @@ function receive(message)
   if(message.type == "pong") then
     testbed_stop_timekeeping(1, "latency")
     if(iteration % 25 == 0) then
-      delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="setup"}, 5000 + math.random(0, 199))
+      delayed_publish(Publication.new("node_id", node_id, "actor_type", actor_type, "instance_id", instance_id, "type", "setup"), 5000 + math.random(0, 199))
     else
-      delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="trigger"}, 1000 + math.random(0, 199))
+      delayed_publish(Publication.new("node_id", node_id, "actor_type", actor_type, "instance_id", instance_id, "type", "trigger"), 1000 + math.random(0, 199))
     end
   end
 
@@ -32,7 +32,7 @@ function receive(message)
 
     testbed_log_string("_logger_test_postfix", distance)
     collectgarbage()
-    delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="trigger"}, 5000 + math.random(0, 199))
+    delayed_publish(Publication.new("node_id", node_id, "actor_type", actor_type, "instance_id", instance_id, "type", "trigger"), 5000 + math.random(0, 199))
   end
 
   if(message.type == "trigger") then
@@ -42,6 +42,6 @@ function receive(message)
 
     collectgarbage()
     testbed_start_timekeeping(1)
-    publish({node_id=receiver_id, actor_type="test_echo_actor", instance_id="test_deployment_echo", type="ping"})
+    publish(Publication.new("node_id", receiver_id, "actor_type", "test_echo_actor", "instance_id", "test_deployment_echo", "type", "ping"))
   end
 end

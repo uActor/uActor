@@ -1,4 +1,4 @@
-MAX_COUNT = 2048
+MAX_COUNT = 8192
 
 function receive(message)
 

@@ -217,6 +217,8 @@ void main_task(void*) {
                           4192, nullptr, 4, nullptr, 0);
 
   printf("StaticHeap: %d \n", xPortGetFreeHeapSize());
+  
+  testbed_log_rt_integer("boot_timestamp", t);
 
   vTaskDelete(nullptr);
 

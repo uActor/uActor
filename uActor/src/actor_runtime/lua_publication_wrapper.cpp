@@ -1,4 +1,4 @@
-#import "actor_runtime/lua_publication_wrapper.hpp"
+#include "actor_runtime/lua_publication_wrapper.hpp"
 
 namespace uActor::ActorRuntime {
 
@@ -72,6 +72,8 @@ int LuaPublicationWrapper::set(lua_State* state) {
   } else if (lua_isnumber(state, 3)) {
     float value = lua_tonumber(state, 3);
     p->set_attr(key, value);
+  } else if (lua_isnil(state, 3)) {
+    p->erase_attr(key);
   }
   return 0;
 }

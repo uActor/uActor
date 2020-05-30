@@ -70,6 +70,10 @@ class Publication {
     attributes->insert_or_assign(std::string(name), value);
   }
 
+  void erase_attr(std::string_view name) {
+    attributes->erase(std::string(name));
+  }
+
  private:
   // TODO(raphaelhetzel) It might be beneficial to use a
   // datastructure with less overhead (size+allocations) here.
