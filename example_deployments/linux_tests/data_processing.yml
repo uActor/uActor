@@ -6,10 +6,9 @@ actor_runtime_type:  lua
 actor_version:  "0.1"
 actor_code_file:  "data_processor.lua"
 constraints:
-  - "node_id": "node_laptop2"
   # - "node_id": "node_laptop"
   # - "node_id": "node_cloud"
-  # - "node_id": "node_1" # fails from being out of memoty
+  - "node_id": "node_1" # fails from being out of memory
 ---
 type: deployment
 name: test_deployment_generator

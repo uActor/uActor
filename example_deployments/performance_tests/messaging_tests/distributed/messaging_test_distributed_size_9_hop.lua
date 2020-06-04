@@ -1,4 +1,4 @@
-PEER_ID = "node_5"
+PEER_ID = "node_10"
 MAX_SIZE = 65536
 
 function receive(message)
@@ -6,9 +6,9 @@ function receive(message)
   if(message.type == "pong") then
     testbed_stop_timekeeping(1, "latency")
     if(iteration % 25 == 0) then
-      publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="setup"})
+      publish(Publication.new("node_id", node_id, "actor_type", actor_type, "instance_id", instance_id, "type", "setup"))
     else
-      delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="trigger"}, 1000 + math.random(0, 199))
+      delayed_publish(Publication.new("node_id", node_id, "actor_type", actor_type, "instance_id", instance_id, "type", "trigger"), 1000 + math.random(0, 199))
     end
   end
 
@@ -32,14 +32,14 @@ function receive(message)
     testbed_log_string("_logger_test_postfix", size)
 
     collectgarbage()
-    delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="trigger"}, 2000 + math.random(0, 199))
+    delayed_publish(Publication.new("node_id", node_id, "actor_type", actor_type, "instance_id", instance_id, "type", "trigger"), 2000 + math.random(0, 199))
   end
 
   if(message.type == "trigger") then
     
     iteration = iteration + 1
     
-    local publication = {node_id=PEER_ID, actor_type="test_echo_actor", instance_id="test_deployment_echo", type="ping"}
+    local publication = Publication.new("node_id", PEER_ID, "actor_type", "test_echo_actor", "instance_id", "test_deployment_echo", "type", "ping")
     
     if (size > 0) then
       local elem_256 = "A"

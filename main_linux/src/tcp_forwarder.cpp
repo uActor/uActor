@@ -284,12 +284,19 @@ void TCPForwarder::tcp_reader() {
     remote_lock.lock();
 
     if (num_ready > 0) {
+      std::vector<uint> to_delete;
       for (const auto& remote_pair : remotes) {
         uActor::Remote::RemoteConnection& remote =
             const_cast<uActor::Remote::RemoteConnection&>(remote_pair.second);
-        if (FD_ISSET(remote.sock, &sockets_to_read)) {
+        if (remote.sock > 0 && FD_ISSET(remote.sock, &sockets_to_read)) {
           data_handler(&remote);
+          if(!remote.sock) {
+            to_delete.push_back(remote_pair.first);
+          }
         }
+      }
+      for(auto item : to_delete) {
+          remotes.erase(item);
       }
       if (FD_ISSET(listen_sock, &sockets_to_read)) {
         listen_handler();
@@ -377,7 +384,7 @@ void TCPForwarder::data_handler(uActor::Remote::RemoteConnection* remote) {
 
   shutdown(remote->sock, 0);
   close(remote->sock);
-  remotes.erase(remote->local_id);
+  remote->sock = 0;
 }
 
 }  // namespace uActor::Linux::Remote

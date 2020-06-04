@@ -20,9 +20,9 @@ def await_next_reboot():
             nodes = testbed_client.fetch_data().items()
             for node, node_data in nodes:
                 if "boot_timestamp" in node_data:
-                    if node_data["boot_timestamp"] > last_timestamps.get(node, -1):
+                    if int(node_data["boot_timestamp"]) > last_timestamps.get(node, -1):
                         count += 1
-                        timestamps[node] = node_data["boot_timestamp"]
+                        timestamps[node] = int(node_data["boot_timestamp"])
             if count == 20:
                 with open(storage_path, "w") as last_boot_timestamps_file:
                     json.dump(timestamps, last_boot_timestamps_file)

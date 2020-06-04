@@ -14,9 +14,11 @@ function receive(message)
       local a = math.random() * math.random()
     end
 
-    if((i % 10) == 0) then
+    if(i == 1000) then
       i = 0
-      publish({type="filtered_sensor_value", value=message.value})
+      publish(Publication.new("type", "filtered_sensor_value", "value", message.value))
+      testbed_stop_timekeeping(1, "processing")
+      testbed_start_timekeeping(1)
     end
   end
 end

@@ -6,10 +6,10 @@ function receive(message)
   if(message.type == "filtered_sensor_value") then
     counter = counter + 1
     print("new value: "..message.value)
-    if(counter == 950) then
+    if(counter == 11) then
       counter = 0
       print("iteration done")
-      publish({type="iteration_done"})
+      publish(Publication.new("type", "iteration_done"))
     end
   end
 end

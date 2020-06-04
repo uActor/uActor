@@ -1,9 +1,9 @@
 type: deployment
 name: spawn_test_deployment
-ttl:  120000
+ttl:  9000000
 actor_type:  spawn_test_host
 actor_runtime_type:  lua
 actor_version:  "0.1"
 actor_code_file:  "spawn_test_reply.lua"
 constraints:
-  - "node_id": "node_1"
+  - "node_id": "node_cloud"
