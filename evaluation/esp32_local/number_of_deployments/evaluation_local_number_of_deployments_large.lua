@@ -69,9 +69,10 @@ function receive(message)
   if(message.type == "init") then
     count_sent = 0
     count_received = 0
+    delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="trigger"}, 1000)
   end
 
-  if(message.type == "init" or message.type == "trigger") then
+  if(message.type == "trigger") then
     count_sent = count_sent + 1
     publish({
       type="deployment",
@@ -81,12 +82,12 @@ function receive(message)
       deployment_actor_version="0.1",
       deployment_actor_code=code,
       deployment_required_actors="",
-      deployment_ttl=1000000
+      deployment_ttl=9000000
     })
-    delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="trigger"}, 5000)
     testbed_log_integer("count_sent", count_sent)
   elseif(message.type == "pong") then
     count_received = count_received + 1
+    publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="trigger"})
     testbed_log_integer("count_received", count_received)
   end
 end

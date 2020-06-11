@@ -8,7 +8,7 @@ actor_code_file:  "data_processor.lua"
 constraints:
   # - "node_id": "node_laptop"
   # - "node_id": "node_cloud"
-  - "node_id": "node_1" # fails from being out of memory
+  - "node_id": "node_1"
 ---
 type: deployment
 name: test_deployment_generator

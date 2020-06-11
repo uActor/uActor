@@ -20,6 +20,6 @@ actor_code_file:  "lightswitch.lua"
 # constraints:
 #   - "xyz.hetzel.lighting.device_type": "lightswitch"
 constraints:
-    - "node_id": "node_10"
+    - "node_id": "node_20"
 required_actors:
   - "core.io.gpio"

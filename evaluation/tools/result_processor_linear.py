@@ -81,8 +81,8 @@ def main():
     plt.show()
 
 
-    print("Constant: %.2f" % regr.intercept_ / 1000)
-    print("Slope: %.2f" % regr.coef_ / 1000 )
+    print("Constant: %.2f" % (regr.intercept_ / 1000))
+    print("Slope: %.5f" % (regr.coef_ / 1000))
     print('R^2: %.2f' % r2_score(Y, prediction))
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-MAX_COUNT = 8192
+MAX_SIZE = 131072
 
 function receive(message)
 
@@ -17,23 +17,19 @@ function receive(message)
       math.random()
     end
     iteration = 0
-    count = -8
+    size = -256
   end
 
+
   if(message.type == "init" or message.type == "setup") then
-
-    local publication
-    local buffer
-
     iteration = 0
-    count = count + 8
-    if(count > MAX_COUNT) then
+    size = size + 256
+    if(size > MAX_SIZE) then
       testbed_log_string("done" , "true")
       return
     end
+    testbed_log_string("_logger_test_postfix", size)
 
-    testbed_log_string("_logger_test_postfix", tostring(count))
-    
     collectgarbage()
     delayed_publish(Publication.new("node_id", node_id, "actor_type", actor_type, "instance_id", instance_id, "type", "trigger"), 1000 + math.random(0, 199))
   end
@@ -41,22 +37,24 @@ function receive(message)
   if(message.type == "trigger") then
     
     iteration = iteration + 1
-    
-    local publication = Publication.new("node_id", node_id, "actor_type", actor_type, "instance_id", instance_id, "type", "ping")
-    
-    for x=1,count,1 do
-      if(x % 7 == 0) then
-        publication["dummy_int_"..tostring(x)] = x
-      elseif(x % 8 == 0) then
-        publication["dummy_float_"..tostring(x)] = 0.1*x
-      else
-        publication["dummy_"..tostring(x)] = "ABCD"
-      end
-    end
 
+    local publication = Publication.new("node_id", node_id, "actor_type", actor_type, "instance_id", instance_id, "type", "ping")
+  
+    if (size > 0) then
+      local elem_256 = "A"
+      for x=1,8 do
+        elem_256 = elem_256 .. elem_256
+      end
+      local buffer = ""
+      for x=1, size / 256 do
+        buffer = buffer .. elem_256
+      end
+      publication["payload"] = buffer
+    end
 
     collectgarbage()
     testbed_start_timekeeping(1)
+    
     publish(publication)
   end
 end

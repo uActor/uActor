@@ -6,7 +6,7 @@ function receive(message)
     if(iteration % 100 == 0) then
       testbed_log_string("done", 1)
     else
-      delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="trigger"}, 1000 + math.random(0, 199))
+      publish(Publication.new("node_id", node_id, "actor_type", actor_type, "instance_id", instance_id, "type", "trigger"))
     end
   end
 
@@ -17,10 +17,7 @@ function receive(message)
       math.random()
     end
     iteration = 0
-  end
-  
-  if(message.type == "init" or message.type == "setup") then
-    delayed_publish({node_id=node_id, actor_type=actor_type, instance_id=instance_id, type="trigger"}, 2000 + math.random(0, 199))
+    delayed_publish(Publication.new("node_id", node_id, "actor_type", actor_type, "instance_id", instance_id, "type", "trigger"), 2000 + math.random(0, 199))
   end
 
   if(message.type == "trigger") then
@@ -28,6 +25,6 @@ function receive(message)
     iteration = iteration + 1
     
     testbed_start_timekeeping(1)
-    publish({type="ping1"})
+    publish(Publication.new("type", "ping1"))
   end
 end

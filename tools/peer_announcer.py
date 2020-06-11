@@ -15,8 +15,11 @@ import testbed_client
 # arguments = parser.parse_args()
 
 def main():
-  nodes = testbed_client.node_adresses()
-  nodes += [("node_laptop", "192.168.50.254", 1337), ("node_cloud", "192.168.50.254", 1338)]
+  nodes = []
+  nodes += testbed_client.node_adresses()
+  # nodes += [("node_laptop", "192.168.50.254", 1337)]
+  # nodes += [("node_cloud", "192.168.50.254", 1338)]
+  # nodes += [("node_laptop2", "192.168.50.254", 1339)]
   t = int(time.time())
   for node_id, node_ip, node_port in nodes:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
