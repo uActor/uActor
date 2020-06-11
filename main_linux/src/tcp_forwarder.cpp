@@ -290,13 +290,13 @@ void TCPForwarder::tcp_reader() {
             const_cast<uActor::Remote::RemoteConnection&>(remote_pair.second);
         if (remote.sock > 0 && FD_ISSET(remote.sock, &sockets_to_read)) {
           data_handler(&remote);
-          if(!remote.sock) {
+          if (!remote.sock) {
             to_delete.push_back(remote_pair.first);
           }
         }
       }
-      for(auto item : to_delete) {
-          remotes.erase(item);
+      for (auto item : to_delete) {
+        remotes.erase(item);
       }
       if (FD_ISSET(listen_sock, &sockets_to_read)) {
         listen_handler();
