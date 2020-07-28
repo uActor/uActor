@@ -5,11 +5,13 @@
 #include <thread>
 #include <utility>
 #include <vector>
+#include <ctime>
 
 #include "actor_runtime/executor.hpp"
 #include "actor_runtime/lua_executor.hpp"
 #include "actor_runtime/native_executor.hpp"
 #include "remote/tcp_forwarder.hpp"
+#include "support/testbed.h"
 
 std::thread start_lua_executor() {
   uActor::ActorRuntime::ExecutorSettings* params =
@@ -38,7 +40,9 @@ boost::program_options::variables_map parse_arguments(int arg_count,
       "peer to connect to")("node-labels",
                             boost::program_options::value<std::string>(),
                             "node labels (comma seperated)")(
-      "tcp-port", boost::program_options::value<uint>(), "tcp port");
+      "tcp-port", boost::program_options::value<uint>(), "tcp port")
+      (
+      "tcp-listen-ip", boost::program_options::value<std::string>(), "tcp listen ip");
 
   boost::program_options::variables_map arguments;
   boost::program_options::store(
@@ -68,21 +72,48 @@ int main(int arg_count, char** args) {
     uActor::BoardFunctions::SERVER_NODES =
         std::vector<std::string>{arguments["server-node"].as<std::string>()};
   }
-
-  uActor::BoardFunctions::epoch = 0;
-
-  auto router_task = std::thread(&uActor::PubSub::Router::os_task, nullptr);
-
   int tcp_port = 1337;
   if (arguments.count("tcp-port")) {
     tcp_port = arguments["tcp-port"].as<uint>();
   }
 
+  std::string listen_ip = "127.0.0.1";
+  if (arguments.count("tcp-listen-ip")) {
+    listen_ip = arguments["tcp-listen-ip"].as<std::string>();
+  }
+
+
+  uActor::BoardFunctions::epoch = 0;
+
+  auto router_task = std::thread(&uActor::PubSub::Router::os_task, nullptr);
+
+  auto tcp_task_args = uActor::Linux::Remote::TCPTaskArgs(listen_ip, tcp_port);
+
   auto tcp_task = std::thread(&uActor::Linux::Remote::TCPForwarder::os_task,
-                              reinterpret_cast<void*>(&tcp_port));
+                              reinterpret_cast<void*>(&tcp_task_args));
   auto native_executor = start_native_executor();
 
   sleep(2);
+
+  time_t t = 0;
+  time(&t);
+
+  size_t retries = 0;
+  while (t < 1577836800 && retries < 10) {
+    printf("waiting for time\n");
+    sleep(1);
+    time(&t);
+    retries++;
+  }
+
+  if (t > 1577836800) {
+    t -= 1577836800;
+    uActor::BoardFunctions::epoch = t;
+    printf("epoch %ld\n", t);
+  } else {
+    printf("Epoch not set according to time\n");
+    uActor::BoardFunctions::epoch = 0;
+  }
 
   auto create_deployment_manager =
       uActor::PubSub::Publication(uActor::BoardFunctions::NODE_ID, "root", "1");
@@ -150,6 +181,7 @@ int main(int arg_count, char** args) {
 
   auto lua_executor = start_lua_executor();
 
+  testbed_log_rt_integer("_ready", t);
   tcp_task.join();
   return 0;
 }

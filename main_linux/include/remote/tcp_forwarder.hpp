@@ -5,6 +5,7 @@
 #include <mutex>
 #include <set>
 #include <string_view>
+#include <string>
 #include <unordered_map>
 
 #include "board_functions.hpp"
@@ -14,11 +15,18 @@
 
 namespace uActor::Linux::Remote {
 
+struct TCPTaskArgs {
+
+  TCPTaskArgs(std::string listen_ip, uint32_t port) : listen_ip(listen_ip), port(port) {}
+  std::string listen_ip;
+  int port;
+};
+
 class TCPForwarder : public uActor::Remote::ForwarderSubscriptionAPI {
  public:
   constexpr static const char* TAG = "tcp_forwarder";
 
-  explicit TCPForwarder(uint32_t port);
+  explicit TCPForwarder(std::string listen_ip, uint32_t port);
 
   static void os_task(void* args);
 
@@ -37,6 +45,7 @@ class TCPForwarder : public uActor::Remote::ForwarderSubscriptionAPI {
   int peer_announcement_subscription_id;
   int subscription_update_subscription_id;
   uint32_t _port;
+  std::string _listen_ip;
   PubSub::ReceiverHandle handle;
 
   uint32_t next_local_id = 0;

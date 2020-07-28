@@ -1,0 +1,4 @@
+CONFIG_NODE_ID="node_19"
+CONFIG_SERVER_NODE="node_edge"
+CONFIG_NODE_LABELS="test.type=data_generator"
+

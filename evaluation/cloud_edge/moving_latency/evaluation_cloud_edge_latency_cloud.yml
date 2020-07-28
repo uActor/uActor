@@ -1,0 +1,29 @@
+type: deployment
+name: hub_deployment
+ttl: 0
+actor_type:  test_hub_actor
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "evaluation_cloud_edge_latency_hub.lua"
+constraints:
+  - "node_id": "node_cloud"
+---
+type: deployment
+name: measurement_deployment
+ttl:  0
+actor_type:  test_measurement_actor
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "evaluation_cloud_edge_latency.lua"
+constraints:
+  - "node_id": "node_1"
+---
+type: deployment
+name: echo_deployment
+ttl:  0
+actor_type:  test_echo_actor
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "evaluation_cloud_edge_latency_echo.lua"
+constraints:
+  - "node_id": "node_2"

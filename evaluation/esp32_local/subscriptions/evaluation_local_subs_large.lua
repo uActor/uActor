@@ -56,15 +56,15 @@ function receive(message)
 
     local publication = Publication.new("node_id", node_id, "actor_type", actor_type, "instance_id", instance_id, "type", "ping")
 
-    -- for x=1,64,1 do
-    --   if(x % 7 == 0) then
-    --     publication["dummy_int_"..tostring(x)] = x
-    --   elseif(x % 8 == 0) then
-    --     publication["dummy_float_"..tostring(x)] = 0.1*x
-    --   else
-    --     publication["dummy_"..tostring(x)] = "ABCD"
-    --   end
-    -- end
+    for x=1,64,1 do
+      if(x % 7 == 0) then
+        publication["dummy_int_"..tostring(x)] = x
+      elseif(x % 8 == 0) then
+        publication["dummy_float_"..tostring(x)] = 0.1*x
+      else
+        publication["dummy_"..tostring(x)] = "ABCD"
+      end
+    end
     
     collectgarbage()
     testbed_start_timekeeping(1)

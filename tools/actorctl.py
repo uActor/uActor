@@ -105,14 +105,12 @@ def _parse_deployment(configuration_file_path, raw_deployment):
     if(len(deployment_constraints) > 0):
         deployment["deployment_constraints"] = ",".join(deployment_constraints)
     
-    print(deployment)
     return deployment
 
 
 def _publish(sckt, publication, epoch, sequence_number):
     publication["_internal_sequence_number"] = sequence_number
     publication["_internal_epoch"] = epoch
-    print(publication)
     msg = msgpack.packb(publication)
     sckt.send(struct.pack("!i", len(msg)))
     sckt.send(msg)

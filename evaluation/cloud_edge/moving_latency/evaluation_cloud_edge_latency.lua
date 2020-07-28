@@ -6,7 +6,7 @@ function receive(message)
     if(iteration % 100 == 0) then
       testbed_log_string("done", 1)
     else
-      publish(Publication.new("node_id", node_id, "actor_type", actor_type, "instance_id", instance_id, "type", "trigger"))
+      delayed_publish(Publication.new("node_id", node_id, "actor_type", actor_type, "instance_id", instance_id, "type", "trigger"), 10)
     end
   end
 

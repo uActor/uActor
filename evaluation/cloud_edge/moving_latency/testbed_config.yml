@@ -1,0 +1,133 @@
+boards:
+  node_1:
+    type: "ESP32-IDF"
+    runtime_configuration:
+      serial_device: "/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_TUM01-if00-port0"
+      remote:
+        host: "cm-pi1"
+        root_directory: "/home/pi/remote_testbed"
+    build_configuration:
+      sdkconfig: {{TESTBED_ROOT_DIR}}/sdkconfig
+      sdkconfig_overrides: {{TESTBED_ROOT_DIR}}/evaluation/base_topologies/edge_star/sdkconfig.overrides.1_edge_star
+  node_2:
+    type: "ESP32-IDF"
+    runtime_configuration:
+      serial_device: "/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_TUM02-if00-port0"
+      remote:
+        host: "cm-pi1"
+        root_directory: "/home/pi/remote_testbed"
+    build_configuration:
+      sdkconfig: {{TESTBED_ROOT_DIR}}/sdkconfig
+      sdkconfig_overrides: {{TESTBED_ROOT_DIR}}/evaluation/base_topologies/edge_star/sdkconfig.overrides.2_edge_star
+  node_edge: # TODO(raphaelhetzel) move to Raspberry Pi
+    type: "UNIX-CMAKE"
+    runtime_configuration:
+      binary_name: "uActorBin"
+      parameters:
+        - --node-id=node_edge
+        - --server-node=node_cloud
+        - --tcp-listen-ip=192.168.50.3
+    build_configuration:
+      root_directory: {{TESTBED_ROOT_DIR}}/main_linux
+      configuration_name: "default"
+  #
+  # node_cloud: #TODO(raphaelhetzel) update server to 20.04
+  #   type: "UNIX-CMAKE"
+  #   runtime_configuration:
+  #     binary_name: "uActorBin"
+  #     parameters:
+  #       - --node-id=node_edge
+  #       - --server-node=node_cloud
+  #       - --tcp-listen-ip=0.0.0.0
+  #     remote:
+  #       host: "0.0.0.0"
+  #       root_directory: "/home/raphael/uActorTest"
+  #   build_configuration:
+  #     root_directory: {{TESTBED_ROOT_DIR}}/main_linux
+  #     configuration_name: "default"
+  #
+  # The original evaluation also included the other ESPs (additional routes).
+experiments:
+  default:
+    required_limit_count: 1
+    limits:
+      default:
+        _reboot: 1
+      node_1:
+        done: 1
+  leaf_run_1:
+    build_configuration_overrides:
+      node_1:
+        sdkconfig: {{TESTBED_ROOT_DIR}}/sdkconfig
+        sdkconfig_overrides: {{TESTBED_ROOT_DIR}}/evaluation/base_topologies/linear/sdkconfig.overrides.1_linear
+      node_2:
+        sdkconfig: {{TESTBED_ROOT_DIR}}/sdkconfig
+        sdkconfig_overrides: {{TESTBED_ROOT_DIR}}/evaluation/base_topologies/linear/sdkconfig.overrides.2_linear
+    hooks:
+      _all:
+       _ready: '/bin/bash $TESTBED_CONFIG_DIR/ready_hook.sh leaf'
+  leaf_run_2:
+    build_configuration_overrides:
+      node_1:
+        sdkconfig: {{TESTBED_ROOT_DIR}}/sdkconfig
+        sdkconfig_overrides: {{TESTBED_ROOT_DIR}}/evaluation/base_topologies/linear/sdkconfig.overrides.1_linear
+      node_2:
+        sdkconfig: {{TESTBED_ROOT_DIR}}/sdkconfig
+        sdkconfig_overrides: {{TESTBED_ROOT_DIR}}/evaluation/base_topologies/linear/sdkconfig.overrides.2_linear
+    hooks:
+      _all:
+       _ready: '/bin/bash $TESTBED_CONFIG_DIR/ready_hook.sh leaf'
+  leaf_run_3:
+    build_configuration_overrides:
+      node_1:
+        sdkconfig: {{TESTBED_ROOT_DIR}}/sdkconfig
+        sdkconfig_overrides: {{TESTBED_ROOT_DIR}}/evaluation/base_topologies/linear/sdkconfig.overrides.1_linear
+      node_2:
+        sdkconfig: {{TESTBED_ROOT_DIR}}/sdkconfig
+        sdkconfig_overrides: {{TESTBED_ROOT_DIR}}/evaluation/base_topologies/linear/sdkconfig.overrides.2_linear
+    hooks:
+      _all:
+       _ready: '/bin/bash $TESTBED_CONFIG_DIR/ready_hook.sh leaf'
+  leaf_run_4:
+    build_configuration_overrides:
+      node_1:
+        sdkconfig: {{TESTBED_ROOT_DIR}}/sdkconfig
+        sdkconfig_overrides: {{TESTBED_ROOT_DIR}}/evaluation/base_topologies/linear/sdkconfig.overrides.1_linear
+      node_2:
+        sdkconfig: {{TESTBED_ROOT_DIR}}/sdkconfig
+        sdkconfig_overrides: {{TESTBED_ROOT_DIR}}/evaluation/base_topologies/linear/sdkconfig.overrides.2_linear
+    hooks:
+      _all:
+       _ready: '/bin/bash $TESTBED_CONFIG_DIR/ready_hook.sh leaf'
+  edge_run_1:
+    hooks:
+      _all:
+        _ready: '/bin/bash $TESTBED_CONFIG_DIR/ready_hook.sh edge'
+  edge_run_2:
+    hooks:
+      _all:
+        _ready: '/bin/bash $TESTBED_CONFIG_DIR/ready_hook.sh edge'
+  edge_run_3:
+    hooks:
+      _all:
+        _ready: '/bin/bash $TESTBED_CONFIG_DIR/ready_hook.sh edge'
+  edge_run_4:
+    hooks:
+      _all:
+        _ready: '/bin/bash $TESTBED_CONFIG_DIR/ready_hook.sh edge'
+  cloud_run_1:
+    hooks:
+      _all:
+        _ready: '/bin/bash $TESTBED_CONFIG_DIR/ready_hook.sh cloud'
+  cloud_run_2:
+    hooks:
+      _all:
+        _ready: '/bin/bash $TESTBED_CONFIG_DIR/ready_hook.sh cloud'
+  cloud_run_3:
+    hooks:
+      _all:
+        _ready: '/bin/bash $TESTBED_CONFIG_DIR/ready_hook.sh cloud'
+  cloud_run_4:
+    hooks:
+      _all:
+        _ready: '/bin/bash $TESTBED_CONFIG_DIR/ready_hook.sh cloud'

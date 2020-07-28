@@ -122,7 +122,7 @@ void main_task(void*) {
   time(&t);
 
   size_t retries = 0;
-  while (t < 1577836800 && retries < 60) {
+  while (t < 1577836800 && retries < 10) {
     printf("waiting for time\n");
     vTaskDelay(1000 / portTICK_PERIOD_MS);
     time(&t);
@@ -217,9 +217,10 @@ void main_task(void*) {
                           4192, nullptr, 4, nullptr, 0);
 
   printf("StaticHeap: %d \n", xPortGetFreeHeapSize());
-
   testbed_log_rt_integer("boot_timestamp", t);
 
+  vTaskDelay(2000);
+  testbed_log_rt_integer("_ready", t);
   vTaskDelete(nullptr);
 
   // while (true) {
