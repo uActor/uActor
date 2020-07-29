@@ -3,9 +3,6 @@
 #ifdef ESP_IDF
 #include <sdkconfig.h>
 #endif
-#if CONFIG_BENCHMARK_BREAKDOWN
-#include <support/testbed.h>
-#endif
 
 extern "C" {
 #include <arpa/inet.h>
@@ -17,6 +14,8 @@ extern "C" {
 #include <unistd.h>
 }
 
+#include <support/testbed.h>
+
 #include <algorithm>
 #include <cmath>
 #include <cstring>
@@ -25,12 +24,12 @@ extern "C" {
 #include <utility>
 #include <vector>
 
-#include <support/testbed.h>
-
 namespace uActor::Linux::Remote {
 
 TCPForwarder::TCPForwarder(std::string listen_ip, uint32_t port)
-    : handle(PubSub::Router::get_instance().new_subscriber()), _listen_ip(listen_ip), _port(port) {
+    : handle(PubSub::Router::get_instance().new_subscriber()),
+      _listen_ip(listen_ip),
+      _port(port) {
   PubSub::Filter primary_filter{
       PubSub::Constraint(std::string("node_id"), BoardFunctions::NODE_ID),
       PubSub::Constraint(std::string("actor_type"), "forwarder"),

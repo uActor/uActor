@@ -4,8 +4,8 @@
 #include <map>
 #include <mutex>
 #include <set>
-#include <string_view>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 
 #include "board_functions.hpp"
@@ -16,8 +16,8 @@
 namespace uActor::Linux::Remote {
 
 struct TCPTaskArgs {
-
-  TCPTaskArgs(std::string listen_ip, uint32_t port) : listen_ip(listen_ip), port(port) {}
+  TCPTaskArgs(std::string listen_ip, uint32_t port)
+      : listen_ip(listen_ip), port(port) {}
   std::string listen_ip;
   int port;
 };

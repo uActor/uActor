@@ -1,11 +1,11 @@
 #include <unistd.h>
 
 #include <boost/program_options.hpp>
+#include <ctime>
 #include <iostream>
 #include <thread>
 #include <utility>
 #include <vector>
-#include <ctime>
 
 #include "actor_runtime/executor.hpp"
 #include "actor_runtime/lua_executor.hpp"
@@ -40,9 +40,9 @@ boost::program_options::variables_map parse_arguments(int arg_count,
       "peer to connect to")("node-labels",
                             boost::program_options::value<std::string>(),
                             "node labels (comma seperated)")(
-      "tcp-port", boost::program_options::value<uint>(), "tcp port")
-      (
-      "tcp-listen-ip", boost::program_options::value<std::string>(), "tcp listen ip");
+      "tcp-port", boost::program_options::value<uint>(), "tcp port")(
+      "tcp-listen-ip", boost::program_options::value<std::string>(),
+      "tcp listen ip");
 
   boost::program_options::variables_map arguments;
   boost::program_options::store(
@@ -81,7 +81,6 @@ int main(int arg_count, char** args) {
   if (arguments.count("tcp-listen-ip")) {
     listen_ip = arguments["tcp-listen-ip"].as<std::string>();
   }
-
 
   uActor::BoardFunctions::epoch = 0;
 
