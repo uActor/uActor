@@ -21,6 +21,8 @@ extern "C" {
 #include "pubsub/router.hpp"
 #include "remote/tcp_forwarder.hpp"
 #include "remote/wifi_stack.hpp"
+#include "support/testbed.h"
+
 extern "C" {
 void app_main(void);
 }
