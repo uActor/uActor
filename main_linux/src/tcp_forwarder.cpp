@@ -216,8 +216,12 @@ void TCPForwarder::remove_subscription(uint32_t local_id, uint32_t sub_id,
 bool TCPForwarder::write(int sock, int len, const char* message) {
   int to_write = len;
   while (to_write > 0) {
-    int written =
-        send(sock, message + (len - to_write), to_write, MSG_NOSIGNAL);
+#if defined(MSG_NOSIGNAL)  // POSIX
+    int flag = MSG_NOSIGNAL;
+#elif defined(SO_NOSIGPIPE)  // MacOS
+    int flag = SO_NOSIGPIPE;
+#endif
+    int written = send(sock, message + (len - to_write), to_write, flag);
     if (written < 0) {
       printf("Error occurred during sending: errno %d\n", errno);
       return true;
