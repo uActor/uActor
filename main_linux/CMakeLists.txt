@@ -26,6 +26,5 @@ target_compile_options(uActor PUBLIC -DCONFIG_BENCHMARK_ENABLED=1)
 
 target_link_libraries(uActorBin uActor)
 
-
 target_link_libraries(uActorBin Threads::Threads)
 target_link_libraries(uActorBin Boost::program_options)

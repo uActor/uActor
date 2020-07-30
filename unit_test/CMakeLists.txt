@@ -11,12 +11,7 @@ set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 # the gtest and gtest_main targets.
 add_subdirectory(googletest EXCLUDE_FROM_ALL)
 
-file(GLOB lua_SRC
-  "../components/lua/lua/*.c"
-)
-file(GLOB executable "../components/lua/lua/lua.c")
-message(${lua_SRC})
-list(REMOVE_ITEM lua_SRC ${executable})
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../uActor ${CMAKE_CURRENT_BINARY_DIR}/uActor)
 
 # The gtest/gtest_main targets carry header search path
 # dependencies automatically when using CMake 2.8.11 or
@@ -24,11 +19,11 @@ list(REMOVE_ITEM lua_SRC ${executable})
 if (CMAKE_VERSION VERSION_LESS 2.8.11)
   include_directories("${gtest_SOURCE_DIR}/include")
 endif()
-include_directories(../components/lua/include)
-include_directories(../main/include)
+
 include_directories(../main/legacy/include)
 
 # Now simply link against gtest or gtest_main as needed. Eg
-add_executable(runtime_system_test ${lua_SRC} ../main/src/controllers/deployment_manager.cpp ../main/src/controllers/topology_manager.cpp  ../main/src/actor_runtime/managed_actor.cpp ../main/src/actor_runtime/lua_executor.cpp ../main/src/actor_runtime/managed_lua_actor.cpp ../main/src/actor_runtime/managed_native_actor.cpp ../main/src/actor_runtime/native_actor.cpp ../main/src/pubsub/constraint_index.cpp ../main/src/pubsub/constraint.cpp ../main/src/pubsub/filter.cpp ../main/src/pubsub/publication.cpp ../main/src/pubsub/subscription.cpp ../main/src/pubsub/router.cpp mock_board_functions.cpp mock_router.cpp mock_receiver.cpp legacy_routing_tests.cpp ../main/src/remote/remote_connection.cpp pubsub_tests.cpp runtime_tests.cpp forwarding_tests.cpp)
-target_link_libraries(runtime_system_test gtest_main)
-add_test(NAME runtime_system_unit_test COMMAND runtime_system_test)
+add_executable(uactor_test mock_board_functions.cpp mock_router.cpp mock_receiver.cpp legacy_routing_tests.cpp pubsub_tests.cpp runtime_tests.cpp forwarding_tests.cpp)
+target_link_libraries(uactor_test gtest_main)
+target_link_libraries(uactor_test uActor)
+add_test(NAME uactor_test COMMAND uactor_test)
