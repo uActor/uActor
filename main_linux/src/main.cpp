@@ -11,7 +11,16 @@
 #include "actor_runtime/lua_executor.hpp"
 #include "actor_runtime/native_executor.hpp"
 #include "remote/tcp_forwarder.hpp"
+
+#if CONFIG_BENCHMARK_ENABLED
 #include "support/testbed.h"
+#endif
+
+/*
+ *  Offset to be subtracted from the current timestamp to
+ *  set the epoch number
+ */
+#define MAGIC_EPOCH_OFFSET 1590969600
 
 std::thread start_lua_executor() {
   uActor::ActorRuntime::ExecutorSettings* params =
@@ -34,15 +43,39 @@ std::thread start_native_executor() {
 boost::program_options::variables_map parse_arguments(int arg_count,
                                                       char** args) {
   boost::program_options::options_description desc("Options");
-  desc.add_options()("help", "produce help message")(
-      "node-id", boost::program_options::value<std::string>(), "set node id")(
-      "server-node", boost::program_options::value<std::string>(),
-      "peer to connect to")("node-labels",
-                            boost::program_options::value<std::string>(),
-                            "node labels (comma seperated)")(
-      "tcp-port", boost::program_options::value<uint>(), "tcp port")(
-      "tcp-listen-ip", boost::program_options::value<std::string>(),
-      "tcp listen ip");
+  // clang-format off
+  desc.add_options()
+  ("help", "produce this help message.")
+  ("node-id", boost::program_options::value<std::string>(), "Set the node id.")
+  (
+    "server-node",
+    boost::program_options::value<std::string>() -> multitoken() -> composing(),
+   "List nodes to connect to if there is a path (can be specified many times)."
+  )
+  (
+    "node-label",
+    boost::program_options::value<std::vector<std::string>>()
+      -> multitoken() -> composing(),
+    "Add a node label ( key:value, can be specified many times)."
+  )
+  (
+    "tcp-port",
+    boost::program_options::value<uint16_t>(),
+    "Set the port the TCP server will listen on."
+  )
+  (
+    "tcp-listen-ip", boost::program_options::value<std::string>(),
+    "Set the IP the TCP server will listen on."
+  )
+  (
+    "tcp-external-address", boost::program_options::value<std::string>(),
+    "Provide a hint on the external address this node can be reached at."
+  )
+  (
+    "tcp-external-port", boost::program_options::value<uint16_t>(),
+    "Provide a hint on the external port this node can be reached at."
+  ); // NOLINT
+  // clang-format on
 
   boost::program_options::variables_map arguments;
   boost::program_options::store(
@@ -72,47 +105,50 @@ int main(int arg_count, char** args) {
     uActor::BoardFunctions::SERVER_NODES =
         std::vector<std::string>{arguments["server-node"].as<std::string>()};
   }
-  int tcp_port = 1337;
-  if (arguments.count("tcp-port")) {
-    tcp_port = arguments["tcp-port"].as<uint>();
+
+  time_t boot_timestamp = 0;
+  time(&boot_timestamp);
+  if (boot_timestamp >= MAGIC_EPOCH_OFFSET) {
+    uActor::BoardFunctions::epoch = boot_timestamp - MAGIC_EPOCH_OFFSET;
+  } else {
+    /*
+     * The timestamp is not set correctly.
+     * If this only happens once, this will cause problems.
+     */
+    std::cout << "WARNING: Timestamp lower than the magic offset!" << std::endl;
+    uActor::BoardFunctions::epoch = boot_timestamp;
   }
 
-  std::string listen_ip = "127.0.0.1";
+  auto router_task = std::thread(&uActor::PubSub::Router::os_task, nullptr);
+
+  int tcp_port = 1337;
+  if (arguments.count("tcp-port")) {
+    tcp_port = arguments["tcp-port"].as<uint16_t>();
+  }
+
+  std::string listen_ip = "0.0.0.0";
   if (arguments.count("tcp-listen-ip")) {
     listen_ip = arguments["tcp-listen-ip"].as<std::string>();
   }
 
-  uActor::BoardFunctions::epoch = 0;
+  std::string external_address = "";
+  if (arguments.count("tcp-external-address")) {
+    external_address = arguments["tcp-external-address"].as<std::string>();
+  }
 
-  auto router_task = std::thread(&uActor::PubSub::Router::os_task, nullptr);
+  uint16_t external_port = 0;
+  if (arguments.count("tcp-external-port")) {
+    external_port = arguments["tcp-external-port"].as<uint16_t>();
+  }
 
-  auto tcp_task_args = uActor::Linux::Remote::TCPTaskArgs(listen_ip, tcp_port);
+  auto tcp_task_args = uActor::Linux::Remote::TCPAddressArguments(
+      listen_ip, tcp_port, external_address, external_port);
 
   auto tcp_task = std::thread(&uActor::Linux::Remote::TCPForwarder::os_task,
                               reinterpret_cast<void*>(&tcp_task_args));
   auto native_executor = start_native_executor();
 
   sleep(2);
-
-  time_t t = 0;
-  time(&t);
-
-  size_t retries = 0;
-  while (t < 1577836800 && retries < 10) {
-    printf("waiting for time\n");
-    sleep(1);
-    time(&t);
-    retries++;
-  }
-
-  if (t > 1577836800) {
-    t -= 1577836800;
-    uActor::BoardFunctions::epoch = t;
-    printf("epoch %ld\n", t);
-  } else {
-    printf("Epoch not set according to time\n");
-    uActor::BoardFunctions::epoch = 0;
-  }
 
   auto create_deployment_manager =
       uActor::PubSub::Publication(uActor::BoardFunctions::NODE_ID, "root", "1");
@@ -156,16 +192,15 @@ int main(int arg_count, char** args) {
     uActor::PubSub::Router::get_instance().publish(std::move(label_update));
   }
 
-  if (arguments.count("node-labels")) {
-    auto raw_labels = arguments["node-labels"].as<std::string>();
+  if (arguments.count("node-label")) {
+    auto raw_labels = arguments["node-label"].as<std::vector<std::string>>();
 
     std::list<std::pair<std::string, std::string>> labels;
-    for (std::string_view raw_label :
-         uActor::Support::StringHelper::string_split(raw_labels)) {
-      uint32_t split_pos = raw_label.find_first_of("=");
+    for (const auto& raw_label : raw_labels) {
+      uint32_t split_pos = raw_label.find_first_of(":");
 
-      std::string_view key = raw_label.substr(0, split_pos);
-      std::string_view value = raw_label.substr(split_pos + 1);
+      std::string key = raw_label.substr(0, split_pos);
+      std::string value = raw_label.substr(split_pos + 1);
 
       uActor::PubSub::Publication label_update(uActor::BoardFunctions::NODE_ID,
                                                "root", "1");
@@ -180,7 +215,11 @@ int main(int arg_count, char** args) {
 
   auto lua_executor = start_lua_executor();
 
-  testbed_log_rt_integer("_ready", t);
+#if CONFIG_BENCHMARK_ENABLED
+  sleep(2);
+  testbed_log_rt_integer("_ready", boot_timestamp);
+#endif
+
   tcp_task.join();
   return 0;
 }

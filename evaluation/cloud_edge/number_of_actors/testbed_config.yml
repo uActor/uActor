@@ -5,7 +5,6 @@ boards:
       binary_name: "uActorBin"
       parameters:
         - --node-id=node_edge
-        - --tcp-listen-ip=192.168.50.3
     build_configuration:
       root_directory: {{TESTBED_ROOT_DIR}}/main_linux
       configuration_name: "default"

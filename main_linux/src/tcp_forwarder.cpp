@@ -13,8 +13,9 @@ extern "C" {
 #include <sys/types.h>
 #include <unistd.h>
 }
-
+#if CONFIG_BENCHMARK_ENABLED
 #include <support/testbed.h>
+#endif
 
 #include <algorithm>
 #include <cmath>
@@ -26,10 +27,9 @@ extern "C" {
 
 namespace uActor::Linux::Remote {
 
-TCPForwarder::TCPForwarder(std::string listen_ip, uint32_t port)
+TCPForwarder::TCPForwarder(TCPAddressArguments address_arguments)
     : handle(PubSub::Router::get_instance().new_subscriber()),
-      _listen_ip(listen_ip),
-      _port(port) {
+      _address_arguments(address_arguments) {
   PubSub::Filter primary_filter{
       PubSub::Constraint(std::string("node_id"), BoardFunctions::NODE_ID),
       PubSub::Constraint(std::string("actor_type"), "forwarder"),
@@ -51,8 +51,8 @@ TCPForwarder::TCPForwarder(std::string listen_ip, uint32_t port)
 }
 
 void TCPForwarder::os_task(void* args) {
-  TCPTaskArgs task_args = *reinterpret_cast<TCPTaskArgs*>(args);
-  TCPForwarder fwd = TCPForwarder(task_args.listen_ip, task_args.port);
+  TCPAddressArguments task_args = *reinterpret_cast<TCPAddressArguments*>(args);
+  TCPForwarder fwd = TCPForwarder(task_args);
   auto reader = std::thread(&tcp_reader_task, reinterpret_cast<void*>(&fwd));
   while (true) {
     auto result = fwd.handle.receive(BoardFunctions::SLEEP_FOREVER);
@@ -237,13 +237,10 @@ void TCPForwarder::tcp_reader() {
   int addr_family = AF_INET;
   int ip_protocol = IPPROTO_IP;
 
-  testbed_log_rt_string("address", _listen_ip.data());
-  // TODO(raphaelhetzel) change type, log netmask and gateway
-
   sockaddr_in dest_addr;
-  dest_addr.sin_addr.s_addr = inet_addr(_listen_ip.data());
+  dest_addr.sin_addr.s_addr = inet_addr(_address_arguments.listen_ip.data());
   dest_addr.sin_family = AF_INET;
-  dest_addr.sin_port = htons(_port);
+  dest_addr.sin_port = htons(_address_arguments.port);
 
   listen_sock = socket(addr_family, SOCK_STREAM, ip_protocol);
   if (listen_sock < 0) {
@@ -264,8 +261,36 @@ void TCPForwarder::tcp_reader() {
     listen_sock = 0;
   }
 
-  auto output = inet_ntoa(dest_addr.sin_addr);
-  printf("Socket bound - listen address: %s\n", output);
+  printf("TCP Socket bound: %s:%d\n", _address_arguments.listen_ip.data(),
+         _address_arguments.port);
+
+  if (_address_arguments.external_port_hint > 0 ||
+      _address_arguments.external_address_hint.length() > 0) {
+    std::string external_address =
+        _address_arguments.external_address_hint.length() > 0
+            ? _address_arguments.external_address_hint
+            : _address_arguments.listen_ip;
+    uint16_t external_port = _address_arguments.external_port_hint
+                                 ? _address_arguments.external_port_hint
+                                 : _address_arguments.port;
+    printf("TCP Socket externally reachable at: %s:%d\n",
+           external_address.data(), external_port);
+  }
+
+#if CONFIG_BENCHMARK_ENABLED
+  if (_address_arguments.external_address_hint.length() > 0) {
+    testbed_log_rt_string("address",
+                          _address_arguments.external_address_hint.data());
+  } else {
+    testbed_log_rt_string("address", _address_arguments.listen_ip.data());
+  }
+
+  if (_address_arguments.external_port_hint > 0) {
+    testbed_log_rt_integer("port", _address_arguments.external_port_hint);
+  } else {
+    testbed_log_rt_integer("port", _address_arguments.port);
+  }
+#endif
 
   err = listen(listen_sock, 1);
   if (err != 0) {

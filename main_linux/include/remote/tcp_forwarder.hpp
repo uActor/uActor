@@ -15,18 +15,26 @@
 
 namespace uActor::Linux::Remote {
 
-struct TCPTaskArgs {
-  TCPTaskArgs(std::string listen_ip, uint32_t port)
-      : listen_ip(listen_ip), port(port) {}
+struct TCPAddressArguments {
+  TCPAddressArguments(std::string listen_ip, uint16_t port,
+                      std::string external_address, uint16_t external_port)
+      : listen_ip(listen_ip),
+        port(port),
+        external_address_hint(external_address),
+        external_port_hint(external_port) {}
+
   std::string listen_ip;
-  int port;
+  uint16_t port;
+
+  std::string external_address_hint;
+  uint16_t external_port_hint;
 };
 
 class TCPForwarder : public uActor::Remote::ForwarderSubscriptionAPI {
  public:
   constexpr static const char* TAG = "tcp_forwarder";
 
-  explicit TCPForwarder(std::string listen_ip, uint32_t port);
+  explicit TCPForwarder(TCPAddressArguments address_arguments);
 
   static void os_task(void* args);
 
@@ -44,8 +52,7 @@ class TCPForwarder : public uActor::Remote::ForwarderSubscriptionAPI {
   int forwarder_subscription_id;
   int peer_announcement_subscription_id;
   int subscription_update_subscription_id;
-  uint32_t _port;
-  std::string _listen_ip;
+  TCPAddressArguments _address_arguments;
   PubSub::ReceiverHandle handle;
 
   uint32_t next_local_id = 0;

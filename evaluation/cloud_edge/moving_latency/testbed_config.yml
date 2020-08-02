@@ -26,7 +26,7 @@ boards:
       parameters:
         - --node-id=node_edge
         - --server-node=node_cloud
-        - --tcp-listen-ip=192.168.50.3
+        - --tcp-external-address=192.168.50.3
     build_configuration:
       root_directory: {{TESTBED_ROOT_DIR}}/main_linux
       configuration_name: "default"
