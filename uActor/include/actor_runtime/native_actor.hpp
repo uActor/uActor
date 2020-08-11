@@ -1,6 +1,7 @@
 #ifndef UACTOR_INCLUDE_ACTOR_RUNTIME_NATIVE_ACTOR_HPP_
 #define UACTOR_INCLUDE_ACTOR_RUNTIME_NATIVE_ACTOR_HPP_
 
+#include <memory>
 #include <string>
 #include <string_view>
 
@@ -17,6 +18,13 @@ class NativeActor {
               std::string_view actor_type, std::string_view instance_id);
   virtual void receive(const PubSub::Publication& publication) = 0;
   virtual ~NativeActor() {}
+
+  template <typename T>
+  static std::unique_ptr<NativeActor> create_instance(
+      ActorRuntime::ManagedNativeActor* actor_wrapper, std::string_view node_id,
+      std::string_view actor_type, std::string_view instance_id) {
+    return std::make_unique<T>(actor_wrapper, node_id, actor_type, instance_id);
+  }
 
  protected:
   void publish(PubSub::Publication&& publication);

@@ -9,7 +9,10 @@
 
 #include "actor_runtime/executor.hpp"
 #include "actor_runtime/lua_executor.hpp"
+#include "actor_runtime/managed_native_actor.hpp"
 #include "actor_runtime/native_executor.hpp"
+#include "controllers/deployment_manager.hpp"
+#include "controllers/topology_manager.hpp"
 #include "remote/tcp_forwarder.hpp"
 
 #if CONFIG_BENCHMARK_ENABLED
@@ -146,6 +149,11 @@ int main(int arg_count, char** args) {
 
   auto tcp_task = std::thread(&uActor::Linux::Remote::TCPForwarder::os_task,
                               reinterpret_cast<void*>(&tcp_task_args));
+
+  uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
+      uActor::Controllers::TopologyManager>("topology_manager");
+  uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
+      uActor::Controllers::DeploymentManager>("deployment_manager");
   auto native_executor = start_native_executor();
 
   sleep(2);

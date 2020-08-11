@@ -14,8 +14,12 @@ extern "C" {
 
 #include "actor_runtime/lua_executor.hpp"
 #include "actor_runtime/managed_actor.hpp"
+#include "actor_runtime/managed_native_actor.hpp"
 #include "actor_runtime/native_executor.hpp"
+#include "bmp180_actor.hpp"
 #include "board_functions.hpp"
+#include "controllers/deployment_manager.hpp"
+#include "controllers/topology_manager.hpp"
 #include "io/gpio_actor.hpp"
 #include "lua.hpp"
 #include "pubsub/router.hpp"
@@ -116,6 +120,14 @@ void main_task(void*) {
 
   xTaskCreatePinnedToCore(&uActor::ESP32::Remote::WifiStack::os_task,
                           "WIFI_STACK", 4192, nullptr, 4, nullptr, 0);
+
+  uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
+      uActor::Controllers::TopologyManager>("topology_manager");
+  uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
+      uActor::Controllers::DeploymentManager>("deployment_manager");
+  uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
+      uActor::ESP32::IO::BMP180Actor>("bmp180_sensor");
+
   xTaskCreatePinnedToCore(&uActor::ActorRuntime::NativeExecutor::os_task,
                           "NATIVE_EXECUTOR", 6168, &executor_settings, 5,
                           nullptr, 0);
