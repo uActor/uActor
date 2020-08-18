@@ -59,29 +59,27 @@ class Executor : public ExecutorApi {
     const char* actor_type =
         std::get<std::string_view>(publication.get_attr("spawn_actor_type"))
             .data();
+    const char* actor_version =
+        std::get<std::string_view>(publication.get_attr("spawn_actor_version"))
+            .data();
     const char* instance_id =
         std::get<std::string_view>(publication.get_attr("spawn_instance_id"))
             .data();
-    const char* code =
-        std::get<std::string_view>(publication.get_attr("spawn_code")).data();
 
     uint32_t local_id = next_id++;
 
-    if (auto [actor_it, success] =
-            actors.try_emplace(local_id, this, local_id, node_id, actor_type,
-                               instance_id, code, std::forward<Args>(args)...);
+    if (auto [actor_it, success] = actors.try_emplace(
+            local_id, this, local_id, node_id, actor_type, actor_version,
+            instance_id, std::forward<Args>(args)...);
         success) {
-      if (actor_it->second.initialize()) {
-        auto init_message =
-            PubSub::Publication(_node_id, _actor_type, _instance_id);
-        init_message.set_attr("node_id", node_id);
-        init_message.set_attr("actor_type", actor_type);
-        init_message.set_attr("instance_id", instance_id);
-        init_message.set_attr("type", "init");
-        PubSub::Router::get_instance().publish(std::move(init_message));
-      } else {
-        actors.erase(actor_it);
-      }
+      actor_it->second.early_initialize();
+      auto init_message =
+          PubSub::Publication(_node_id, _actor_type, _instance_id);
+      init_message.set_attr("node_id", node_id);
+      init_message.set_attr("actor_type", actor_type);
+      init_message.set_attr("instance_id", instance_id);
+      init_message.set_attr("type", "init");
+      PubSub::Router::get_instance().publish(std::move(init_message));
     }
   }
 

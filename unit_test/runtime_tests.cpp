@@ -4,17 +4,41 @@
 #include <thread>
 
 #include "actor_runtime/lua_executor.hpp"
+#include "actor_runtime/native_executor.hpp"
+#include "actor_runtime/code_store.hpp"
 #include "pubsub/publication.hpp"
 #include "pubsub/receiver_handle.hpp"
 #include "pubsub/router.hpp"
 
 namespace uActor::Test {
 
+struct Executors {
+
+  Executors(std::thread lua_executor, std::thread native_executor) : lua_executor(std::move(lua_executor)), native_executor(std::move(native_executor)) {}
+
+  std::thread lua_executor;
+  std::thread native_executor;
+};
+
 void spawn_actor(std::string_view code, std::string_view instance_id) {
+
+  auto publish_code = PubSub::Publication("node_1", "root", "1");
+
+  publish_code.set_attr("type", "actor_code");
+  publish_code.set_attr("actor_code_type", "actor");
+  publish_code.set_attr("actor_code_version", "default");
+  publish_code.set_attr("actor_code_lifetime_end", static_cast<int32_t>(UINT32_MAX));
+  publish_code.set_attr("actor_code_runtime_type", "lua");
+  publish_code.set_attr("actor_code", std::string(code));
+
+  PubSub::Router::get_instance().publish(std::move(publish_code));
+
+
   auto create_actor = PubSub::Publication("node_1", "root", "1");
   create_actor.set_attr("spawn_code", code);
   create_actor.set_attr("spawn_node_id", "node_1");
   create_actor.set_attr("spawn_actor_type", "actor");
+  create_actor.set_attr("spawn_actor_version", "default");
   create_actor.set_attr("spawn_instance_id", instance_id);
   create_actor.set_attr("node_id", "node_1");
   create_actor.set_attr("actor_type", "lua_executor");
@@ -22,13 +46,19 @@ void spawn_actor(std::string_view code, std::string_view instance_id) {
   PubSub::Router::get_instance().publish(std::move(create_actor));
 }
 
-void shutdown_executor(std::thread* executor_thread) {
-  auto exit = PubSub::Publication("node_1", "root", "1");
-  exit.set_attr("node_id", "node_1");
-  exit.set_attr("instance_id", "1");
-  exit.set_attr("actor_type", "lua_executor");
-  PubSub::Router::get_instance().publish(std::move(exit));
-  executor_thread->join();
+void shutdown_executors(Executors* executors) {
+  auto exit_lua = PubSub::Publication("node_1", "root", "1");
+  exit_lua.set_attr("node_id", "node_1");
+  exit_lua.set_attr("instance_id", "1");
+  exit_lua.set_attr("actor_type", "lua_executor");
+  PubSub::Router::get_instance().publish(std::move(exit_lua));
+  auto exit_native = PubSub::Publication("node_1", "root", "1");
+  exit_native.set_attr("node_id", "node_1");
+  exit_native.set_attr("instance_id", "1");
+  exit_native.set_attr("actor_type", "native_executor");
+  PubSub::Router::get_instance().publish(std::move(exit_native));
+  executors->lua_executor.join();
+  executors->native_executor.join();
 }
 
 PubSub::ReceiverHandle subscription_handle_with_default_subscription() {
@@ -41,13 +71,36 @@ PubSub::ReceiverHandle subscription_handle_with_default_subscription() {
   return std::move(root_handle);
 }
 
-std::thread start_executor_thread() {
-  ActorRuntime::ExecutorSettings params = {.node_id = "node_1",
-                                           .instance_id = "1"};
-  std::thread executor_thread =
-      std::thread(&ActorRuntime::LuaExecutor::os_task, &params);
+Executors start_executor_threads() {
+  BoardFunctions::NODE_ID = "node_1";
+  ActorRuntime::ExecutorSettings params = {
+      .node_id = "node_1",
+      .instance_id = "1"
+  };
+  Executors executors(
+  std::thread(&ActorRuntime::LuaExecutor::os_task, &params),
+  std::thread(&uActor::ActorRuntime::NativeExecutor::os_task, &params)
+  );
   usleep(1000);
-  return std::move(executor_thread);
+
+  uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
+      uActor::ActorRuntime::CodeStore>("code_store");
+
+  auto create_code_store =
+      uActor::PubSub::Publication("node_1", "root", "1");
+  create_code_store.set_attr("command", "spawn_native_actor");
+  create_code_store.set_attr("spawn_actor_version", "default");
+  create_code_store.set_attr("spawn_node_id", "node_1");
+  create_code_store.set_attr("spawn_actor_type", "code_store");
+  create_code_store.set_attr("spawn_instance_id", "1");
+  create_code_store.set_attr("node_id", "node_1");
+  create_code_store.set_attr("actor_type", "native_executor");
+  create_code_store.set_attr("instance_id", "1");
+  uActor::PubSub::Router::get_instance().publish(std::move(create_code_store));
+
+  usleep(1000);
+
+  return std::move(executors);
 }
 
 TEST(RuntimeSystem, pingPong) {
@@ -58,7 +111,7 @@ TEST(RuntimeSystem, pingPong) {
   end)";
 
   auto root_handle = subscription_handle_with_default_subscription();
-  auto executor_thread = start_executor_thread();
+  auto executors = start_executor_threads();
 
   spawn_actor(test_pong, "1");
 
@@ -78,7 +131,7 @@ TEST(RuntimeSystem, pingPong) {
           .data(),
       "pong");
 
-  shutdown_executor(&executor_thread);
+  shutdown_executors(&executors);
 }
 
 TEST(RuntimeSystem, delayedSend) {
@@ -90,7 +143,7 @@ TEST(RuntimeSystem, delayedSend) {
   end)";
 
   auto root_handle = subscription_handle_with_default_subscription();
-  auto executor_thread = start_executor_thread();
+  auto executors = start_executor_threads();
 
   spawn_actor(delayed_pong, "1");
 
@@ -103,7 +156,7 @@ TEST(RuntimeSystem, delayedSend) {
   ping.set_attr("message", "ping");
   PubSub::Router::get_instance().publish(std::move(ping));
   {
-    auto result = root_handle.receive(1000);
+    auto result = root_handle.receive(10000);
     ASSERT_TRUE(result);
     ASSERT_STREQ(
         std::get<std::string_view>(result->publication.get_attr("message"))
@@ -120,7 +173,7 @@ TEST(RuntimeSystem, delayedSend) {
         "pong1");
   }
 
-  shutdown_executor(&executor_thread);
+  shutdown_executors(&executors);
 }
 
 TEST(RuntimeSystem, block_for) {
@@ -138,7 +191,7 @@ TEST(RuntimeSystem, block_for) {
   end)";
 
   auto root_handle = subscription_handle_with_default_subscription();
-  auto executor_thread = start_executor_thread();
+  auto executors = start_executor_threads();
 
   spawn_actor(block_for_pong, "1");
 
@@ -159,7 +212,7 @@ TEST(RuntimeSystem, block_for) {
   PubSub::Router::get_instance().publish(std::move(ping2));
 
   {
-    auto result = root_handle.receive(1000);
+    auto result = root_handle.receive(2000);
     ASSERT_TRUE(result);
     ASSERT_STREQ(
         std::get<std::string_view>(result->publication.get_attr("message"))
@@ -175,7 +228,7 @@ TEST(RuntimeSystem, block_for) {
         "pong_timeout");
   }
   {
-    auto result = root_handle.receive(1000);
+    auto result = root_handle.receive(2000);
     ASSERT_TRUE(result);
     ASSERT_STREQ(
         std::get<std::string_view>(result->publication.get_attr("message"))
@@ -183,7 +236,7 @@ TEST(RuntimeSystem, block_for) {
         "pong2");
   }
 
-  shutdown_executor(&executor_thread);
+  shutdown_executors(&executors);
 }
 
 TEST(RuntimeSystem, sub_unsub) {
@@ -201,7 +254,7 @@ TEST(RuntimeSystem, sub_unsub) {
   end)";
 
   auto root_handle = subscription_handle_with_default_subscription();
-  auto executor_thread = start_executor_thread();
+  auto executors = start_executor_threads();
 
   spawn_actor(block_for_pong, "1");
 
@@ -214,19 +267,17 @@ TEST(RuntimeSystem, sub_unsub) {
   sub.set_attr("message", "sub");
   PubSub::Router::get_instance().publish(std::move(sub));
 
-  usleep(10000);
+  auto sub_result = root_handle.receive(2000);
+  ASSERT_TRUE(sub_result);
+  int32_t sub_id = std::get<std::int32_t>(sub_result->publication.get_attr("sub_id"));
+
   auto test_message = PubSub::Publication("node_1", "root", "1");
   test_message.set_attr("foo", "bar");
   test_message.set_attr("message", "asdf");
   PubSub::Router::get_instance().publish(std::move(test_message));
 
-  auto sub_result = root_handle.receive(1000);
-  ASSERT_TRUE(sub_result);
-  int32_t sub_id =
-      std::get<std::int32_t>(sub_result->publication.get_attr("sub_id"));
-
   {
-    auto result = root_handle.receive(1000);
+    auto result = root_handle.receive(2000);
     ASSERT_TRUE(result);
     ASSERT_STREQ(
         std::get<std::string_view>(result->publication.get_attr("message"))
@@ -242,9 +293,9 @@ TEST(RuntimeSystem, sub_unsub) {
   unsub.set_attr("sub_id", sub_id);
   PubSub::Router::get_instance().publish(std::move(unsub));
 
-  ASSERT_FALSE(root_handle.receive(1000));
+  ASSERT_FALSE(root_handle.receive(2000));
 
-  shutdown_executor(&executor_thread);
+  shutdown_executors(&executors);
 }
 
 TEST(RuntimeSystem, complex_subscription) {
@@ -260,11 +311,11 @@ TEST(RuntimeSystem, complex_subscription) {
   end)";
 
   auto root_handle = subscription_handle_with_default_subscription();
-  auto executor_thread = start_executor_thread();
+  auto executors = start_executor_threads();
 
   spawn_actor(block_for_pong, "1");
 
-  ASSERT_FALSE(root_handle.receive(1000));
+  ASSERT_FALSE(root_handle.receive(2000));
 
   auto sub = PubSub::Publication("node_1", "root", "1");
   sub.set_attr("node_id", "node_1");
@@ -273,18 +324,18 @@ TEST(RuntimeSystem, complex_subscription) {
   sub.set_attr("message", "sub");
   PubSub::Router::get_instance().publish(std::move(sub));
 
-  usleep(10000);
+  usleep(1000);
 
   auto test_message = PubSub::Publication("node_1", "root", "1");
   test_message.set_attr("foo", 1);
   test_message.set_attr("bar", 20.0f);
   PubSub::Router::get_instance().publish(std::move(test_message));
 
-  auto sub_result = root_handle.receive(1000);
+  auto sub_result = root_handle.receive(2000);
   ASSERT_TRUE(sub_result);
 
   {
-    auto result = root_handle.receive(1000);
+    auto result = root_handle.receive(2000);
     ASSERT_TRUE(result);
     ASSERT_STREQ(
         std::get<std::string_view>(result->publication.get_attr("message"))
@@ -292,7 +343,7 @@ TEST(RuntimeSystem, complex_subscription) {
         "pong");
   }
 
-  shutdown_executor(&executor_thread);
+  shutdown_executors(&executors);
 }
 
 TEST(RuntimeSystem, lifetime_messages) {
@@ -300,11 +351,14 @@ TEST(RuntimeSystem, lifetime_messages) {
 end)";
 
   auto lifetime_handle = PubSub::Router::get_instance().new_subscriber();
+
+  auto executors = start_executor_threads();
+
   PubSub::Filter primary_filter{
-      PubSub::Constraint("category", "actor_lifetime")};
+        PubSub::Constraint("category", "actor_lifetime")};
   lifetime_handle.subscribe(primary_filter);
 
-  auto executor_thread = start_executor_thread();
+  usleep(1000);
 
   spawn_actor(test_pong, "1");
 
@@ -322,7 +376,7 @@ end)";
   exit.set_attr("type", "exit");
   PubSub::Router::get_instance().publish(std::move(exit));
 
-  auto exit_result = lifetime_handle.receive(1000);
+  auto exit_result = lifetime_handle.receive(5000);
   ASSERT_TRUE(exit_result);
   ASSERT_STREQ(
       std::get<std::string_view>(exit_result->publication.get_attr("type"))
@@ -333,7 +387,7 @@ end)";
                    .data(),
                "clean_exit");
 
-  shutdown_executor(&executor_thread);
+  shutdown_executors(&executors);
 }
 
 TEST(RuntimeSystem, spawn_failure_syntax) {
@@ -346,18 +400,18 @@ TEST(RuntimeSystem, spawn_failure_syntax) {
   root_handle.subscribe(
       PubSub::Filter{PubSub::Constraint{"type", "actor_exit"}});
 
-  auto executor_thread = start_executor_thread();
+  auto executors = start_executor_threads();
 
   spawn_actor(test_spawn_failure, "1");
 
-  auto result = root_handle.receive(2000);
+  auto result = root_handle.receive(3000);
   ASSERT_TRUE(result);
   ASSERT_STREQ(
       std::get<std::string_view>(result->publication.get_attr("exit_reason"))
           .data(),
       "initialization_failure");
 
-  shutdown_executor(&executor_thread);
+  shutdown_executors(&executors);
 }
 
 TEST(RuntimeSystem, spawn_failure_no_receive) {
@@ -370,18 +424,18 @@ TEST(RuntimeSystem, spawn_failure_no_receive) {
   root_handle.subscribe(
       PubSub::Filter{PubSub::Constraint{"type", "actor_exit"}});
 
-  auto executor_thread = start_executor_thread();
+  auto executors = start_executor_threads();
 
   spawn_actor(test_spawn_failure, "1");
 
-  auto result = root_handle.receive(2000);
+  auto result = root_handle.receive(3000);
   ASSERT_TRUE(result);
   ASSERT_STREQ(
       std::get<std::string_view>(result->publication.get_attr("exit_reason"))
           .data(),
       "initialization_failure");
 
-  shutdown_executor(&executor_thread);
+  shutdown_executors(&executors);
 }
 
 TEST(RuntimeSystem, spawn_failure_bad_call) {
@@ -395,18 +449,18 @@ TEST(RuntimeSystem, spawn_failure_bad_call) {
   root_handle.subscribe(
       PubSub::Filter{PubSub::Constraint{"type", "actor_exit"}});
 
-  auto executor_thread = start_executor_thread();
+  auto executors = start_executor_threads();
 
   spawn_actor(test_spawn_failure, "1");
 
-  auto result = root_handle.receive(2000);
+  auto result = root_handle.receive(3000);
   ASSERT_TRUE(result);
   ASSERT_STREQ(
       std::get<std::string_view>(result->publication.get_attr("exit_reason"))
           .data(),
       "initialization_failure");
 
-  shutdown_executor(&executor_thread);
+  shutdown_executors(&executors);
 }
 
 TEST(RuntimeSystem, runtime_failure) {
@@ -418,18 +472,18 @@ TEST(RuntimeSystem, runtime_failure) {
   root_handle.subscribe(
       PubSub::Filter{PubSub::Constraint{"type", "actor_exit"}});
 
-  auto executor_thread = start_executor_thread();
+  auto executors = start_executor_threads();
 
   spawn_actor(test_spawn_failure, "1");
 
-  auto result = root_handle.receive(2000);
+  auto result = root_handle.receive(3000);
   ASSERT_TRUE(result);
   ASSERT_STREQ(
       std::get<std::string_view>(result->publication.get_attr("exit_reason"))
           .data(),
       "runtime_failure");
 
-  shutdown_executor(&executor_thread);
+  shutdown_executors(&executors);
 }
 
 }  // namespace uActor::Test

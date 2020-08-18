@@ -7,9 +7,10 @@ namespace uActor::ActorRuntime {
 ManagedNativeActor::ManagedNativeActor(ExecutorApi* api, uint32_t unique_id,
                                        const char* node_id,
                                        const char* actor_type,
-                                       const char* instance_id,
-                                       const char* code)
-    : ManagedActor(api, unique_id, node_id, actor_type, instance_id, code),
+                                       const char* actor_version,
+                                       const char* instance_id)
+    : ManagedActor(api, unique_id, node_id, actor_type, actor_version,
+                   instance_id),
       actor(nullptr) {
   auto actor_constructor_it = actor_constructors.find(actor_type);
   if (actor_constructor_it != actor_constructors.end()) {

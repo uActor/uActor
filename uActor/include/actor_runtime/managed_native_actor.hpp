@@ -18,12 +18,15 @@ class ManagedNativeActor : public ManagedActor {
       std::string_view actor_type, std::string_view instance_id)>;
 
   ManagedNativeActor(ExecutorApi* api, uint32_t unique_id, const char* node_id,
-                     const char* actor_type, const char* instance_id,
-                     const char* code);
+                     const char* actor_type, const char* actor_version,
+                     const char* instance_id);
 
   bool receive(PubSub::Publication&& p) override;
 
-  bool internal_initialize() { return true; }
+  std::string actor_runtime_type() override { return std::string("native"); }
+
+  bool early_internal_initialize() override { return true; }
+  bool late_internal_initialize(std::string&& _code) override { return true; }
 
   // Basic type-registration system based on
   // https://www.bfilipek.com/2018/02/factory-selfregister.html

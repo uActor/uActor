@@ -22,17 +22,30 @@ namespace uActor::ActorRuntime {
 class ManagedLuaActor : public ManagedActor {
  public:
   ManagedLuaActor(ExecutorApi* api, uint32_t unique_id, const char* node_id,
-                  const char* actor_type, const char* instance_id,
-                  const char* code, lua_State* global_state)
-      : ManagedActor(api, unique_id, node_id, actor_type, instance_id, code),
+                  const char* actor_type, const char* actor_version,
+                  const char* instance_id, lua_State* global_state)
+      : ManagedActor(api, unique_id, node_id, actor_type, actor_version,
+                     instance_id),
         state(global_state) {}
 
   ~ManagedLuaActor();
 
   bool receive(PubSub::Publication&& m) override;
 
+  std::string actor_runtime_type() override { return std::string("lua"); }
+
  protected:
-  bool internal_initialize() { return createActorEnvironment(code()); }
+  bool early_internal_initialize() override {
+    deffered_block_for(
+        PubSub::Filter{PubSub::Constraint("type", "fetch_actor_code_response")},
+        10000);
+    trigger_code_fetch();
+    return false;
+  }
+
+  bool late_internal_initialize(std::string&& code) override {
+    return createActorEnvironment(std::move(code));
+  }
 
  private:
   lua_State* state;
@@ -64,7 +77,7 @@ class ManagedLuaActor : public ManagedActor {
 
 #endif
 
-  bool createActorEnvironment(const char* receive_function);
+  bool createActorEnvironment(std::string receive_function);
 
   static PubSub::Filter parse_filters(lua_State* state, size_t index);
 

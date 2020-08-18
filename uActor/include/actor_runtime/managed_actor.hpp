@@ -25,8 +25,8 @@ class ManagedActor {
   ManagedActor(const ManagedActor&) = delete;
 
   ManagedActor(ExecutorApi* api, uint32_t unique_id, const char* node_id,
-               const char* actor_type, const char* instance_id,
-               const char* code);
+               const char* actor_type, const char* actor_version,
+               const char* instance_id);
 
   ~ManagedActor() {
     for (uint32_t sub_id : subscriptions) {
@@ -36,7 +36,11 @@ class ManagedActor {
 
   virtual bool receive(PubSub::Publication&& p) = 0;
 
-  bool initialize();
+  virtual std::string actor_runtime_type() = 0;
+
+  bool early_initialize();
+
+  bool late_initialize(std::string&& code);
 
   ReceiveResult receive_next_internal();
 
@@ -46,7 +50,8 @@ class ManagedActor {
 
   uint32_t id() { return _id; }
 
-  const char* code() { return _code.c_str(); }
+  // Code is returned as part of a publication
+  void trigger_code_fetch();
 
   const char* node_id() const { return _node_id.c_str(); }
 
@@ -57,7 +62,8 @@ class ManagedActor {
   bool initialized() const { return _initialized; }
 
  protected:
-  virtual bool internal_initialize() = 0;
+  virtual bool early_internal_initialize() = 0;
+  virtual bool late_internal_initialize(std::string&& code) = 0;
 
   uint32_t subscribe(PubSub::Filter&& f);
   void unsubscribe(uint32_t sub_id);
@@ -76,8 +82,8 @@ class ManagedActor {
 
   std::string _node_id;
   std::string _actor_type;
+  std::string _actor_version;
   std::string _instance_id;
-  std::string _code;
 
   std::deque<PubSub::Publication> message_queue;
   std::set<uint32_t> subscriptions;

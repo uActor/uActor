@@ -11,12 +11,12 @@ namespace uActor::ActorRuntime {
 
 ManagedActor::ManagedActor(ExecutorApi* api, uint32_t unique_id,
                            const char* node_id, const char* actor_type,
-                           const char* instance_id, const char* code)
+                           const char* actor_version, const char* instance_id)
     : _id(unique_id),
       _node_id(node_id),
       _actor_type(actor_type),
+      _actor_version(actor_version),
       _instance_id(instance_id),
-      _code(code),
       api(api) {
   add_default_subscription();
   publish_creation_message();
@@ -29,10 +29,16 @@ ManagedActor::ReceiveResult ManagedActor::receive_next_internal() {
 
   auto next_message = std::move(message_queue.front());
   message_queue.pop_front();
+  // Exit message is processed to
+  // allow for any necessary cleanup
   bool is_exit = next_message.get_str_attr("type") == "exit";
-  bool success = this->receive(
-      std::move(next_message));  // Exit message is processed to
-                                 // allow for any necessary cleanup
+  bool success = false;
+  if (next_message.get_str_attr("type") == "fetch_actor_code_response") {
+    success =
+        late_initialize(std::string(*next_message.get_str_attr("actor_code")));
+  } else {
+    success = this->receive(std::move(next_message));
+  }
   if (!success || is_exit) {
     if (success) {
       publish_exit_message("clean_exit");
@@ -82,15 +88,30 @@ void ManagedActor::trigger_timeout() {
   message_queue.emplace_front(std::move(p));
 }
 
-bool ManagedActor::initialize() {
+bool ManagedActor::early_initialize() {
   // We need to wrap the runtime-specific initialization.
-  _initialized = internal_initialize();
+  _initialized = early_internal_initialize();
+  return _initialized;
+}
+
+bool ManagedActor::late_initialize(std::string&& code) {
+  // We need to wrap the runtime-specific initialization.
+  _initialized = late_internal_initialize(std::move(code));
   if (_initialized) {
     return true;
   } else {
     publish_exit_message("initialization_failure");
     return false;
   }
+}
+
+void ManagedActor::trigger_code_fetch() {
+  PubSub::Publication fetch_code(node_id(), actor_type(), instance_id());
+  fetch_code.set_attr("command", "fetch_actor_code");
+  fetch_code.set_attr("actor_code_type", _actor_type);
+  fetch_code.set_attr("actor_code_version", _actor_version);
+  fetch_code.set_attr("actor_code_runtime_type", actor_runtime_type());
+  delayed_publish(std::move(fetch_code), 2000);
 }
 
 uint32_t ManagedActor::subscribe(PubSub::Filter&& f) {
@@ -146,7 +167,7 @@ void ManagedActor::add_default_subscription() {
       _id, PubSub::Filter{
                PubSub::Constraint(std::string("node_id"), _node_id),
                PubSub::Constraint(std::string("actor_type"), _actor_type),
-               PubSub::Constraint(std::string("?instance_id"), _instance_id)});
+               PubSub::Constraint(std::string("instance_id"), _instance_id)});
   subscriptions.insert(sub_id);
 }
 

@@ -185,7 +185,7 @@ int ManagedLuaActor::testbed_stop_timekeeping_inner_wrapper(lua_State* state) {
 #endif
 #endif
 
-bool ManagedLuaActor::createActorEnvironment(const char* receive_function) {
+bool ManagedLuaActor::createActorEnvironment(std::string receive_function) {
   lua_createtable(state, 0, 16);        // 1
   lua_pushlightuserdata(state, this);   // 2
   luaL_setfuncs(state, actor_core, 1);  // 1
@@ -239,7 +239,7 @@ bool ManagedLuaActor::createActorEnvironment(const char* receive_function) {
   lua_setmetatable(state, -3);            // 2
   lua_pop(state, 1);                      // 1
 
-  if (luaL_loadstring(state, receive_function)) {
+  if (luaL_loadstring(state, receive_function.c_str())) {
     printf("LUA LOAD ERROR for actor %s.%s.%s\n", node_id(), actor_type(),
            instance_id());
     printf("ERROR: %s\n", lua_tostring(state, -1));

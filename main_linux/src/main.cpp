@@ -7,6 +7,7 @@
 #include <utility>
 #include <vector>
 
+#include "actor_runtime/code_store.hpp"
 #include "actor_runtime/executor.hpp"
 #include "actor_runtime/lua_executor.hpp"
 #include "actor_runtime/managed_native_actor.hpp"
@@ -154,6 +155,8 @@ int main(int arg_count, char** args) {
       uActor::Controllers::TopologyManager>("topology_manager");
   uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
       uActor::Controllers::DeploymentManager>("deployment_manager");
+  uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
+      uActor::ActorRuntime::CodeStore>("code_store");
   auto native_executor = start_native_executor();
 
   sleep(2);
@@ -161,7 +164,7 @@ int main(int arg_count, char** args) {
   auto create_deployment_manager =
       uActor::PubSub::Publication(uActor::BoardFunctions::NODE_ID, "root", "1");
   create_deployment_manager.set_attr("command", "spawn_native_actor");
-  create_deployment_manager.set_attr("spawn_code", "");
+  create_deployment_manager.set_attr("spawn_actor_version", "default");
   create_deployment_manager.set_attr("spawn_node_id",
                                      uActor::BoardFunctions::NODE_ID);
   create_deployment_manager.set_attr("spawn_actor_type", "deployment_manager");
@@ -176,7 +179,7 @@ int main(int arg_count, char** args) {
   auto create_topology_manager =
       uActor::PubSub::Publication(uActor::BoardFunctions::NODE_ID, "root", "1");
   create_topology_manager.set_attr("command", "spawn_native_actor");
-  create_topology_manager.set_attr("spawn_code", "");
+  create_topology_manager.set_attr("spawn_actor_version", "default");
   create_topology_manager.set_attr("spawn_node_id",
                                    uActor::BoardFunctions::NODE_ID);
   create_topology_manager.set_attr("spawn_actor_type", "topology_manager");
@@ -186,6 +189,18 @@ int main(int arg_count, char** args) {
   create_topology_manager.set_attr("instance_id", "1");
   uActor::PubSub::Router::get_instance().publish(
       std::move(create_topology_manager));
+
+  auto create_code_store =
+      uActor::PubSub::Publication(uActor::BoardFunctions::NODE_ID, "root", "1");
+  create_code_store.set_attr("command", "spawn_native_actor");
+  create_code_store.set_attr("spawn_actor_version", "default");
+  create_code_store.set_attr("spawn_node_id", uActor::BoardFunctions::NODE_ID);
+  create_code_store.set_attr("spawn_actor_type", "code_store");
+  create_code_store.set_attr("spawn_instance_id", "1");
+  create_code_store.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
+  create_code_store.set_attr("actor_type", "native_executor");
+  create_code_store.set_attr("instance_id", "1");
+  uActor::PubSub::Router::get_instance().publish(std::move(create_code_store));
 
   sleep(2);
 

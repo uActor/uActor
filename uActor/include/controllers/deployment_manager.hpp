@@ -6,7 +6,9 @@
 #include <map>
 #include <set>
 #include <string>
+#include <utility>
 
+#include "actor_runtime/code_store.hpp"
 #include "actor_runtime/native_actor.hpp"
 #include "pubsub/router.hpp"
 #include "support/string_helper.hpp"
@@ -30,7 +32,6 @@ class DeploymentManager : public ActorRuntime::NativeActor {
         : name(name),
           actor_type(actor_type),
           actor_version(actor_version),
-          actor_code(actor_code),
           actor_runtime_type(actor_runtime_type),
           lifetime_end(lifetime_end) {
       for (std::string_view required_actor :
@@ -43,7 +44,6 @@ class DeploymentManager : public ActorRuntime::NativeActor {
 
     std::string actor_type;
     std::string actor_version;
-    std::string actor_code;
     std::string actor_runtime_type;
 
     std::list<std::string> required_actors;
@@ -120,6 +120,8 @@ class DeploymentManager : public ActorRuntime::NativeActor {
   void actor_type_added(std::string_view actor_type);
 
   void actor_type_removed(std::string_view actor_type);
+
+  void publish_code_package(const Deployment& deployment, std::string&& code);
 };
 
 }  // namespace uActor::Controllers

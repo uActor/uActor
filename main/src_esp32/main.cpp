@@ -12,6 +12,7 @@ extern "C" {
 #include <cstring>
 #include <utility>
 
+#include "actor_runtime/code_store.hpp"
 #include "actor_runtime/lua_executor.hpp"
 #include "actor_runtime/managed_actor.hpp"
 #include "actor_runtime/managed_native_actor.hpp"
@@ -127,6 +128,8 @@ void main_task(void*) {
       uActor::Controllers::DeploymentManager>("deployment_manager");
   uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
       uActor::ESP32::IO::BMP180Actor>("bmp180_sensor");
+  uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
+      uActor::ActorRuntime::CodeStore>("code_store");
 
   xTaskCreatePinnedToCore(&uActor::ActorRuntime::NativeExecutor::os_task,
                           "NATIVE_EXECUTOR", 6168, &executor_settings, 5,
@@ -156,7 +159,7 @@ void main_task(void*) {
   auto create_deployment_manager =
       uActor::PubSub::Publication(uActor::BoardFunctions::NODE_ID, "root", "1");
   create_deployment_manager.set_attr("command", "spawn_native_actor");
-  create_deployment_manager.set_attr("spawn_code", "");
+  create_deployment_manager.set_attr("spawn_actor_version", "default");
   create_deployment_manager.set_attr("spawn_node_id",
                                      uActor::BoardFunctions::NODE_ID);
   create_deployment_manager.set_attr("spawn_actor_type", "deployment_manager");
@@ -171,7 +174,7 @@ void main_task(void*) {
   auto create_topology_manager =
       uActor::PubSub::Publication(uActor::BoardFunctions::NODE_ID, "root", "1");
   create_topology_manager.set_attr("command", "spawn_native_actor");
-  create_topology_manager.set_attr("spawn_code", "");
+  create_topology_manager.set_attr("spawn_actor_version", "default");
   create_topology_manager.set_attr("spawn_node_id",
                                    uActor::BoardFunctions::NODE_ID);
   create_topology_manager.set_attr("spawn_actor_type", "topology_manager");
@@ -182,7 +185,19 @@ void main_task(void*) {
   uActor::PubSub::Router::get_instance().publish(
       std::move(create_topology_manager));
 
-  if (std::string("node_home") == uActor::BoardFunctions::NODE_ID) {
+  auto create_code_store =
+      uActor::PubSub::Publication(uActor::BoardFunctions::NODE_ID, "root", "1");
+  create_code_store.set_attr("command", "spawn_native_actor");
+  create_code_store.set_attr("spawn_actor_version", "default");
+  create_code_store.set_attr("spawn_node_id", uActor::BoardFunctions::NODE_ID);
+  create_code_store.set_attr("spawn_actor_type", "code_store");
+  create_code_store.set_attr("spawn_instance_id", "1");
+  create_code_store.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
+  create_code_store.set_attr("actor_type", "native_executor");
+  create_code_store.set_attr("instance_id", "1");
+  uActor::PubSub::Router::get_instance().publish(std::move(create_code_store));
+
+  if (std::string("node_100") == uActor::BoardFunctions::NODE_ID) {
     auto create_bmp180_sensor = uActor::PubSub::Publication(
         uActor::BoardFunctions::NODE_ID, "root", "1");
     create_bmp180_sensor.set_attr("command", "spawn_native_actor");

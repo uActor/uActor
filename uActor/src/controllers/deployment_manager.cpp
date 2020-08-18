@@ -89,6 +89,7 @@ void DeploymentManager::receive_deployment(
       Deployment& deployment = deployment_iterator->second;
 
       if (inserted) {
+        publish_code_package(deployment, std::string(actor_code));
         // printf("Receive deployment from: %s\n",
         //       publication.get_str_attr("publisher_node_id")->data());
         add_deployment_dependencies(&deployment);
@@ -103,9 +104,9 @@ void DeploymentManager::receive_deployment(
             actor_type != deployment.actor_type) {
           stop_deployment(&deployment);
           decrement_deployed_actor_type_count(deployment.actor_type);
-          deployment.actor_type = actor_type;
-          deployment.actor_version = actor_version;
-          deployment.actor_code = actor_code;
+          deployment.actor_type = std::string(actor_type);
+          deployment.actor_version = std::string(actor_version);
+          publish_code_package(deployment, std::string(actor_code));
           increment_deployed_actor_type_count(deployment.actor_type);
           start_deployment(&deployment, &ExecutorIdentifier);
         }
@@ -318,7 +319,7 @@ void DeploymentManager::start_deployment(Deployment* deployment,
   PubSub::Publication spawn_message{};
   spawn_message.set_attr("command", "spawn_lua_actor");
 
-  spawn_message.set_attr("spawn_code", deployment->actor_code);
+  spawn_message.set_attr("spawn_actor_version", deployment->actor_version);
   spawn_message.set_attr("spawn_node_id", ExecutorIdentifier->node_id);
   spawn_message.set_attr("spawn_actor_type", deployment->actor_type);
   spawn_message.set_attr("spawn_instance_id", deployment->name);
@@ -438,6 +439,21 @@ void DeploymentManager::actor_type_removed(std::string_view actor_type) {
       deactivate_deployment(deployment);
     }
   }
+}
+
+void DeploymentManager::publish_code_package(const Deployment& deployment,
+                                             std::string&& code) {
+  PubSub::Publication actor_code_message(node_id(), actor_type(),
+                                         instance_id());
+  actor_code_message.set_attr("type", "actor_code");
+  actor_code_message.set_attr("actor_code_type", deployment.actor_type);
+  actor_code_message.set_attr("actor_code_version", deployment.actor_version);
+  actor_code_message.set_attr("actor_code_runtime_type",
+                              deployment.actor_runtime_type);
+  actor_code_message.set_attr("actor_code_lifetime_end",
+                              static_cast<int32_t>(deployment.lifetime_end));
+  actor_code_message.set_attr("actor_code", std::move(code));
+  publish(std::move(actor_code_message));
 }
 
 }  // namespace uActor::Controllers
