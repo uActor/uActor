@@ -215,6 +215,7 @@ void main_task(void*) {
     create_bmp180_sensor.set_attr("spawn_code", "");
     create_bmp180_sensor.set_attr("spawn_node_id",
                                   uActor::BoardFunctions::NODE_ID);
+    create_bmp180_sensor.set_attr("spawn_actor_version", "default");
     create_bmp180_sensor.set_attr("spawn_actor_type", "bmp180_sensor");
     create_bmp180_sensor.set_attr("spawn_instance_id", "1");
     create_bmp180_sensor.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
