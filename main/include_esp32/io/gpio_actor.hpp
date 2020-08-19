@@ -142,7 +142,7 @@ class GPIOActor {
     pins[27].set_as_output(1);
     pins[26].set_as_output(1);
     pins[25].set_as_output(1);
-    pins[5].set_as_input(true, false);
+    pins[32].set_as_input(true, false);
     pins[33].set_as_interrupt(interrupt_queue, true, false);
 
     PubSub::Publication p{BoardFunctions::NODE_ID, "core.io.gpio", "1"};

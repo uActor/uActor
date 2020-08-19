@@ -7,3 +7,9 @@
 [submodule "components/msgpack/msgpack-c"]
 	path = vendor/msgpack/msgpack-c
 	url = git@github.com:msgpack/msgpack-c.git
+[submodule "components/callEPD"]
+	path = components/callEPD
+	url = git@github.com:martinberlin/CalEPD.git
+[submodule "components/Adafruit-GFX"]
+	path = components/Adafruit-GFX
+	url = git@github.com:martinberlin/Adafruit-GFX-Library-ESP-IDF.git

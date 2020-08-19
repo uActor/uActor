@@ -12,7 +12,6 @@ extern "C" {
 #include <cstring>
 #include <utility>
 
-#include "actor_runtime/code_store.hpp"
 #include "actor_runtime/lua_executor.hpp"
 #include "actor_runtime/managed_actor.hpp"
 #include "actor_runtime/managed_native_actor.hpp"
@@ -21,6 +20,12 @@ extern "C" {
 #include "board_functions.hpp"
 #include "controllers/deployment_manager.hpp"
 #include "controllers/topology_manager.hpp"
+
+// TODO(raphaelhetzel) this currently required patching callEPD
+#if CONFIG_EPAPER_NODE
+#include "epaper_actor.hpp"
+#endif
+
 #include "io/gpio_actor.hpp"
 #include "lua.hpp"
 #include "pubsub/router.hpp"
@@ -131,6 +136,12 @@ void main_task(void*) {
   uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
       uActor::ActorRuntime::CodeStore>("code_store");
 
+#if CONFIG_EPAPER_NODE
+  uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
+      uActor::ESP32::Notifications::EPaperNotificationActor>(
+      "epaper_notification_actor");
+#endif
+
   xTaskCreatePinnedToCore(&uActor::ActorRuntime::NativeExecutor::os_task,
                           "NATIVE_EXECUTOR", 6168, &executor_settings, 5,
                           nullptr, 0);
@@ -213,6 +224,23 @@ void main_task(void*) {
         std::move(create_bmp180_sensor));
   }
 
+#if CONFIG_EPAPER_NODE
+  if (std::string("node_100") == uActor::BoardFunctions::NODE_ID) {
+    auto create_display = uActor::PubSub::Publication(
+        uActor::BoardFunctions::NODE_ID, "root", "1");
+    create_display.set_attr("command", "spawn_native_actor");
+    create_display.set_attr("spawn_code", "");
+    create_display.set_attr("spawn_node_id", uActor::BoardFunctions::NODE_ID);
+    create_display.set_attr("spawn_actor_type", "epaper_notification_actor");
+    create_display.set_attr("spawn_actor_version", "default");
+    create_display.set_attr("spawn_instance_id", "1");
+    create_display.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
+    create_display.set_attr("actor_type", "native_executor");
+    create_display.set_attr("instance_id", "1");
+    uActor::PubSub::Router::get_instance().publish(std::move(create_display));
+  }
+#endif
+
   vTaskDelay(50 / portTICK_PERIOD_MS);
   {
     uActor::PubSub::Publication label_update(uActor::BoardFunctions::NODE_ID,
@@ -250,6 +278,23 @@ void main_task(void*) {
 
   vTaskDelay(2000);
   testbed_log_rt_integer("_ready", t);
+
+#if CONFIG_EPAPER_NODE
+  uActor::PubSub::Publication p(uActor::BoardFunctions::NODE_ID, "root", "1");
+  p.set_attr("type", "notification");
+  p.set_attr("notification_text", "Hello\nWorld");
+  p.set_attr("notification_id", "not_1");
+  p.set_attr("notification_lifetime", 0);
+  uActor::PubSub::Router::get_instance().publish(std::move(p));
+
+  uActor::PubSub::Publication p2(uActor::BoardFunctions::NODE_ID, "root", "1");
+  p2.set_attr("type", "notification");
+  p2.set_attr("notification_text", "Hello\nMars");
+  p2.set_attr("notification_id", "not_2");
+  p2.set_attr("notification_lifetime", 20000);
+  uActor::PubSub::Router::get_instance().publish(std::move(p2));
+#endif
+
   vTaskDelete(nullptr);
 
   // while (true) {
