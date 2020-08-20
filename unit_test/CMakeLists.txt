@@ -23,7 +23,7 @@ endif()
 include_directories(../main/legacy/include)
 
 # Now simply link against gtest or gtest_main as needed. Eg
-add_executable(uactor_test mock_board_functions.cpp mock_router.cpp mock_receiver.cpp legacy_routing_tests.cpp pubsub_tests.cpp runtime_tests.cpp forwarding_tests.cpp)
+add_executable(uactor_test mock_board_functions.cpp mock_receiver.cpp pubsub_tests.cpp runtime_tests.cpp forwarding_tests.cpp)
 target_link_libraries(uactor_test gtest_main)
 target_link_libraries(uactor_test uActor)
 add_test(NAME uactor_test COMMAND uactor_test)
