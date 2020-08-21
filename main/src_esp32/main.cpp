@@ -202,22 +202,6 @@ void main_task(void *) {
   vTaskDelay(2000);
   testbed_log_rt_integer("_ready", t);
 
-#if CONFIG_EPAPER_NODE
-  uActor::PubSub::Publication p(uActor::BoardFunctions::NODE_ID, "root", "1");
-  p.set_attr("type", "notification");
-  p.set_attr("notification_text", "Hello\nWorld");
-  p.set_attr("notification_id", "not_1");
-  p.set_attr("notification_lifetime", 0);
-  uActor::PubSub::Router::get_instance().publish(std::move(p));
-
-  uActor::PubSub::Publication p2(uActor::BoardFunctions::NODE_ID, "root", "1");
-  p2.set_attr("type", "notification");
-  p2.set_attr("notification_text", "Hello\nMars");
-  p2.set_attr("notification_id", "not_2");
-  p2.set_attr("notification_lifetime", 20000);
-  uActor::PubSub::Router::get_instance().publish(std::move(p2));
-#endif
-
   vTaskDelete(nullptr);
 
   // while (true) {

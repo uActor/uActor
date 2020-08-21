@@ -1,0 +1,9 @@
+type: deployment
+name: de.tum.smart_office.deployment.test_notifications
+ttl:  12000
+actor_type:  de.tum.smart_office.actor.test_notifications
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "test_notifications.lua"
+required_actors:
+ - "core.notification_center"

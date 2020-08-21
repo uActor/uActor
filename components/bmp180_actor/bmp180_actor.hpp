@@ -38,7 +38,7 @@ class BMP180Actor : public ActorRuntime::NativeActor {
   ~BMP180Actor() override {
     PubSub::Publication deregister_temperature;
     deregister_temperature.set_attr("type", "unmanaged_actor_update");
-    deregister_temperature.set_attr("command", "register");
+    deregister_temperature.set_attr("command", "deregister");
     deregister_temperature.set_attr("update_actor_type",
                                     "core.sensors.temperature");
     deregister_temperature.set_attr("node_id", node_id().data());
@@ -46,7 +46,7 @@ class BMP180Actor : public ActorRuntime::NativeActor {
 
     PubSub::Publication deregister_pressure;
     deregister_pressure.set_attr("type", "unmanaged_actor_update");
-    deregister_pressure.set_attr("command", "register");
+    deregister_pressure.set_attr("command", "deregister");
     deregister_pressure.set_attr("update_actor_type", "core.sensors.pressure");
     deregister_pressure.set_attr("node_id", node_id().data());
     publish(std::move(deregister_pressure));
@@ -65,7 +65,6 @@ class BMP180Actor : public ActorRuntime::NativeActor {
   void send_temperature_update() {
     float temperature;
     if (!bmp180_read_temperature(&temperature)) {
-      printf("%f\n", temperature);
       PubSub::Publication temperature_update;
       temperature_update.set_attr("type", "temperature_update");
       temperature_update.set_attr("temperature", temperature);

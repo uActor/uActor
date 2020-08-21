@@ -4,6 +4,8 @@
 #include <string_view>
 #include <unordered_set>
 #include <map>
+#include <utility>
+#include <optional>
 
 #include <gdeh0213b73.h>
 #include <Fonts/FreeMono12pt7b.h>
@@ -15,6 +17,34 @@
 namespace uActor::ESP32::Notifications {
   class EPaperNotificationActor : public ActorRuntime::NativeActor {
     public:
+
+    struct State {
+
+      State(
+        std::string notification_id,
+        std::string node_id,
+        std::string notification_text,
+        size_t number_of_notifications) :
+        notification_id(std::move(notification_id)),
+        node_id(std::move(node_id)),
+        notification_text(std::move(notification_text)),
+        number_of_notifications(number_of_notifications) {};
+
+      State() = default;
+
+      std::string notification_id;
+      std::string node_id;
+      std::string notification_text;
+      size_t number_of_notifications = -1;
+
+      bool operator==(const State& other) const {
+        return notification_id == notification_id &&
+        node_id == other.node_id &&
+        number_of_notifications == other.number_of_notifications &&
+        notification_text == other.notification_text;
+      }
+    };
+
     EPaperNotificationActor(ActorRuntime::ManagedNativeActor* actor_wrapper,
         std::string_view node_id, std::string_view actor_type,
         std::string_view instance_id);
@@ -23,13 +53,22 @@ namespace uActor::ESP32::Notifications {
 
     void receive_notification(const PubSub::Publication& publication);
 
-    void print_next();
-    
-    void cleanup();
+    void receive_notification_cancelation(const PubSub::Publication& publication);
 
-    void print(std::string_view text);
+    void init();
+
+    void exit();
+
+    void print_next(std::optional<State> state_input = std::nullopt);
+    
+    void cleanup(std::optional<State> state_input = std::nullopt);
+
+    void send_cleanup_trigger();
+
+    void update(State&& state, bool force = false);
     
     private:
+    
     struct Notification {      
       Notification(std::string id, std::string text, uint32_t lifetime) : id(id), text(std::move(text)), lifetime(lifetime) {}      
       std::string id;
@@ -38,9 +77,7 @@ namespace uActor::ESP32::Notifications {
     };
 
     std::map<std::string, Notification> notifications;
-    std::string last_notification_id;
-    std::string current_text;
-    bool cleared = false;
+    State current_state;
   };
 
 } // namespace uActor::ESP32::Notifications

@@ -1,0 +1,22 @@
+type: deployment
+name: de.tum.smart_office.deployment.temperature_printer
+ttl:  0
+actor_type:  de.tum.smart_office.actor.temperature_printer
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "local_temperature_printer.lua"
+required_actors:
+  - "core.sensors.temperature"
+---
+type: deployment
+name: de.tum.deployment.notification_scroll_local_button
+ttl:  0
+actor_type:  de.tum.smart_office.actor.notification_scroll_local_button
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "notification_scroll_local_button.lua"
+required_actors:
+  - "core.io.gpio"
+  - "core.notification_center"
+# constraints:
+  # - "de.tum.smart_office.settings.button1_function": "scroll_notifications"

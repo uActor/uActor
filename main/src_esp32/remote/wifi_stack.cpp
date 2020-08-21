@@ -116,13 +116,14 @@ void WifiStack::event_handler(esp_event_base_t event_base, int32_t event_id,
     testbed_log_ipv4_netmask(event->ip_info.netmask);
     testbed_log_ipv4_gateway(event->ip_info.gw);
 
-    // TODO(raphaelhetzel) this might arrive to late
+    // TODO(raphaelhetzel) this might arrive to early
     char buffer[16];
     snprintf(buffer, sizeof(buffer), "%d.%d.%d.%d", IP2STR(&event->ip_info.ip));
     uActor::PubSub::Publication ip_info(uActor::BoardFunctions::NODE_ID, "root",
                                         "1");
     ip_info.set_attr("type", "notification");
-    ip_info.set_attr("notification_text", std::string_view(buffer));
+    ip_info.set_attr("notification_text",
+                     std::string("Current IP:\n") + buffer);
     ip_info.set_attr("notification_id", "ip");
     ip_info.set_attr("notification_lifetime", 0);
     uActor::PubSub::Router::get_instance().publish(std::move(ip_info));

@@ -9,29 +9,26 @@ namespace uActor::ESP32::Notifications {
   EPaperNotificationActor::EPaperNotificationActor(ActorRuntime::ManagedNativeActor* actor_wrapper,
       std::string_view node_id, std::string_view actor_type,
       std::string_view instance_id) : NativeActor(actor_wrapper, node_id, actor_type, instance_id) {
-  subscribe(PubSub::Filter{PubSub::Constraint("command", "print")});
-  subscribe(PubSub::Filter{PubSub::Constraint("type", "notification")});
   display.init(false);
   display.setRotation(1);
   display.fillScreen(EPD_WHITE);
   display.update();
 }
 
-
-void EPaperNotificationActor::receive (const PubSub::Publication& publication) {
-    if(publication.get_str_attr("command") == "print") {
-      print(*publication.get_str_attr("text"));
-    } else if(publication.get_str_attr("type") == "notification") {
+void EPaperNotificationActor::receive(const PubSub::Publication& publication) {
+    if(publication.get_str_attr("type") == "notification") {
       receive_notification(publication);
-    } else if(publication.get_str_attr("type") == "init" || publication.get_str_attr("command") == "scroll_notifications") {
+    } else if(publication.get_str_attr("type") == "notification_cancelation") {
+      receive_notification_cancelation(publication);
+    } else if(publication.get_str_attr("type") == "init") {
+      init();
+    } else if(publication.get_str_attr("command") == "cleanup") {
       cleanup();
+      send_cleanup_trigger();
+    } else if(publication.get_str_attr("command") == "scroll_notifications")  {
       print_next();
-      PubSub::Publication retrigger(node_id(), actor_type(), instance_id());
-      retrigger.set_attr("actor_type", actor_type());
-      retrigger.set_attr("node_id", node_id());
-      retrigger.set_attr("instance_id", instance_id());
-      retrigger.set_attr("command", "scroll_notifications");
-      delayed_publish(std::move(retrigger), 10000);
+    } else if(publication.get_str_attr("type") == "exit") {
+      exit();
     }
 }
 
@@ -49,80 +46,139 @@ void EPaperNotificationActor::receive_notification(const PubSub::Publication& pu
       lifetime += now();
     }
 
-    auto [it, inserted] = notifications.try_emplace(id, Notification(id, std::move(text), lifetime));
+    auto [it, inserted] = notifications.try_emplace(id, Notification(id, text, lifetime));
     if(!inserted) {
       it->second.lifetime = std::max(lifetime, it->second.lifetime);
+      it->second.text = text;
+    }
+
+    if(inserted) {
+      auto new_state = current_state;
+      new_state.number_of_notifications = notifications.size();
+      new_state.notification_text = text;
+      new_state.notification_id = id;
+      update(std::move(new_state));
+    } else if (current_state.notification_id == id) {
+      auto new_state = current_state;
+      new_state.notification_text = text;
+      update(std::move(new_state));
     }
   }
 }
 
-void EPaperNotificationActor::print_next() {
-  Notification next_message("1", "", 0);
-  bool found = false;
-  
-  if(!last_notification_id.empty()) {
-    auto it = notifications.find(last_notification_id);
-    if(++it != notifications.end()) {
-      next_message = it->second;
-      found = true;
-    }
-  }
-  
-  if(!found) {
-    auto it = notifications.begin();
-    if(it != notifications.end()) {
-      next_message = it->second;
-      found = true;
-    }
-  }
+void EPaperNotificationActor::init() {
+  subscribe(PubSub::Filter{PubSub::Constraint("command", "scroll_notifications"), PubSub::Constraint("node_id", this->node_id().data())});
+  subscribe(PubSub::Filter{PubSub::Constraint("type", "notification")});
+  subscribe(PubSub::Filter{PubSub::Constraint("type", "notification_cancelation"), PubSub::Constraint("node_id", this->node_id().data())});
 
-  if(found) {
-    last_notification_id = next_message.id;
-    print(next_message.text);
-    cleared = false;
-  } else if(!cleared) {
-    print("");
-    cleared = true;
+  PubSub::Publication register_actor_type;
+  register_actor_type.set_attr("type", "unmanaged_actor_update");
+  register_actor_type.set_attr("command", "register");
+  register_actor_type.set_attr("update_actor_type", "core.notification_center");
+  register_actor_type.set_attr("node_id", this->node_id().data());
+  publish(std::move(register_actor_type));
+
+  send_cleanup_trigger();
+  update(State("", std::string(node_id()), "uActor", notifications.size()), true);
+}
+
+void EPaperNotificationActor::exit() {
+  PubSub::Publication deregister_actor_type;
+  deregister_actor_type.set_attr("type", "unmanaged_actor_update");
+  deregister_actor_type.set_attr("command", "deregister");
+  deregister_actor_type.set_attr("update_actor_type", "core.notification_center");
+  deregister_actor_type.set_attr("node_id", node_id().data());
+  publish(std::move(deregister_actor_type));
+}
+
+void EPaperNotificationActor::receive_notification_cancelation(const PubSub::Publication& publication) {
+  if(publication.has_attr("notification_id")) {
+    auto id = *publication.get_str_attr("notification_id");
+    size_t removed = notifications.erase(std::string(id));
+    if(removed > 0) {
+      auto new_state = current_state;
+      new_state.number_of_notifications = notifications.size();
+      if(id == current_state.notification_id) {
+        print_next(std::move(new_state));
+      } else {
+        update(std::move(new_state));
+      }
+    }
   }
 }
 
-void EPaperNotificationActor::cleanup() {
+void EPaperNotificationActor::print_next(std::optional<State> new_state_input) {
+  auto new_state = new_state_input ? std::move(*new_state_input) : current_state;
+  // Wrap around
+  auto it = notifications.find(current_state.notification_id);
+  if(it == notifications.end() || ++it == notifications.end()) {
+    it = notifications.begin();
+  }
+  
+  if(it != notifications.end()) {
+    new_state.notification_id = it->second.id;
+    new_state.notification_text = it->second.text;
+  } else {
+    new_state.notification_id = "";
+    new_state.notification_text = "";
+  }
+  update(std::move(new_state));
+}
+
+void EPaperNotificationActor::cleanup(std::optional<State> new_state_input) {
+
+  auto new_state = new_state_input ? std::move(*new_state_input) : current_state;
+
   std::unordered_set<std::string> to_delete;
   for(const auto& [id, notification] : notifications) {
     if(notification.lifetime > 0 && notification.lifetime < now()) {
       to_delete.insert(id);
-      if(id == last_notification_id) {
-        last_notification_id = "";
-      }
     }
   }
   for(const auto& id : to_delete) {
     notifications.erase(id);
   }
+
+  if(to_delete.size() > 0) {
+    new_state.number_of_notifications = notifications.size();
+    if(to_delete.find(current_state.notification_id) != to_delete.end()) {
+      print_next(std::move(new_state));
+    } else {
+      update(std::move(new_state));
+    }
+  }
 }
 
-void EPaperNotificationActor::print(std::string_view message) {
-  
-  if(message == current_text) {
+void EPaperNotificationActor::send_cleanup_trigger() {
+  PubSub::Publication retrigger(node_id(), actor_type(), instance_id());
+  retrigger.set_attr("actor_type", actor_type());
+  retrigger.set_attr("node_id", node_id());
+  retrigger.set_attr("instance_id", instance_id());
+  retrigger.set_attr("command", "cleanup");
+  delayed_publish(std::move(retrigger), 10000);
+}
+
+void EPaperNotificationActor::update(State&& new_state, bool force) {
+
+  if(new_state == current_state && !force) {
     return;
   } else {
-    current_text = std::string(message);  
+    current_state = std::move(new_state);
   }
   
   display.fillScreen(EPD_WHITE);
   display.setCursor(0,14);
+  // This is seems to be a bug in the underlying library
   display.setTextColor(EPD_WHITE);
 
-  for(int i = 0; i < 250; i++) {
-      display.drawPixel(i, 20, 1); 
-  }
-
   display.setFont(&FreeMono12pt7b);
-  display.println((std::string("uActor - ") + uActor::BoardFunctions::NODE_ID).c_str());
+  display.println(current_state.node_id + " - " + std::to_string(current_state.number_of_notifications));
 
-  if(message.length() > 0) {
-    display.println(message.data());
+  for(int i = 0; i < 250; i++) {
+      display.drawPixel(i, 22, 1); 
   }
+
+  display.println(current_state.notification_text);
   display.update();
 }
 }
