@@ -22,6 +22,8 @@ extern "C" {
 #include "controllers/deployment_manager.hpp"
 #include "controllers/topology_manager.hpp"
 
+// #define CONFIG_EPAPER_NODE 1
+
 // TODO(raphaelhetzel) this currently required patching callEPD
 #if CONFIG_EPAPER_NODE
 #include "epaper_actor.hpp"
@@ -131,7 +133,7 @@ void main_task(void *) {
   create_code_store.set_attr("instance_id", "1");
   uActor::PubSub::Router::get_instance().publish(std::move(create_code_store));
 
-  if (std::string("node_100") == uActor::BoardFunctions::NODE_ID) {
+  if (std::string("node_1111") == uActor::BoardFunctions::NODE_ID) {
     auto create_bmp180_sensor = uActor::PubSub::Publication(
         uActor::BoardFunctions::NODE_ID, "root", "1");
     create_bmp180_sensor.set_attr("command", "spawn_native_actor");
@@ -149,7 +151,7 @@ void main_task(void *) {
   }
 
 #if CONFIG_EPAPER_NODE
-  if (std::string("node_100") == uActor::BoardFunctions::NODE_ID) {
+  if (std::string("node_1") == uActor::BoardFunctions::NODE_ID) {
     auto create_display = uActor::PubSub::Publication(
         uActor::BoardFunctions::NODE_ID, "root", "1");
     create_display.set_attr("command", "spawn_native_actor");

@@ -1,0 +1,186 @@
+#ifndef COMPONENTS_BLE_ACTOR_INCLUDE_BLE_ACTOR_HPP_
+#define COMPONENTS_BLE_ACTOR_INCLUDE_BLE_ACTOR_HPP_
+
+#include "esp_bt.h"
+#include "esp_bt_main.h"
+#include "esp_gap_ble_api.h"
+#include "esp_log.h"
+
+#include <cstring>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#include <base64.h>
+
+
+#include <pubsub/publication.hpp>
+#include <pubsub/router.hpp>
+
+namespace uActor::ESP32::BLE {
+class BLEActor {
+  public:
+
+  static void os_task(void*) {
+    auto actor = BLEActor();
+    while(1) {
+      vTaskDelay(5000 / portTICK_PERIOD_MS);
+    }
+  }
+
+  BLEActor() {
+    init();
+  }
+
+  constexpr static const char* DEMO_TAG = "IBEACON_DEMO";
+
+static void esp_gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param) {
+    esp_err_t err;
+
+    switch (event) {
+    case ESP_GAP_BLE_ADV_DATA_RAW_SET_COMPLETE_EVT:{
+// #if (IBEACON_MODE == IBEACON_SENDER)
+//         esp_ble_gap_start_advertising(&ble_adv_params);
+// #endif
+        break;
+    }
+    case ESP_GAP_BLE_SCAN_PARAM_SET_COMPLETE_EVT: {
+      //the unit of the duration is second, 0 means scan permanently
+      uint32_t duration = 0;
+      esp_ble_gap_start_scanning(duration);
+      break;
+    }
+    case ESP_GAP_BLE_SCAN_START_COMPLETE_EVT: {
+        //scan start complete event to indicate scan start successfully or failed
+        if ((err = param->scan_start_cmpl.status) != ESP_BT_STATUS_SUCCESS) {
+            ESP_LOGE(DEMO_TAG, "Scan start failed: %s", esp_err_to_name(err));
+        }
+        break;
+    }
+    case ESP_GAP_BLE_ADV_START_COMPLETE_EVT:{
+        //adv start complete event to indicate adv start successfully or failed
+        if ((err = param->adv_start_cmpl.status) != ESP_BT_STATUS_SUCCESS) {
+            ESP_LOGE(DEMO_TAG, "Adv start failed: %s", esp_err_to_name(err));
+        }
+        break;
+    }
+    case ESP_GAP_BLE_SCAN_RESULT_EVT: {
+        esp_ble_gap_cb_param_t *scan_result = (esp_ble_gap_cb_param_t *)param;
+        if (scan_result->scan_rst.search_evt == ESP_GAP_SEARCH_INQ_RES_EVT) {
+
+          // printf("P:\n");
+          PubSub::Publication publication(BoardFunctions::NODE_ID, "ble_observer", "1");
+          publication.set_attr("type", "ble_result");
+          publication.set_attr("rssi", scan_result->scan_rst.rssi);
+          uint8_t* position = scan_result->scan_rst.ble_adv;
+          while(position < (scan_result->scan_rst.ble_adv + scan_result->scan_rst.adv_data_len)) {
+            uint8_t current_element_size = *position;
+            if(current_element_size == 0) {
+              break;
+            }
+            uint8_t current_type = *(position+1);
+            // printf("T: %02X (%d) - ", current_type, current_element_size);
+            // for (uint8_t* current = position+2; current < position+1+current_element_size; current++) {
+            //   printf("%02X", *current);
+            // }
+            // printf("\n");
+
+            char attr_id_string[5];
+            snprintf(attr_id_string, sizeof(attr_id_string), "0x%02X", current_type);
+            publication.set_attr(std::string(attr_id_string), base64_encode(std::string(reinterpret_cast<const char*>(position+2), (position+1+current_element_size)-(position+2)), false));
+            position = position + current_element_size + 1;
+          }
+
+          PubSub::Router::get_instance().publish(std::move(publication));
+
+          // uint8_t service_uuid_length = 0;
+          // uint8_t *service_uuid_data = esp_ble_resolve_adv_data(ç, 0x03, &service_uuid_length);
+          // if (service_uuid_length == sizeof(ENA_SERVICE_UUID) && memcmp(service_uuid_data, &ENA_SERVICE_UUID, service_uuid_length) == 0) {
+          //   uint8_t service_data_length = 0;
+          //   uint8_t *service_data = esp_ble_resolve_adv_data(scan_result->scan_rst.ble_adv, 0x16, &service_data_length);
+
+          //   for(int i = 0; i < 16; i++) {
+          //     printf("%.02X", reinterpret_cast<const char*>(service_data)[sizeof(ENA_SERVICE_UUID) + i]);
+          //   }
+          //   printf("- %d\n", scan_result->scan_rst.rssi);
+            
+          //   // if (service_data_length != (sizeof(ENA_SERVICE_UUID) + ENA_KEY_LENGTH + ENA_AEM_METADATA_LENGTH))
+          //   // {
+          //   //     ESP_LOGW(ENA_SCAN_LOG, "received ENA Service with invalid payload");
+          //   //     break;
+          //   // }
+
+          //   // uint8_t *rpi = malloc(ENA_KEY_LENGTH);
+          //   // memcpy(rpi, &service_data[sizeof(ENA_SERVICE_UUID)], ENA_KEY_LENGTH);
+          //   // uint8_t *aem = malloc(ENA_AEM_METADATA_LENGTH);
+          //   // memcpy(aem, &service_data[sizeof(ENA_SERVICE_UUID) + ENA_KEY_LENGTH], ENA_AEM_METADATA_LENGTH);
+          //   // ena_beacon(unix_timestamp, rpi, aem, p->scan_rst.rssi);
+          //   // free(rpi);
+          //   // free(aem);
+          //   // printf("Scan Result\n");
+          // }
+        }
+        //     /* Search for BLE iBeacon Packet */
+        //     if (esp_ble_is_ibeacon_packet(scan_result->scan_rst.ble_adv, scan_result->scan_rst.adv_data_len)){
+        //         esp_ble_ibeacon_t *ibeacon_data = (esp_ble_ibeacon_t*)(scan_result->scan_rst.ble_adv);
+        //         ESP_LOGI(DEMO_TAG, "----------iBeacon Found----------");
+        //         esp_log_buffer_hex("IBEACON_DEMO: Device address:", scan_result->scan_rst.bda, ESP_BD_ADDR_LEN );
+        //         esp_log_buffer_hex("IBEACON_DEMO: Proximity UUID:", ibeacon_data->ibeacon_vendor.proximity_uuid, ESP_UUID_LEN_128);
+
+        //         uint16_t major = ENDIAN_CHANGE_U16(ibeacon_data->ibeacon_vendor.major);
+        //         uint16_t minor = ENDIAN_CHANGE_U16(ibeacon_data->ibeacon_vendor.minor);
+        //         ESP_LOGI(DEMO_TAG, "Major: 0x%04x (%d)", major, major);
+        //         ESP_LOGI(DEMO_TAG, "Minor: 0x%04x (%d)", minor, minor);
+        //         ESP_LOGI(DEMO_TAG, "Measured power (RSSI at a 1m distance):%d dbm", ibeacon_data->ibeacon_vendor.measured_power);
+        //         ESP_LOGI(DEMO_TAG, "RSSI of packet:%d dbm", scan_result->scan_rst.rssi);
+        //     }
+        break;
+    }
+    case ESP_GAP_BLE_SCAN_STOP_COMPLETE_EVT: {
+        if ((err = param->scan_stop_cmpl.status) != ESP_BT_STATUS_SUCCESS){
+            ESP_LOGE(DEMO_TAG, "Scan stop failed: %s", esp_err_to_name(err));
+        }
+        else {
+            ESP_LOGI(DEMO_TAG, "Stop scan successfully");
+        }
+        break;
+    }
+    case ESP_GAP_BLE_ADV_STOP_COMPLETE_EVT: {
+        if ((err = param->adv_stop_cmpl.status) != ESP_BT_STATUS_SUCCESS){
+            ESP_LOGE(DEMO_TAG, "Adv stop failed: %s", esp_err_to_name(err));
+        }
+        else {
+            ESP_LOGI(DEMO_TAG, "Stop adv successfully");
+        }
+        break;
+    }
+    default: {
+      break;
+    }
+    }
+}
+
+  void init() {
+    esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
+    esp_bt_controller_init(&bt_cfg);
+    esp_bt_controller_enable(ESP_BT_MODE_BLE);
+    esp_bluedroid_init();
+    esp_bluedroid_enable();
+    esp_ble_gap_set_scan_params(&ble_scan_params);
+    esp_ble_gap_register_callback(&esp_gap_cb);
+  } 
+  private:
+
+  esp_ble_scan_params_t ble_scan_params = {
+    BLE_SCAN_TYPE_PASSIVE,
+    BLE_ADDR_TYPE_PUBLIC,
+    BLE_SCAN_FILTER_ALLOW_ALL,
+    0x50,
+    0x30,
+    BLE_SCAN_DUPLICATE_DISABLE
+  };
+
+  static const uint16_t ENA_SERVICE_UUID;
+  PubSub::ReceiverHandle receiver();
+};
+} // namespace uActor::ESP32::BLE
+
+#endif // COMPONENTS_BLE_ACTOR_INCLUDE_BLE_ACTOR_HPP_ 
