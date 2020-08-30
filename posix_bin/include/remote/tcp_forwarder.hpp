@@ -1,5 +1,5 @@
-#ifndef MAIN_LINUX_INCLUDE_REMOTE_TCP_FORWARDER_HPP_
-#define MAIN_LINUX_INCLUDE_REMOTE_TCP_FORWARDER_HPP_
+#ifndef POSIX_BIN_INCLUDE_REMOTE_TCP_FORWARDER_HPP_
+#define POSIX_BIN_INCLUDE_REMOTE_TCP_FORWARDER_HPP_
 
 #include <map>
 #include <mutex>
@@ -75,4 +75,4 @@ class TCPForwarder : public uActor::Remote::ForwarderSubscriptionAPI {
 
 }  // namespace uActor::Linux::Remote
 
-#endif  //  MAIN_LINUX_INCLUDE_REMOTE_TCP_FORWARDER_HPP_
+#endif  //  POSIX_BIN_INCLUDE_REMOTE_TCP_FORWARDER_HPP_

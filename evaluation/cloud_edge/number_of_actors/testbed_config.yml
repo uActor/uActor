@@ -6,8 +6,11 @@ boards:
       parameters:
         - --node-id=node_edge
     build_configuration:
-      root_directory: {{TESTBED_ROOT_DIR}}/main_linux
+      root_directory: {{TESTBED_ROOT_DIR}}/posix_bin
       configuration_name: "default"
+      # container_configuration:
+      #   image: ubuntu_cpp_build:18.04
+      #   container_dir: "/app"
 experiments:
   default:
     hooks:
