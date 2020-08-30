@@ -13,3 +13,6 @@
 [submodule "components/Adafruit-GFX"]
 	path = components/Adafruit-GFX
 	url = git@github.com:martinberlin/Adafruit-GFX-Library-ESP-IDF.git
+[submodule "vendor/base64/cpp-base64"]
+	path = vendor/base64/cpp-base64
+	url = git@github.com:ReneNyffenegger/cpp-base64.git

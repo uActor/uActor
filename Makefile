@@ -19,7 +19,7 @@ test:
 	ninja && \
 	./uActor_test
 
-CODE_FILES = $(shell find main_linux uActor main -name '*.*pp')
+CODE_FILES = $(shell find main_linux uActor components/ble_actor main -name '*.*pp')
 lint:
 	cpplint --recursive --root=. --filter -legal,-build/c++11,-whitespace/braces,-build/include_order $(CODE_FILES)
 

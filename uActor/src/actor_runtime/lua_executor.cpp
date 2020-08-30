@@ -44,6 +44,8 @@ lua_State* LuaExecutor::create_lua_state() {
   lua_pop(lua_state, 1);
   luaL_requiref(lua_state, "math", luaopen_math, 1);
   lua_pop(lua_state, 1);
+  luaL_requiref(lua_state, "string", luaopen_string, 1);
+  lua_pop(lua_state, 1);
   luaL_requiref(lua_state, "Publication", LuaPublicationWrapper::luaopen, 1);
   lua_pop(lua_state, 1);
   lua_gc(lua_state, LUA_GCSETSTEPMUL, 200);

@@ -1,5 +1,7 @@
 #include "actor_runtime/managed_lua_actor.hpp"
 
+#include <base64.h>
+
 #include <cassert>
 
 namespace uActor::ActorRuntime {
@@ -137,6 +139,27 @@ int ManagedLuaActor::now_wrapper(lua_State* state) {
   return 1;
 }
 
+int ManagedLuaActor::encode_base64(lua_State* state) {
+  lua_len(state, 1);
+  size_t size = lua_tointeger(state, -1);
+  lua_pop(state, 1);
+  std::string raw(lua_tolstring(state, 1, &size), size);
+  lua_pop(state, 1);
+  lua_pushstring(state, base64_encode(raw, false).c_str());
+  return 1;
+}
+
+int ManagedLuaActor::decode_base64(lua_State* state) {
+  lua_len(state, 1);
+  size_t size = lua_tointeger(state, -1);
+  lua_pop(state, 1);
+  std::string encoded(lua_tolstring(state, 1, &size), size);
+  lua_pop(state, 1);
+  auto decoded = base64_decode(encoded);
+  lua_pushlstring(state, decoded.c_str(), decoded.length());
+  return 1;
+}
+
 #if CONFIG_BENCHMARK_ENABLED
 int ManagedLuaActor::testbed_log_integer_wrapper(lua_State* state) {
   const char* variable = lua_tostring(state, 1);
@@ -202,6 +225,12 @@ bool ManagedLuaActor::createActorEnvironment(std::string receive_function) {
   lua_getglobal(state, "print");
   lua_setfield(state, -2, "print");
 
+  lua_getglobal(state, "type");
+  lua_setfield(state, -2, "type");
+
+  lua_getglobal(state, "pairs");
+  lua_setfield(state, -2, "pairs");
+
   lua_getglobal(state, "tostring");
   lua_setfield(state, -2, "tostring");
 
@@ -218,6 +247,10 @@ bool ManagedLuaActor::createActorEnvironment(std::string receive_function) {
   lua_getglobal(state, "math");
   assert(lua_istable(state, -1));
   lua_setfield(state, -2, "math");
+
+  lua_getglobal(state, "string");
+  assert(lua_istable(state, -1));
+  lua_setfield(state, -2, "string");
 
   for (uint32_t i = 1; i <= PubSub::ConstraintPredicates::MAX_INDEX; i++) {
     const char* name = PubSub::ConstraintPredicates::name(i);
@@ -377,6 +410,8 @@ luaL_Reg ManagedLuaActor::actor_core[] = {
     {"subscribe", &subscribe_wrapper},
     {"unsubscribe", &unsubscribe_wrapper},
     {"now", &now_wrapper},
+    {"encode_base64", &encode_base64},
+    {"decode_base64", &decode_base64},
 #if CONFIG_BENCHMARK_ENABLED
     {"testbed_log_integer", &testbed_log_integer_wrapper},
     {"testbed_log_double", &testbed_log_double_wrapper},

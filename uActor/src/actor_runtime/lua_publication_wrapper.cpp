@@ -64,7 +64,10 @@ int LuaPublicationWrapper::set(lua_State* state) {
   std::string_view key = std::string_view(luaL_checkstring(state, 2));
 
   if (lua_type(state, 3) == LUA_TSTRING) {
-    std::string value(lua_tostring(state, 3));
+    lua_len(state, 3);
+    size_t size = lua_tointeger(state, -1);
+    lua_pop(state, 1);
+    std::string value(lua_tolstring(state, 3, &size), size);
     p->set_attr(key, std::move(value));
   } else if (lua_isinteger(state, 3)) {
     int32_t value = lua_tointeger(state, 3);

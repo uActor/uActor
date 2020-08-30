@@ -62,6 +62,10 @@ class ManagedLuaActor : public ManagedActor {
 
   static int now_wrapper(lua_State* state);
 
+  static int encode_base64(lua_State* state);
+
+  static int decode_base64(lua_State* state);
+
 #if CONFIG_BENCHMARK_ENABLED
   static int testbed_log_integer_wrapper(lua_State* state);
 

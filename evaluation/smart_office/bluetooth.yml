@@ -1,0 +1,23 @@
+type: deployment
+name: de.tum.smart_office.deployment.ena_scanner
+ttl:  0
+actor_type:  de.tum.smart_office.actor.ena_scanner
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "en_scanner.lua"
+---
+type: deployment
+name: de.tum.smart_office.deployment.ibeacon_scanner
+ttl:  0
+actor_type:  de.tum.smart_office.actor.ibeacon_scanner
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "ibeacon_reader.lua"
+---
+type: deployment
+name: de.tum.smart_office.deployment.ibeacon
+ttl:  0
+actor_type:  de.tum.smart_office.actor.ibeacon
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "ibeacon.lua"
