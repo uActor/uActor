@@ -1,3 +1,3 @@
-linter:
+lint:
   image: python:3-alpine
-  script: pip install cpplint && cpplint --recursive --root=. --filter -legal,-build/c++11,-whitespace/braces,-build/include_order $(find posix_bin uActor main -not -path 'posix_bin/build/*' -and -name '*.*pp')
+  script: apk update && apk upgrade && apk add --no-cache make && pip install cpplint && make lint

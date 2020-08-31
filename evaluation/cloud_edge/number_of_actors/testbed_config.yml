@@ -5,8 +5,12 @@ boards:
       binary_name: "uActorBin"
       parameters:
         - --node-id=node_edge
+      # remote:
+      #   host: "116.203.209.168"
+      #   user: raphael
+        # root_directory: /home/raphael/testbed-test
     build_configuration:
-      root_directory: {{TESTBED_ROOT_DIR}}/posix_bin
+      root_directory: {{TESTBED_ROOT_DIR}}/uActor-POSIX
       configuration_name: "default"
       # container_configuration:
       #   image: ubuntu_cpp_build:18.04

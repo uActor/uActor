@@ -8,10 +8,10 @@
 	path = vendor/msgpack/msgpack-c
 	url = git@github.com:msgpack/msgpack-c.git
 [submodule "esp32_components/callEPD"]
-	path = esp32_components/callEPD
+	path = uActor-ESP32/components/callEPD
 	url = git@github.com:martinberlin/CalEPD.git
 [submodule "esp32_components/Adafruit-GFX"]
-	path = esp32_components/Adafruit-GFX
+	path = uActor-ESP32/components/Adafruit-GFX
 	url = git@github.com:martinberlin/Adafruit-GFX-Library-ESP-IDF.git
 [submodule "vendor/base64/cpp-base64"]
 	path = vendor/base64/cpp-base64

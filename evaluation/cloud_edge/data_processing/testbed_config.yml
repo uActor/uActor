@@ -208,7 +208,7 @@ boards:
         - --server-node=node_cloud
         - --tcp-external-address=192.168.50.3
     build_configuration:
-      root_directory: {{TESTBED_ROOT_DIR}}/posix_bin
+      root_directory: {{TESTBED_ROOT_DIR}}/uActor-POSIX
       configuration_name: "default"
   #
   # node_cloud: #TODO(raphaelhetzel) update server to 20.04
@@ -223,7 +223,7 @@ boards:
   #       host: "0.0.0.0"
   #       root_directory: "/home/raphael/uActorTest"
   #   build_configuration:
-  #     root_directory: {{TESTBED_ROOT_DIR}}/posix_bin
+  #     root_directory: {{TESTBED_ROOT_DIR}}/uActor-POSIX
   #     configuration_name: "default"
 experiments:
   default:
