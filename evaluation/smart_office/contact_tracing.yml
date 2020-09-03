@@ -1,0 +1,29 @@
+type: deployment
+name: de.tum.smart_office.deployment.contact_scanner
+ttl:  0
+actor_type:  de.tum.smart_office.actor.contact_scanner
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "contact_scanner.lua"
+required_actors:
+  - "core.io.ble"
+---
+type: deployment
+name: de.tum.smart_office.deployment.contact_tracker
+ttl:  0
+actor_type:  de.tum.smart_office.actor.contact_tracker
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "contact_tracker.lua"
+---
+type: deployment
+name: de.tum.smart_office.deployment.contact_tracker_test
+ttl:  0
+actor_type:  de.tum.smart_office.actor.contact_tracker_test
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "contact_tracker_test.lua"
+required_actors:
+  - "de.tum.smart_office.actor.contact_tracker"
+constraints:
+  - "de.tum.smart_office.settings.demo_mode" : "true"

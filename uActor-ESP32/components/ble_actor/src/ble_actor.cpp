@@ -158,7 +158,7 @@ void BLEActor::scan(void) {
       0,  // window
       0,  // filter_policy,
       0,  // limited
-      1,  // passive
+      0,  // passive
       0   // filter_duplicated
   };
 
@@ -166,7 +166,7 @@ void BLEActor::scan(void) {
                       &discovery_callback, NULL) == 0);
 }
 
-int BLEActor::discovery_callback(struct ble_gap_event* event, void* arg) {
+int BLEActor::discovery_callback(ble_gap_event* event, void* arg) {
   switch (event->type) {
     case BLE_GAP_EVENT_DISC:
       handle_discovery_event(event);
@@ -192,13 +192,15 @@ std::optional<std::string> BLEActor::serialize_attribute(
   return std::string(buffer, attribute.size() + 2);
 }
 
-void BLEActor::handle_discovery_event(struct ble_gap_event* event) {
+void BLEActor::handle_discovery_event(ble_gap_event* event) {
   PubSub::Publication publication(BoardFunctions::NODE_ID, "ble_observer", "1");
   publication.set_attr("type", "ble_discovery");
   publication.set_attr("rssi", event->disc.rssi);
   publication.set_attr(
       "address", base64_encode(std::string(
                      reinterpret_cast<const char*>(event->disc.addr.val), 6)));
+
+
 
   std::string type;
   switch (event->disc.addr.type) {

@@ -3,6 +3,7 @@
 #include <base64.h>
 
 #include <cassert>
+#include <ctime>
 
 namespace uActor::ActorRuntime {
 
@@ -157,6 +158,17 @@ int ManagedLuaActor::decode_base64(lua_State* state) {
   lua_pop(state, 1);
   auto decoded = base64_decode(encoded);
   lua_pushlstring(state, decoded.c_str(), decoded.length());
+  return 1;
+}
+
+int ManagedLuaActor::unix_timestamp_wrapper(lua_State* state) {
+  static int MIN_ACCEPTED_TIMESTAMP = 1577836800;
+  time_t timestamp = 0L;
+  time(&timestamp);
+  if (timestamp < MIN_ACCEPTED_TIMESTAMP) {
+    timestamp = 0L;
+  }
+  lua_pushinteger(state, timestamp);
   return 1;
 }
 
@@ -412,6 +424,7 @@ luaL_Reg ManagedLuaActor::actor_core[] = {
     {"now", &now_wrapper},
     {"encode_base64", &encode_base64},
     {"decode_base64", &decode_base64},
+    {"unix_timestamp", &unix_timestamp_wrapper},
 #if CONFIG_BENCHMARK_ENABLED
     {"testbed_log_integer", &testbed_log_integer_wrapper},
     {"testbed_log_double", &testbed_log_double_wrapper},

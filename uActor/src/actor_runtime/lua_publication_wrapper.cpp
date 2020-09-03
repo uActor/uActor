@@ -6,6 +6,10 @@ int LuaPublicationWrapper::get(lua_State* state) {
   auto publication =
       (PubSub::Publication*)luaL_checkudata(state, 1, "uActor.Publication");
   auto key = std::string_view(luaL_checkstring(state, 2));
+  if (!publication->has_attr(key)) {
+    lua_pushnil(state);
+    return 1;
+  }
   auto value = publication->get_attr(key);
   if (std::holds_alternative<std::monostate>(value)) {
     lua_pushnil(state);

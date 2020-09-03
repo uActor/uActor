@@ -1,8 +1,10 @@
 #ifndef UACTOR_ESP32_COMPONENTS_EPAPER_ACTOR_INCLUDE_EPAPER_ACTOR_HPP_
 #define UACTOR_ESP32_COMPONENTS_EPAPER_ACTOR_INCLUDE_EPAPER_ACTOR_HPP_
 
-#include <Fonts/FreeMono12pt7b.h>
 #include <gdeh0213b73.h>
+extern "C" {
+#include <Fonts/FreeMono12pt7b.h>
+}
 
 #include <map>
 #include <optional>

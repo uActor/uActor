@@ -50,12 +50,12 @@ class BLEActor {
 
   static void scan(void);
 
-  static int discovery_callback(struct ble_gap_event* event, void* arg);
+  static int discovery_callback(ble_gap_event* event, void* arg);
 
   static std::optional<std::string> serialize_attribute(uint8_t key,
                                                         std::string attribute);
 
-  static void handle_discovery_event(struct ble_gap_event* event);
+  static void handle_discovery_event(ble_gap_event* event);
 };
 }  // namespace uActor::ESP32::BLE
 
