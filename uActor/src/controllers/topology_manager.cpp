@@ -2,6 +2,8 @@
 
 #include <utility>
 
+#include "support/logger.hpp"
+
 namespace uActor::Controllers {
 TopologyManager::TopologyManager(
     ActorRuntime::ManagedNativeActor* actor_wrapper, std::string_view node_id,
@@ -51,10 +53,13 @@ void TopologyManager::receive_peer_update(
       publication.has_attr("update_type") &&
       publication.has_attr("peer_node_id")) {
     if (publication.get_str_attr("update_type") == "peer_added") {
-      printf("peer added\n");
+      Support::Logger::info("TOPOLOGY-MANAGER", "PEER-UPDATE", "Peer added %s",
+                            publication.get_str_attr("peer_node_id")->data());
       reachable_peers.emplace(*publication.get_str_attr("peer_node_id"));
     } else if (publication.get_str_attr("update_type") == "peer_removed") {
-      printf("peer removed\n");
+      Support::Logger::info("TOPOLOGY-MANAGER", "PEER-UPDATE",
+                            "Peer removed %s",
+                            publication.get_str_attr("peer_node_id")->data());
       reachable_peers.erase(
           std::string(*publication.get_str_attr("peer_node_id")));
     }

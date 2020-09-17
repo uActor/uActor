@@ -3,6 +3,8 @@
 #include <cassert>
 #include <utility>
 
+#include "support/logger.hpp"
+
 namespace uActor::Controllers {
 
 DeploymentManager::DeploymentManager(
@@ -41,6 +43,8 @@ void DeploymentManager::receive(const PubSub::Publication& publication) {
 
 void DeploymentManager::receive_deployment(
     const PubSub::Publication& publication) {
+  uActor::Support::Logger::trace("DEPLOYMENT-MANAGER", "RECEIVE-DEPLOYMENT",
+                                 "Deployment Message");
   if (auto executor_it = executors.find(std::string(
           *publication.get_str_attr("deployment_actor_runtime_type")));
       executor_it != executors.end()) {
@@ -89,6 +93,8 @@ void DeploymentManager::receive_deployment(
       Deployment& deployment = deployment_iterator->second;
 
       if (inserted) {
+        uActor::Support::Logger::trace("DEPLOYMENT-MANAGER",
+                                       "RECEIVE-DEPLOYMENT", "New Deployment");
         publish_code_package(deployment, std::string(actor_code));
         // printf("Receive deployment from: %s\n",
         //       publication.get_str_attr("publisher_node_id")->data());
@@ -97,6 +103,8 @@ void DeploymentManager::receive_deployment(
           activate_deployment(&deployment, &ExecutorIdentifier);
         }
       } else {
+        uActor::Support::Logger::trace(
+            "DEPLOYMENT-MANAGER", "RECEIVE-DEPLOYMENT", "Deployment Update");
         // printf("Receive deployment update from: %s\n",
         //       publication.get_str_attr("publisher_node_id")->data());
 
@@ -122,6 +130,8 @@ void DeploymentManager::receive_deployment(
 
 void DeploymentManager::receive_lifetime_event(
     const PubSub::Publication& publication) {
+  uActor::Support::Logger::trace("DEPLOYMENT-MANAGER", "RECEIVE-LIFETIME-EVENT",
+                                 "Lifetime Event");
   if (publication.get_str_attr("type") == "actor_exit") {
     std::string deployment_id =
         std::string(*publication.get_str_attr("lifetime_instance_id"));
@@ -152,6 +162,8 @@ void DeploymentManager::receive_lifetime_event(
 
 void DeploymentManager::receive_ttl_timeout(
     const PubSub::Publication& publication) {
+  uActor::Support::Logger::trace("DEPLOYMENT-MANAGER", "RECEIVE-TTL-TIMEOUT",
+                                 "TTL-TIMEOUT");
   while (ttl_end_times.begin() != ttl_end_times.end() &&
          ttl_end_times.begin()->first < now()) {
     for (auto deployment_id : ttl_end_times.begin()->second) {
@@ -173,6 +185,8 @@ void DeploymentManager::receive_ttl_timeout(
 }
 
 void DeploymentManager::receive_label_update(const PubSub::Publication& pub) {
+  uActor::Support::Logger::trace("DEPLOYMENT-MANAGER", "RECEIVE-LABEL-UPDATE",
+                                 "LABEL-UPDATE");
   auto key = pub.get_str_attr("key");
   auto value = pub.get_str_attr("value");
   if (pub.get_str_attr("command") == "upsert" && key && value) {
@@ -205,6 +219,8 @@ void DeploymentManager::receive_label_update(const PubSub::Publication& pub) {
 }
 
 void DeploymentManager::receive_label_get(const PubSub::Publication& pub) {
+  uActor::Support::Logger::trace("DEPLOYMENT-MANAGER", "RECEIVE-LABEL-GET",
+                                 "LABEL-GET");
   auto key = pub.get_str_attr("key");
   auto publisher_node_id = pub.get_str_attr("publisher_node_id");
   auto publisher_actor_type = pub.get_str_attr("publisher_actor_type");
@@ -230,6 +246,9 @@ void DeploymentManager::receive_label_get(const PubSub::Publication& pub) {
 
 void DeploymentManager::receive_unmanaged_actor_update(
     const PubSub::Publication& pub) {
+  uActor::Support::Logger::trace("DEPLOYMENT-MANAGER",
+                                 "RECEIVE-UNMANAGED-ACTOR-UPDATE",
+                                 "UNMANAGED-ACTOR-UPDATE");
   if (pub.get_str_attr("command") == "register") {
     increment_deployed_actor_type_count(*pub.get_str_attr("update_actor_type"));
   } else if (pub.get_str_attr("command") == "deregister") {
@@ -239,6 +258,8 @@ void DeploymentManager::receive_unmanaged_actor_update(
 
 void DeploymentManager::receive_executor_update(
     const PubSub::Publication& pub) {
+  uActor::Support::Logger::trace("DEPLOYMENT-MANAGER",
+                                 "RECEIVE-EXECUTOR-UPDATE", "EXECUTOR-UPDATE");
   auto actor_runtime_type = pub.get_str_attr("actor_runtime_type");
 
   auto update_node_id = pub.get_str_attr("update_node_id");

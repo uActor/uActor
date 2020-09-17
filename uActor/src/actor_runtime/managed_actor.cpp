@@ -5,6 +5,8 @@
 #include <memory>
 #include <utility>
 
+#include "support/logger.hpp"
+
 #define ACTOR_QUEUE_SOFTLIMIT 100
 
 namespace uActor::ActorRuntime {
@@ -82,6 +84,7 @@ bool ManagedActor::enqueue(PubSub::Publication&& pub) {
 }
 
 void ManagedActor::trigger_timeout() {
+  Support::Logger::trace("MANAGED-ACTOR", "TRIGGER-TIMEOUT", "called");
   auto p = PubSub::Publication(_node_id.c_str(), _actor_type.c_str(),
                                _instance_id.c_str());
   p.set_attr("_internal_timeout", "_timeout");
@@ -96,16 +99,21 @@ bool ManagedActor::early_initialize() {
 
 bool ManagedActor::late_initialize(std::string&& code) {
   // We need to wrap the runtime-specific initialization.
+  Support::Logger::trace("MANAGED-ACTOR", "LATE-INIT", "called");
   _initialized = late_internal_initialize(std::move(code));
   if (_initialized) {
+    Support::Logger::trace("MANAGED-ACTOR", "LATE-INIT", "success");
     return true;
   } else {
     publish_exit_message("initialization_failure");
+    Support::Logger::trace("MANAGED-ACTOR", "LATE-INIT", "failure");
     return false;
   }
 }
 
 void ManagedActor::trigger_code_fetch() {
+  Support::Logger::trace("MANAGED-ACTOR", "LATE-CODE-FETCH",
+                         "trigger code fetch");
   PubSub::Publication fetch_code(node_id(), actor_type(), instance_id());
   fetch_code.set_attr("command", "fetch_actor_code");
   fetch_code.set_attr("actor_code_type", _actor_type);

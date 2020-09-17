@@ -5,9 +5,12 @@
 #include <cassert>
 #include <ctime>
 
+#include "support/logger.hpp"
+
 namespace uActor::ActorRuntime {
 
 ManagedLuaActor::~ManagedLuaActor() {
+  uActor::Support::Logger::trace("LUA-ACTOR", "STOP", "LUA Actor Stopped.");
   lua_pushnil(state);
   lua_setglobal(state, std::to_string(id()).data());
   lua_gc(state, LUA_GCCOLLECT, 0);
@@ -20,7 +23,8 @@ bool ManagedLuaActor::receive(PubSub::Publication&& m) {
   }
 #endif
   if (!initialized()) {
-    printf("Actor not initialized, can't process message\n");
+    Support::Logger::warning("MANAGED-LUA-ACTOR", "RECEIVE",
+                             "Actor not initialized, can't process message");
     return false;
   }
 

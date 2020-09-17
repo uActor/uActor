@@ -17,6 +17,7 @@
 #include "board_functions.hpp"
 #include "pubsub/router.hpp"
 #include "remote/forwarder_api.hpp"
+#include "support/logger.hpp"
 
 namespace uActor::Remote {
 
@@ -132,6 +133,8 @@ void RemoteConnection::process_data(uint32_t len, char* data) {
         if (p && p->has_attr("publisher_node_id") &&
             p->get_str_attr("publisher_node_id") != BoardFunctions::NODE_ID) {
           auto publisher_node_id = p->get_str_attr("publisher_node_id");
+          uActor::Support::Logger::trace("REMOTE-CONNECTION", "MESSAGE",
+                                         publisher_node_id->data());
           auto sequence_number = p->get_int_attr("_internal_sequence_number");
           auto epoch_number = p->get_int_attr("_internal_epoch");
           std::unique_lock lck(mtx);
