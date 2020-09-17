@@ -72,7 +72,11 @@ class Executor : public ExecutorApi {
             local_id, this, local_id, node_id, actor_type, actor_version,
             instance_id, std::forward<Args>(args)...);
         success) {
-      actor_it->second.early_initialize();
+      auto result = actor_it->second.early_initialize();
+      if (result.second < UINT32_MAX) {
+        timeouts.push_back(std::make_pair(
+            BoardFunctions::timestamp() + result.second, actor_it->first));
+      }
       auto init_message =
           PubSub::Publication(_node_id, _actor_type, _instance_id);
       init_message.set_attr("node_id", node_id);

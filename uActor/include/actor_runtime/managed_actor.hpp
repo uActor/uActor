@@ -5,6 +5,7 @@
 #include <deque>
 #include <set>
 #include <string>
+#include <utility>
 
 #include "executor_api.hpp"
 #include "pubsub/filter.hpp"
@@ -38,7 +39,7 @@ class ManagedActor {
 
   virtual std::string actor_runtime_type() = 0;
 
-  bool early_initialize();
+  std::pair<bool, uint32_t> early_initialize();
 
   bool late_initialize(std::string&& code);
 
@@ -90,6 +91,8 @@ class ManagedActor {
   ExecutorApi* api;
 
   bool _initialized = false;
+  uint32_t code_fetch_retries = 0;
+  bool waiting_for_code = false;
 
   void publish_exit_message(std::string exit_reason);
   void publish_creation_message();

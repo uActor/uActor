@@ -36,9 +36,6 @@ class ManagedLuaActor : public ManagedActor {
 
  protected:
   bool early_internal_initialize() override {
-    deffered_block_for(
-        PubSub::Filter{PubSub::Constraint("type", "fetch_actor_code_response")},
-        10000);
     trigger_code_fetch();
     return false;
   }

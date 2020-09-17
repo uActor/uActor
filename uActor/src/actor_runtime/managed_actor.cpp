@@ -36,8 +36,24 @@ ManagedActor::ReceiveResult ManagedActor::receive_next_internal() {
   bool is_exit = next_message.get_str_attr("type") == "exit";
   bool success = false;
   if (next_message.get_str_attr("type") == "fetch_actor_code_response") {
-    success =
-        late_initialize(std::string(*next_message.get_str_attr("actor_code")));
+    waiting_for_code = false;
+    if (next_message.get_str_attr("actor_code_type") == actor_type()) {
+      success = late_initialize(
+          std::string(*next_message.get_str_attr("actor_code")));
+    } else {
+      Support::Logger::fatal("MANAGED-ACTOR", "CODE-FETCH",
+                             "Received wrong code package.\n");
+    }
+  } else if (next_message.get_str_attr("type") == "timeout" &&
+             waiting_for_code) {
+    if (code_fetch_retries < 3) {
+      Support::Logger::warning("MANAGED-ACTOR", "CODE-FETCH", "RETRY");
+      trigger_code_fetch();
+      code_fetch_retries++;
+    } else {
+      Support::Logger::warning("MANAGED-ACTOR", "CODE-FETCH", "FAILED");
+      success = false;
+    }
   } else {
     success = this->receive(std::move(next_message));
   }
@@ -91,10 +107,10 @@ void ManagedActor::trigger_timeout() {
   message_queue.emplace_front(std::move(p));
 }
 
-bool ManagedActor::early_initialize() {
+std::pair<bool, uint32_t> ManagedActor::early_initialize() {
   // We need to wrap the runtime-specific initialization.
   _initialized = early_internal_initialize();
-  return _initialized;
+  return std::make_pair(_initialized, _timeout);
 }
 
 bool ManagedActor::late_initialize(std::string&& code) {
@@ -112,14 +128,19 @@ bool ManagedActor::late_initialize(std::string&& code) {
 }
 
 void ManagedActor::trigger_code_fetch() {
+  waiting_for_code = true;
   Support::Logger::trace("MANAGED-ACTOR", "LATE-CODE-FETCH",
                          "trigger code fetch");
+  deffered_block_for(
+      PubSub::Filter{PubSub::Constraint("type", "fetch_actor_code_response")},
+      10000);
   PubSub::Publication fetch_code(node_id(), actor_type(), instance_id());
+  fetch_code.set_attr("node_id", node_id());
   fetch_code.set_attr("command", "fetch_actor_code");
   fetch_code.set_attr("actor_code_type", _actor_type);
   fetch_code.set_attr("actor_code_version", _actor_version);
   fetch_code.set_attr("actor_code_runtime_type", actor_runtime_type());
-  delayed_publish(std::move(fetch_code), 2000);
+  publish(std::move(fetch_code));
 }
 
 uint32_t ManagedActor::subscribe(PubSub::Filter&& f) {

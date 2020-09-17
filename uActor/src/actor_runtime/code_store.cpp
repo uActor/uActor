@@ -11,6 +11,9 @@ CodeStore::CodeStore(ManagedNativeActor* actor_wrapper,
   subscribe(PubSub::Filter{
       PubSub::Constraint{"publisher_node_id", std::string(node_id)},
       PubSub::Constraint{"type", "actor_code"}});
+  subscribe(
+      PubSub::Filter{PubSub::Constraint{"command", "fetch_actor_code"},
+                     PubSub::Constraint{"node_id", std::string(node_id)}});
   uActor::Support::Logger::trace("CODE-STORE", "INIT", "Init code store");
 }
 
@@ -21,7 +24,6 @@ void CodeStore::receive(const PubSub::Publication& publication) {
   } else if (publication.get_str_attr("type") == "actor_code") {
     receive_store(publication);
   } else if (publication.get_str_attr("command") == "fetch_actor_code") {
-    printf("Called\n");
     receive_retrieve(publication);
   }
 }
@@ -81,7 +83,7 @@ void CodeStore::receive_retrieve(const PubSub::Publication& publication) {
                         *publication.get_str_attr("publisher_instance_id"));
       response.set_attr("type", "fetch_actor_code_response");
       response.set_attr("actor_code_type",
-                        *publication.get_str_attr("publisher_actor_type"));
+                        *publication.get_str_attr("actor_code_type"));
       response.set_attr("actor_code_version",
                         *publication.get_str_attr("actor_code_version"));
       response.set_attr("actor_code", std::move(*code));
@@ -108,7 +110,7 @@ void CodeStore::cleanup() {
   uint32_t current_timestamp = BoardFunctions::timestamp();
   std::unordered_set<CodeIdentifier, CodeIdentifierHasher> to_delete;
   for (auto& [key, value_pair] : _store) {
-    if (value_pair.second < current_timestamp) {
+    if (value_pair.second > 0 && value_pair.second < current_timestamp) {
       to_delete.emplace(key);
     }
   }
