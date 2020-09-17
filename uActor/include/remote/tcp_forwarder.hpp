@@ -1,5 +1,5 @@
-#ifndef UACTOR_POSIX_INCLUDE_REMOTE_TCP_FORWARDER_HPP_
-#define UACTOR_POSIX_INCLUDE_REMOTE_TCP_FORWARDER_HPP_
+#ifndef UACTOR_INCLUDE_REMOTE_TCP_FORWARDER_HPP_
+#define UACTOR_INCLUDE_REMOTE_TCP_FORWARDER_HPP_
 
 #include <map>
 #include <mutex>
@@ -9,11 +9,11 @@
 #include <unordered_map>
 
 #include "board_functions.hpp"
+#include "forwarder_api.hpp"
 #include "pubsub/router.hpp"
-#include "remote/forwarder_api.hpp"
-#include "remote/remote_connection.hpp"
+#include "remote_connection.hpp"
 
-namespace uActor::Linux::Remote {
+namespace uActor::Remote {
 
 struct TCPAddressArguments {
   TCPAddressArguments(std::string listen_ip, uint16_t port,
@@ -28,6 +28,8 @@ struct TCPAddressArguments {
 
   std::string external_address_hint;
   uint16_t external_port_hint;
+
+  void* tcp_forwarder = nullptr;
 };
 
 class TCPForwarder : public uActor::Remote::ForwarderSubscriptionAPI {
@@ -43,17 +45,17 @@ class TCPForwarder : public uActor::Remote::ForwarderSubscriptionAPI {
   void receive(PubSub::MatchedPublication&& m);
 
   uint32_t add_subscription(uint32_t local_id, PubSub::Filter&& filter,
-                            std::string_view node_id);
+                            std::string node_id);
 
   void remove_subscription(uint32_t local_id, uint32_t sub_id,
-                           std::string_view node_id);
+                           std::string node_id);
 
  private:
   int forwarder_subscription_id;
   int peer_announcement_subscription_id;
   int subscription_update_subscription_id;
-  TCPAddressArguments _address_arguments;
   PubSub::ReceiverHandle handle;
+  TCPAddressArguments _address_arguments;
 
   uint32_t next_local_id = 0;
   std::unordered_map<uint32_t, uActor::Remote::RemoteConnection> remotes;
@@ -62,7 +64,8 @@ class TCPForwarder : public uActor::Remote::ForwarderSubscriptionAPI {
   std::mutex remote_mtx;
   int listen_sock;
 
-  bool write(int sock, int len, const char* message);
+  bool write(std::string remote_ip, uint16_t remote_port, int socket, int len,
+             const char* message);
 
   void tcp_reader();
 
@@ -71,8 +74,16 @@ class TCPForwarder : public uActor::Remote::ForwarderSubscriptionAPI {
   void listen_handler();
 
   void data_handler(uActor::Remote::RemoteConnection* remote);
+
+  void keepalive();
+
+  void add_remote_connection(int socket_id, std::string remote_addr,
+                             uint16_t remote_port,
+                             uActor::Remote::ConnectionRole role);
+
+  void set_socket_options(int socket_id);
 };
 
-}  // namespace uActor::Linux::Remote
+}  // namespace uActor::Remote
 
-#endif  //  UACTOR_POSIX_INCLUDE_REMOTE_TCP_FORWARDER_HPP_
+#endif  //  UACTOR_INCLUDE_REMOTE_TCP_FORWARDER_HPP_

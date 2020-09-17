@@ -18,15 +18,11 @@ extern "C" {
 #include "forwarder_api.hpp"
 #include "remote/sequence_info.hpp"
 
-namespace uActor::ESP32::Remote {
-class TCPForwarder;
-}  // namespace uActor::ESP32::Remote
-
-namespace uActor::Linux::Remote {
-class TCPForwarder;
-}  // namespace uActor::Linux::Remote
-
 namespace uActor::Remote {
+
+class TCPForwarder;
+
+enum struct ConnectionRole : uint8_t { SERVER = 0, CLIENT = 1 };
 
 class RemoteConnection {
  public:
@@ -35,7 +31,9 @@ class RemoteConnection {
   RemoteConnection(RemoteConnection&&) = default;
   RemoteConnection& operator=(RemoteConnection&&) = default;
 
-  RemoteConnection(uint32_t local_id, int32_t sock,
+  RemoteConnection(uint32_t local_id, int32_t socket_id,
+                   std::string remote_addr, uint16_t remote_port,
+                   ConnectionRole connection_role,
                    ForwarderSubscriptionAPI* handle);
 
   ~RemoteConnection();
@@ -56,23 +54,31 @@ class RemoteConnection {
   static std::atomic<uint32_t> sequence_number;
 
  private:
+  uint32_t local_id;
+  int sock = 0;
+
   // TCP Related
   // TODO(raphaelhetzel) potentially move this to a seperate
   // wrapper once we have more types of forwarders
-  int sock{0};
-  int len{0};
-  std::vector<char> rx_buffer = std::vector<char>(512);
+  std::string partner_ip;
+  uint16_t partner_port;
+  ConnectionRole connection_role;
 
   // Subscription related
-  uint32_t local_id;
   ForwarderSubscriptionAPI* handle;
   std::list<uint32_t> subscription_ids;
   uint32_t update_sub_id;
 
+  // Peer related
   std::string partner_node_id;
+  uint32_t last_read_contact = 0;
+  uint32_t last_write_contact = 0;
 
   // Connection statemachine
   ProcessingState state{empty};
+
+  int len = 0;
+  std::vector<char> rx_buffer = std::vector<char>(512);
 
   // The size field may be split into multiple recvs
   char size_buffer[4]{0, 0, 0, 0};
@@ -88,8 +94,8 @@ class RemoteConnection {
   std::map<std::string, Remote::SequenceInfo> connection_sequence_infos;
 
   void update_subscriptions(PubSub::Publication&& p);
-  friend uActor::ESP32::Remote::TCPForwarder;
-  friend uActor::Linux::Remote::TCPForwarder;
+  friend uActor::Remote::TCPForwarder;
+  friend uActor::Remote::TCPForwarder;
 };
 
 }  // namespace uActor::Remote

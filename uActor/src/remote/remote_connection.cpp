@@ -26,9 +26,17 @@ std::unordered_map<std::string, Remote::SequenceInfo>
 std::atomic<uint32_t> RemoteConnection::sequence_number{1};
 std::mutex RemoteConnection::mtx;
 
-RemoteConnection::RemoteConnection(uint32_t local_id, int32_t sock,
+RemoteConnection::RemoteConnection(uint32_t local_id, int32_t socket_id,
+                                   std::string remote_addr,
+                                   uint16_t remote_port,
+                                   ConnectionRole connection_role,
                                    ForwarderSubscriptionAPI* handle)
-    : sock(sock), local_id(local_id), handle(handle) {
+    : local_id(local_id),
+      sock(socket_id),
+      partner_ip(remote_addr),
+      partner_port(remote_port),
+      connection_role(connection_role),
+      handle(handle) {
   update_sub_id = handle->add_subscription(
       local_id,
       PubSub::Filter{
@@ -121,15 +129,13 @@ void RemoteConnection::process_data(uint32_t len, char* data) {
         timeval tv;
         gettimeofday(&tv, NULL);
 #endif
-        auto p = PubSub::Publication::from_msg_pack(
-            std::string_view(publication_buffer.data(), publicaton_full_size));
-#if CONFIG_BENCHMARK_BREAKDOWN
-        testbed_log_integer(
-            "messaging_time",
-            ((tv.tv_sec * 1000LL + (tv.tv_usec / 1000LL) - 1583245913000) -
-             *p->get_int_attr("_benchmark_send_time")) *
-                1000);
-#endif
+        std::optional<PubSub::Publication> p;
+        if (publicaton_full_size > 0) {
+          p = PubSub::Publication::from_msg_pack(std::string_view(
+              publication_buffer.data(), publicaton_full_size));
+        } else {
+          // printf("null message\n");
+        }
         if (p && p->has_attr("publisher_node_id") &&
             p->get_str_attr("publisher_node_id") != BoardFunctions::NODE_ID) {
           auto publisher_node_id = p->get_str_attr("publisher_node_id");
@@ -186,7 +192,6 @@ void RemoteConnection::process_data(uint32_t len, char* data) {
         publication_buffer.shrink_to_fit();
         state = empty;
         assert(publicaton_remaining_bytes == 0);
-      } else {
       }
     }
   }
@@ -205,8 +210,6 @@ void RemoteConnection::update_subscriptions(PubSub::Publication&& p) {
 
     partner_node_id = std::string(new_partner_id);
 
-    // TODO(raphaelhetzel) We could reduce traffic a bit by delaying one of
-    // the parties.
     send_routing_info();
 
     // Flooding
@@ -222,18 +225,28 @@ void RemoteConnection::update_subscriptions(PubSub::Publication&& p) {
              *p.get_str_attr("serialized_subscriptions"), "&")) {
       auto deserialized = PubSub::Filter::deserialize(serialized);
       if (deserialized) {
-        uint32_t sub_id =
-            handle->add_subscription(local_id, std::move(*deserialized),
-                                     std::string_view(partner_node_id));
+        uint32_t sub_id = handle->add_subscription(
+            local_id, PubSub::Filter(*deserialized), partner_node_id);
+        // for (const auto constraint : deserialized->required) {
+        //   if (constraint.attribute() == "node_id" &&
+        //       std::holds_alternative<std::string>(constraint.operand())) {
+        //     uActor::Support::Logger::trace(
+        //         "REMOTE", "SUB-ID", "%s - %d",
+        //         std::get<std::string>(constraint.operand()).c_str(), sub_id);
+        //   }
+        // }
         if (old_subscriptions.erase(sub_id) == 0) {
           subscription_ids.push_back(sub_id);
+          uActor::Support::Logger::trace("REMOTE", "SUB-ID ADDED", "%d",
+                                         sub_id);
         }
       }
     }
     for (auto subscription_id : old_subscriptions) {
-      handle->remove_subscription(local_id, subscription_id,
-                                  std::string_view(partner_node_id));
+      handle->remove_subscription(local_id, subscription_id, partner_node_id);
       subscription_ids.remove(subscription_id);
+      uActor::Support::Logger::trace("REMOTE", "SUB-ID REMOVED", "%d",
+                                     subscription_id);
     }
   }
 }

@@ -145,11 +145,18 @@ int main(int arg_count, char** args) {
     external_port = arguments["tcp-external-port"].as<uint16_t>();
   }
 
-  auto tcp_task_args = uActor::Linux::Remote::TCPAddressArguments(
+  auto tcp_task_args = uActor::Remote::TCPAddressArguments(
       listen_ip, tcp_port, external_address, external_port);
 
-  auto tcp_task = std::thread(&uActor::Linux::Remote::TCPForwarder::os_task,
+  auto tcp_task = std::thread(&uActor::Remote::TCPForwarder::os_task,
                               reinterpret_cast<void*>(&tcp_task_args));
+
+  while (!tcp_task_args.tcp_forwarder) {
+    sleep(1);
+  }
+
+  auto tcp_task2 = std::thread(&uActor::Remote::TCPForwarder::tcp_reader_task,
+                               tcp_task_args.tcp_forwarder);
 
   uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
       uActor::Controllers::TopologyManager>("topology_manager");
@@ -243,6 +250,7 @@ int main(int arg_count, char** args) {
   testbed_log_rt_integer("_ready", boot_timestamp);
 #endif
 
+  tcp_task2.join();
   tcp_task.join();
   return 0;
 }

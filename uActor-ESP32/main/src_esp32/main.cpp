@@ -196,8 +196,20 @@ void main_task(void *) {
   xTaskCreatePinnedToCore(&uActor::ESP32::IO::GPIOActor::os_task, "GPIO_ACTOR",
                           4192, nullptr, 5, nullptr, 0);
 
-  xTaskCreatePinnedToCore(&uActor::ESP32::Remote::TCPForwarder::os_task, "TCP",
-                          4192, nullptr, 4, nullptr, 0);
+  auto tcp_task_args =
+      uActor::Remote::TCPAddressArguments("0.0.0.0", 1337, "", 0);
+
+  xTaskCreatePinnedToCore(&uActor::Remote::TCPForwarder::os_task, "TCP", 4192,
+                          reinterpret_cast<void *>(&tcp_task_args), 4, nullptr,
+                          0);
+
+  while (!tcp_task_args.tcp_forwarder) {
+    vTaskDelay(1000);
+  }
+
+  xTaskCreatePinnedToCore(
+      &uActor::Remote::TCPForwarder::tcp_reader_task, "TCP2", 4192,
+      reinterpret_cast<void *>(&tcp_task_args), 4, nullptr, 0);
 
   xTaskCreatePinnedToCore(&uActor::ESP32::BLE::BLEActor::os_task, "BLE", 4192,
                           nullptr, 4, nullptr, 0);
