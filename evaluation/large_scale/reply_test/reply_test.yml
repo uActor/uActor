@@ -1,0 +1,19 @@
+type: deployment
+name: reply_test_echo_deployment
+ttl:  0
+actor_type:  reply_test_echo_actor
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "reply_test_echo.lua"
+---
+type: deployment
+name: reply_test_deployment
+ttl:  0
+actor_type:  reply_test_actor
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "reply_test.lua"
+constraints:
+  - "node_id": "node_1"
+required_actors:
+  - "reply_test_echo_actor"
