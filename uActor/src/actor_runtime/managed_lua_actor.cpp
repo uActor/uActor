@@ -3,6 +3,7 @@
 #include <base64.h>
 
 #include <cassert>
+#include <chrono>
 #include <ctime>
 
 #include "support/logger.hpp"
@@ -167,12 +168,36 @@ int ManagedLuaActor::decode_base64(lua_State* state) {
 
 int ManagedLuaActor::unix_timestamp_wrapper(lua_State* state) {
   static int MIN_ACCEPTED_TIMESTAMP = 1577836800;
-  time_t timestamp = 0L;
-  time(&timestamp);
-  if (timestamp < MIN_ACCEPTED_TIMESTAMP) {
-    timestamp = 0L;
+
+  auto timestamp = std::chrono::system_clock::now().time_since_epoch();
+  auto upper = std::chrono::floor<std::chrono::seconds>(timestamp);
+  auto lower = timestamp - upper;
+
+  uint32_t seconds = upper.count();
+  uint32_t nanoseconds = lower.count();
+  if (seconds < MIN_ACCEPTED_TIMESTAMP) {
+    lua_pushinteger(state, 0);
+    lua_pushinteger(state, 0);
+  } else {
+    lua_pushinteger(state, seconds);
+    lua_pushinteger(state, nanoseconds);
   }
-  lua_pushinteger(state, timestamp);
+  return 2;
+}
+
+int ManagedLuaActor::calculate_time_diff(lua_State* state) {
+  auto timestamp = std::chrono::system_clock::now().time_since_epoch();
+
+  uint32_t seconds = lua_tointeger(state, 1);
+  uint32_t nanoseconds = lua_tointeger(state, 2);
+
+  auto start =
+      std::chrono::seconds(seconds) + std::chrono::nanoseconds(nanoseconds);
+
+  lua_pushinteger(state, std::chrono::duration_cast<std::chrono::microseconds>(
+                             timestamp - start)
+                             .count());
+
   return 1;
 }
 
@@ -225,7 +250,7 @@ int ManagedLuaActor::testbed_stop_timekeeping_inner_wrapper(lua_State* state) {
 #endif
 
 bool ManagedLuaActor::createActorEnvironment(std::string receive_function) {
-  lua_createtable(state, 0, 16);        // 1
+  lua_createtable(state, 0, 17);        // 1
   lua_pushlightuserdata(state, this);   // 2
   luaL_setfuncs(state, actor_core, 1);  // 1
 
@@ -435,6 +460,7 @@ luaL_Reg ManagedLuaActor::actor_core[] = {
     {"testbed_log_string", &testbed_log_string_wrapper},
     {"testbed_start_timekeeping", &testbed_start_timekeeping_wrapper},
     {"testbed_stop_timekeeping", &testbed_stop_timekeeping_wrapper},
+    {"calculate_time_diff", &calculate_time_diff},
 #if CONFIG_TESTBED_NESTED_TIMEKEEPING
     {"testbed_stop_timekeeping_inner", &testbed_stop_timekeeping_inner_wrapper},
 #endif
