@@ -22,6 +22,15 @@ namespace uActor::Remote {
 
 class TCPForwarder;
 
+#if CONFIG_BENCHMARK_ENABLED
+struct ConnectionTraffic {
+  std::atomic<size_t> num_accepted_messages{0};
+  std::atomic<size_t> num_duplicate_messages{0};
+  std::atomic<size_t> size_accepted_messages{0};
+  std::atomic<size_t> size_duplicate_messages{0};
+};
+#endif
+
 enum struct ConnectionRole : uint8_t { SERVER = 0, CLIENT = 1 };
 
 class RemoteConnection {
@@ -52,6 +61,10 @@ class RemoteConnection {
   void process_data(uint32_t len, char* data);
 
   static std::atomic<uint32_t> sequence_number;
+
+#if CONFIG_BENCHMARK_ENABLED
+  static ConnectionTraffic current_traffic;
+#endif
 
  private:
   uint32_t local_id;

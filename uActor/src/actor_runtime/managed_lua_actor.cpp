@@ -8,6 +8,10 @@
 
 #include "support/logger.hpp"
 
+#if CONFIG_BENCHMARK_ENABLED
+#include "remote/remote_connection.hpp"
+#endif
+
 namespace uActor::ActorRuntime {
 
 ManagedLuaActor::~ManagedLuaActor() {
@@ -202,6 +206,15 @@ int ManagedLuaActor::calculate_time_diff(lua_State* state) {
 }
 
 #if CONFIG_BENCHMARK_ENABLED
+
+int ManagedLuaActor::log_connection_traffic(lua_State* state) {
+  testbed_log_integer("num_messages_accepted", Remote::RemoteConnection::current_traffic.num_accepted_messages);
+  testbed_log_integer("size_messages_accepted", Remote::RemoteConnection::current_traffic.size_accepted_messages);
+  testbed_log_integer("num_messages_rejected", Remote::RemoteConnection::current_traffic.num_duplicate_messages);
+  testbed_log_integer("size_messages_rejected", Remote::RemoteConnection::current_traffic.size_duplicate_messages);
+  return 1;
+}
+
 int ManagedLuaActor::testbed_log_integer_wrapper(lua_State* state) {
   const char* variable = lua_tostring(state, 1);
   uint32_t value = lua_tointeger(state, 2);
@@ -250,7 +263,7 @@ int ManagedLuaActor::testbed_stop_timekeeping_inner_wrapper(lua_State* state) {
 #endif
 
 bool ManagedLuaActor::createActorEnvironment(std::string receive_function) {
-  lua_createtable(state, 0, 17);        // 1
+  lua_createtable(state, 0, 18);        // 1
   lua_pushlightuserdata(state, this);   // 2
   luaL_setfuncs(state, actor_core, 1);  // 1
 
@@ -461,6 +474,7 @@ luaL_Reg ManagedLuaActor::actor_core[] = {
     {"testbed_start_timekeeping", &testbed_start_timekeeping_wrapper},
     {"testbed_stop_timekeeping", &testbed_stop_timekeeping_wrapper},
     {"calculate_time_diff", &calculate_time_diff},
+    {"log_connection_traffic", &log_connection_traffic},
 #if CONFIG_TESTBED_NESTED_TIMEKEEPING
     {"testbed_stop_timekeeping_inner", &testbed_stop_timekeeping_inner_wrapper},
 #endif

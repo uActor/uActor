@@ -173,19 +173,20 @@ void RemoteConnection::process_data(uint32_t len, char* data) {
               }
               PubSub::Router::get_instance().publish(std::move(*p));
             }
-
+#if CONFIG_BENCHMARK_ENABLED
+            current_traffic.num_accepted_messages++;
+            current_traffic.size_accepted_messages += publicaton_full_size;
+#endif
           } else {
-            std::string mtype = "";
-            if (p->has_attr("type")) {
-              mtype = std::string(*p->get_str_attr("type"));
-            }
-            printf(
-                "message dropped from %s: message: %d - %d, local %d, %d, "
-                "forwared_by: %s, message.type: %s \n",
-                publisher_node_id->data(), *epoch_number, *sequence_number,
-                sequence_info_it->second.epoch,
-                sequence_info_it->second.sequence_number,
-                partner_node_id.data(), mtype.data());
+            Support::Logger::trace("REMOTE-CONNECTION", "RECEIVE",
+              "Message Dropped from %s, forwarded-by: %s",
+              publisher_node_id->data(),
+              partner_node_id.data()
+            );
+#if CONFIG_BENCHMARK_ENABLED
+            current_traffic.num_duplicate_messages++;
+            current_traffic.size_duplicate_messages += publicaton_full_size;
+#endif
           }
         }
         publication_buffer.clear();
@@ -250,5 +251,9 @@ void RemoteConnection::update_subscriptions(PubSub::Publication&& p) {
     }
   }
 }
+
+#if CONFIG_BENCHMARK_ENABLED
+ConnectionTraffic RemoteConnection::current_traffic; 
+#endif
 
 }  // namespace uActor::Remote
