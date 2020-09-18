@@ -104,6 +104,7 @@ void ManagedActor::trigger_timeout() {
   auto p = PubSub::Publication(_node_id.c_str(), _actor_type.c_str(),
                                _instance_id.c_str());
   p.set_attr("_internal_timeout", "_timeout");
+  p.set_attr("type", "timeout");
   message_queue.emplace_front(std::move(p));
 }
 
