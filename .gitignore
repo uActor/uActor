@@ -7,4 +7,5 @@ sdkconfig.old
 .python-version
 experiments/
 old_snippets/
+scratch_data/
 *.pyc
