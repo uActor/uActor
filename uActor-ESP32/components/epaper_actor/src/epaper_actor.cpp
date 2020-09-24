@@ -10,7 +10,7 @@ EPaperNotificationActor::EPaperNotificationActor(
     std::string_view actor_type, std::string_view instance_id)
     : NativeActor(actor_wrapper, node_id, actor_type, instance_id) {
   display.init(false);
-  display.setRotation(1);
+  display.setRotation(0);
   display.fillScreen(EPD_WHITE);
   display.update();
 }
@@ -179,7 +179,7 @@ void EPaperNotificationActor::update(State&& new_state, bool force) {
   // This is seems to be a bug in the underlying library
   display.setTextColor(EPD_WHITE);
 
-  display.setFont(&FreeMono12pt7b);
+  display.setFont(&FreeMono9pt7b);
   display.println(current_state.node_id + " - " +
                   std::to_string(current_state.number_of_notifications));
 

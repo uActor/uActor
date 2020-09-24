@@ -3,7 +3,7 @@
 
 #include <gdeh0213b73.h>
 extern "C" {
-#include <Fonts/FreeMono12pt7b.h>
+#include <Fonts/FreeMono9pt7b.h>
 }
 
 #include <map>
