@@ -1,4 +1,4 @@
-NUM_VALUES_OUT = 1710*4//4
+NUM_VALUES_OUT = 171* 10
 
 function receive(message)
   
@@ -96,6 +96,6 @@ end
 function reset_collection_state() 
   collected_values = 0
   store = {}
-  min_sec = 0x0FFFFFFF
-  min_nsec = 0x0FFFFFFF
+  min_sec = 0x7FFFFFFF
+  min_nsec = 0x7FFFFFFF
 end

@@ -1,20 +1,12 @@
 type: deployment
-name: baseline_latency_test
+name: setup_overhead_dep
 ttl: 0
-actor_type:  baseline_latency_test_actor
+actor_type:  setup_overhead_act
 actor_runtime_type:  lua
 actor_version:  "0.1"
-actor_code_file:  "baseline_latency_test.lua"
+actor_code_file:  "setup_overhead.lua"
 constraints:
   - "node_id": "node_1"
----
-type: deployment
-name: baseline_latency_echo
-ttl:  0
-actor_type:  baseline_latency_echo_actor
-actor_runtime_type:  lua
-actor_version:  "0.1"
-actor_code_file:  "baseline_latency_echo.lua"
 ---
 type: deployment
 name: message_count_echo_server

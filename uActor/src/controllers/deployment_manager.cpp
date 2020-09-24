@@ -43,7 +43,7 @@ void DeploymentManager::receive(const PubSub::Publication& publication) {
 
 void DeploymentManager::receive_deployment(
     const PubSub::Publication& publication) {
-  uActor::Support::Logger::trace("DEPLOYMENT-MANAGER", "RECEIVE-DEPLOYMENT",
+  uActor::Support::Logger::debug("DEPLOYMENT-MANAGER", "RECEIVE-DEPLOYMENT",
                                  "Deployment Message");
   if (auto executor_it = executors.find(std::string(
           *publication.get_str_attr("deployment_actor_runtime_type")));
@@ -93,7 +93,7 @@ void DeploymentManager::receive_deployment(
       Deployment& deployment = deployment_iterator->second;
 
       if (inserted) {
-        uActor::Support::Logger::trace("DEPLOYMENT-MANAGER",
+        uActor::Support::Logger::debug("DEPLOYMENT-MANAGER",
                                        "RECEIVE-DEPLOYMENT", "New Deployment");
         publish_code_package(deployment, std::string(actor_code));
         // printf("Receive deployment from: %s\n",
@@ -103,7 +103,7 @@ void DeploymentManager::receive_deployment(
           activate_deployment(&deployment, &ExecutorIdentifier);
         }
       } else {
-        uActor::Support::Logger::trace(
+        uActor::Support::Logger::debug(
             "DEPLOYMENT-MANAGER", "RECEIVE-DEPLOYMENT", "Deployment Update");
         // printf("Receive deployment update from: %s\n",
         //       publication.get_str_attr("publisher_node_id")->data());

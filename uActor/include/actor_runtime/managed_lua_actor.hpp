@@ -80,7 +80,7 @@ class ManagedLuaActor : public ManagedActor {
 
   static int testbed_stop_timekeeping_inner_wrapper(lua_State* state);
 
-  static int log_connection_traffic(lua_State* state);
+  static int connection_traffic(lua_State* state);
 
 #endif
 

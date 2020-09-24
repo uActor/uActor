@@ -180,6 +180,8 @@ int ManagedLuaActor::unix_timestamp_wrapper(lua_State* state) {
   uint32_t seconds = upper.count();
   uint32_t nanoseconds = lower.count();
   if (seconds < MIN_ACCEPTED_TIMESTAMP) {
+    Support::Logger::warning("LUA-ACTOR", "UNIX-TIMESTAMP",
+                             "Tried to fetch outdated timestamp\n");
     lua_pushinteger(state, 0);
     lua_pushinteger(state, 0);
   } else {
@@ -207,12 +209,16 @@ int ManagedLuaActor::calculate_time_diff(lua_State* state) {
 
 #if CONFIG_BENCHMARK_ENABLED
 
-int ManagedLuaActor::log_connection_traffic(lua_State* state) {
-  testbed_log_integer("num_messages_accepted", Remote::RemoteConnection::current_traffic.num_accepted_messages);
-  testbed_log_integer("size_messages_accepted", Remote::RemoteConnection::current_traffic.size_accepted_messages);
-  testbed_log_integer("num_messages_rejected", Remote::RemoteConnection::current_traffic.num_duplicate_messages);
-  testbed_log_integer("size_messages_rejected", Remote::RemoteConnection::current_traffic.size_duplicate_messages);
-  return 1;
+int ManagedLuaActor::connection_traffic(lua_State* state) {
+  lua_pushinteger(
+      state, Remote::RemoteConnection::current_traffic.num_accepted_messages);
+  lua_pushinteger(
+      state, Remote::RemoteConnection::current_traffic.size_accepted_messages);
+  lua_pushinteger(
+      state, Remote::RemoteConnection::current_traffic.num_duplicate_messages);
+  lua_pushinteger(
+      state, Remote::RemoteConnection::current_traffic.size_duplicate_messages);
+  return 4;
 }
 
 int ManagedLuaActor::testbed_log_integer_wrapper(lua_State* state) {
@@ -474,7 +480,7 @@ luaL_Reg ManagedLuaActor::actor_core[] = {
     {"testbed_start_timekeeping", &testbed_start_timekeeping_wrapper},
     {"testbed_stop_timekeeping", &testbed_stop_timekeeping_wrapper},
     {"calculate_time_diff", &calculate_time_diff},
-    {"log_connection_traffic", &log_connection_traffic},
+    {"connection_traffic", &connection_traffic},
 #if CONFIG_TESTBED_NESTED_TIMEKEEPING
     {"testbed_stop_timekeeping_inner", &testbed_stop_timekeeping_inner_wrapper},
 #endif

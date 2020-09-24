@@ -1,4 +1,4 @@
-MAX_PEER_ID = 256
+MAX_PEER_ID = 341
 
 function receive(message)
 
@@ -12,7 +12,7 @@ function receive(message)
       testbed_log_integer("receive_"..receiver_id, receive_time)
     end
 
-    if(iteration % 10 == 0) then
+    if(iteration % 1 == 0) then
       delayed_publish(Publication.new("node_id", node_id, "actor_type", actor_type, "instance_id", instance_id, "type", "setup"), 500 + math.random(0, 199))
     else
       delayed_publish(Publication.new("node_id", node_id, "actor_type", actor_type, "instance_id", instance_id, "type", "trigger"), 500 + math.random(0, 199))
@@ -42,7 +42,12 @@ function receive(message)
 
     
     if(peer_id > MAX_PEER_ID) then
-      testbed_log_string("done" , "true")
+      message_counts = 0
+      publish(
+        Publication.new(
+          "type", "request_message_counts"
+        )
+      )
       return
     end
 
@@ -59,5 +64,16 @@ function receive(message)
     testbed_start_timekeeping(1)
     start_time_sec, start_time_nsec = unix_timestamp()
     publish(Publication.new("node_id", receiver_id, "type", "ping"))
+  end
+
+  if(message.type == "message_counts") then
+    message_counts = message_counts + 1
+    testbed_log_integer("accepted_message_count_"..message.publisher_node_id, message.accepted_message_count)
+    testbed_log_integer("accepted_message_size_"..message.publisher_node_id, message.accepted_message_size)
+    testbed_log_integer("rejected_message_count_"..message.publisher_node_id, message.rejected_message_count)
+    testbed_log_integer("rejected_message_size_"..message.publisher_node_id, message.rejected_message_size)
+    if(message_counts == MAX_PEER_ID) then
+      testbed_log_integer("done", 1)
+    end
   end
 end

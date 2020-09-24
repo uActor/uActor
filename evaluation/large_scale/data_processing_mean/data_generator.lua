@@ -1,6 +1,10 @@
+MESSAGES_TO_SEND = 4 * 10 * 10 * 4
+
 function receive(message)
   
   if(message.type == "init") then
+    num_send = 0
+
     print("INIT Generator")
     math.randomseed(now()*1379)
 
@@ -61,7 +65,7 @@ function receive(message)
           "instance_id", instance_id,
           "type", "periodic_trigger"
         ),
-        math.random(1, 500) // 1
+        30000 + math.random(1, 500) // 1
       )
     end
   end
@@ -82,6 +86,12 @@ function receive(message)
         "time_nsec", time_nsec
       )
     )
+    num_send = num_send + 1
+
+    if(num_send >= MESSAGES_TO_SEND) then
+      return;
+    end 
+
     delayed_publish(
       Publication.new(
         "node_id", node_id,

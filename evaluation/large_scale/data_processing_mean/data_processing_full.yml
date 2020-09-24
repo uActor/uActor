@@ -30,3 +30,13 @@ actor_code_file: "data_generator.lua"
 constraints:  
   - "experiment_node_type": "sensor_node"
   - "building": "fmi"
+---
+type: deployment
+name: message_count_echo_server
+ttl:  0
+actor_type:  message_count_echo_actor
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file: "../message_count_echo_server.lua"
+constraints:
+  - "building": "fmi"

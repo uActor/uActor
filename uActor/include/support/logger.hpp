@@ -68,7 +68,7 @@ struct Logger {
   template <typename... Args>
   static void log(std::string_view level, std::string_view component,
                   std::string_view sub_component, Args... args) {
-    std::unique_lock lock(mtx);
+    // std::unique_lock lock(mtx);
     printf("[%lld][%s][%s][%s]",
            static_cast<long long int>(
                std::chrono::duration_cast<std::chrono::milliseconds>(
