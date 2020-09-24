@@ -3,9 +3,16 @@ import struct
 import argparse
 import msgpack
 import time
+import json
+import os
 
 def main(host, port, nodes):
-  t = int(time.time())
+  storage_path = "/home/i11/peer_announcer.json"
+  if os.path.exists(storage_path):
+      with open(storage_path, "r") as last_boot_timestamps_file:
+            t = json.load(last_boot_timestamps_file)
+  else:
+    t = 0
   with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.connect((host, port))
     for peer_id, peer_ip, peer_port in nodes:
@@ -13,7 +20,7 @@ def main(host, port, nodes):
       peer_message["publisher_node_id"] = "bootstrap_server"
       peer_message["publisher_actor_type"] = "peer_announcer"
       peer_message["publisher_instance_id"] = "1"
-      peer_message["_internal_sequence_number"] = t
+      peer_message["_internal_sequence_number"] = time.time()
       peer_message["_internal_epoch"] = t
 
       peer_message["type"] = "peer_announcement"
@@ -27,6 +34,8 @@ def main(host, port, nodes):
       s.send(struct.pack("!i", len(peer_msg)))
       s.send(peer_msg)
       t+=1
+  with open(storage_path, "w") as last_boot_timestamps_file:
+    json.dump(t, last_boot_timestamps_file)
   print("done")
 
         
