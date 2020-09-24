@@ -53,7 +53,8 @@ boost::program_options::variables_map parse_arguments(int arg_count,
   ("node-id", boost::program_options::value<std::string>(), "Set the node id.")
   (
     "server-node",
-    boost::program_options::value<std::string>() -> multitoken() -> composing(),
+    boost::program_options::value<std::vector<std::string>>()
+      -> multitoken() -> composing(),
    "List nodes to connect to if there is a path (can be specified many times)."
   )
   (
@@ -107,7 +108,7 @@ int main(int arg_count, char** args) {
 
   if (arguments.count("server-node")) {
     uActor::BoardFunctions::SERVER_NODES =
-        std::vector<std::string>{arguments["server-node"].as<std::string>()};
+        arguments["server-node"].as<std::vector<std::string>>();
   }
 
   time_t boot_timestamp = 0;
