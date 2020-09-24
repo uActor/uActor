@@ -1,12 +1,16 @@
 #ifndef UACTOR_INCLUDE_REMOTE_TCP_FORWARDER_HPP_
 #define UACTOR_INCLUDE_REMOTE_TCP_FORWARDER_HPP_
 
+#include <condition_variable>
 #include <map>
+#include <memory>
 #include <mutex>
 #include <set>
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <utility>
+#include <vector>
 
 #include "board_functions.hpp"
 #include "forwarder_api.hpp"
@@ -62,10 +66,17 @@ class TCPForwarder : public uActor::Remote::ForwarderSubscriptionAPI {
   std::map<uint32_t, std::set<uint32_t>> subscription_mapping;
 
   std::mutex remote_mtx;
+  std::condition_variable write_cv;
+  bool write_in_progress = false;
+
   int listen_sock;
 
-  bool write(std::string remote_ip, uint16_t remote_port, int socket, int len,
-             const char* message);
+  std::pair<bool, std::unique_lock<std::mutex>> write(
+      RemoteConnection* remote, std::shared_ptr<std::vector<char>> dataset,
+      std::unique_lock<std::mutex>&& lock);
+
+  bool should_forward(const PubSub::Publication& publication,
+                      RemoteConnection* remote);
 
   void tcp_reader();
 
@@ -73,7 +84,9 @@ class TCPForwarder : public uActor::Remote::ForwarderSubscriptionAPI {
 
   void listen_handler();
 
-  void data_handler(uActor::Remote::RemoteConnection* remote);
+  bool data_handler(uActor::Remote::RemoteConnection* remote);
+
+  bool write_handler(uActor::Remote::RemoteConnection* remote);
 
   void keepalive();
 

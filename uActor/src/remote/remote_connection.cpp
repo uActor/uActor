@@ -150,6 +150,15 @@ void RemoteConnection::process_data(uint32_t len, char* data) {
               (epoch_number && sequence_number &&
                sequence_info_it->second.is_older_than(*sequence_number,
                                                       *epoch_number))) {
+            if (sequence_info_it != sequence_infos.end() &&
+                *epoch_number - sequence_info_it->second.epoch >= 0 &&
+                *sequence_number - sequence_info_it->second.sequence_number >
+                    1) {
+              Support::Logger::debug(
+                  "REMOTE-CONNECTION", "RECEIVE",
+                  "Potentially lost %d message(s)",
+                  *sequence_number - sequence_info_it->second.sequence_number);
+            }
             auto new_sequence_info = Remote::SequenceInfo(
                 *sequence_number, *epoch_number, BoardFunctions::timestamp());
             if (sequence_info_it != sequence_infos.end()) {
@@ -178,11 +187,10 @@ void RemoteConnection::process_data(uint32_t len, char* data) {
             current_traffic.size_accepted_messages += publicaton_full_size;
 #endif
           } else {
-            Support::Logger::trace("REMOTE-CONNECTION", "RECEIVE",
-              "Message Dropped from %s, forwarded-by: %s",
-              publisher_node_id->data(),
-              partner_node_id.data()
-            );
+            Support::Logger::debug("REMOTE-CONNECTION", "RECEIVE",
+                                   "Message Dropped from %s, forwarded-by: %s",
+                                   publisher_node_id->data(),
+                                   partner_node_id.data());
 #if CONFIG_BENCHMARK_ENABLED
             current_traffic.num_duplicate_messages++;
             current_traffic.size_duplicate_messages += publicaton_full_size;
@@ -253,7 +261,7 @@ void RemoteConnection::update_subscriptions(PubSub::Publication&& p) {
 }
 
 #if CONFIG_BENCHMARK_ENABLED
-ConnectionTraffic RemoteConnection::current_traffic; 
+ConnectionTraffic RemoteConnection::current_traffic;
 #endif
 
 }  // namespace uActor::Remote

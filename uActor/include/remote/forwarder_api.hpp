@@ -12,8 +12,6 @@ struct ForwarderSubscriptionAPI {
                                     std::string node_id) = 0;
   virtual void remove_subscription(uint32_t local_id, uint32_t sub_id,
                                    std::string node_id) = 0;
-  virtual bool write(std::string remote_ip, uint16_t remote_port, int socket,
-                     int len, const char* message) = 0;
   virtual ~ForwarderSubscriptionAPI() {}
 };
 

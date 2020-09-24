@@ -14,6 +14,13 @@ uint32_t BoardFunctions::timestamp() {
       .count();
 }
 
+uint32_t BoardFunctions::seconds_timestamp() {
+  auto count = std::chrono::duration_cast<std::chrono::seconds>(
+                   std::chrono::steady_clock::now().time_since_epoch())
+                   .count();
+  return count;
+}
+
 void BoardFunctions::exit_thread() {}
 
 const char* BoardFunctions::NODE_ID = "node_linux";

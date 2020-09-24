@@ -12,6 +12,7 @@ namespace uActor {
 struct BoardFunctions {
   static const uint32_t SLEEP_FOREVER;
   static uint32_t timestamp();
+  static uint32_t seconds_timestamp();
   static void exit_thread();
   static const char* NODE_ID;
   static std::vector<std::string> SERVER_NODES;

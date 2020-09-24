@@ -5,6 +5,7 @@
 #include <sdkconfig.h>
 
 #include <string_view>
+#include <chrono>
 
 #include "support/string_helper.hpp"
 
@@ -14,6 +15,13 @@ const uint32_t BoardFunctions::SLEEP_FOREVER = portMAX_DELAY;
 
 uint32_t BoardFunctions::timestamp() {
   return xTaskGetTickCount() / portTICK_PERIOD_MS;
+}
+
+uint32_t BoardFunctions::seconds_timestamp() {
+  auto count = std::chrono::duration_cast<std::chrono::seconds>(
+                   std::chrono::steady_clock::now().time_since_epoch())
+                   .count();
+  return count;
 }
 
 void BoardFunctions::exit_thread() { vTaskDelete(nullptr); }

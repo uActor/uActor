@@ -10,6 +10,7 @@ extern "C" {
 #include <cstring>
 #include <list>
 #include <map>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <unordered_map>
@@ -105,6 +106,10 @@ class RemoteConnection {
   static std::mutex mtx;
 
   std::map<std::string, Remote::SequenceInfo> connection_sequence_infos;
+
+  bool write_in_progress = false;
+  std::shared_ptr<std::vector<char>> write_buffer;
+  size_t write_offset = 0;
 
   void update_subscriptions(PubSub::Publication&& p);
   friend uActor::Remote::TCPForwarder;

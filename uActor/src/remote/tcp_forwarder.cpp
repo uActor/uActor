@@ -75,6 +75,7 @@ void TCPForwarder::os_task(void* args) {
   task_args->tcp_forwarder = &fwd;
   while (true) {
     auto result = fwd.handle.receive(10000);
+    Logger::trace("TCP-FORWARDER", "ALIVE", "os_task");
     if (result) {
       fwd.receive(std::move(*result));
     }
@@ -88,7 +89,6 @@ void TCPForwarder::tcp_reader_task(void* args) {
 }
 
 void TCPForwarder::receive(PubSub::MatchedPublication&& m) {
-  Logger::trace("TCP-FORWARDER", "ACTOR-RECEIVE", "Begin");
   std::unique_lock remote_lock(remote_mtx);
 
   if (m.subscription_id == forwarder_subscription_id) {
@@ -98,6 +98,7 @@ void TCPForwarder::receive(PubSub::MatchedPublication&& m) {
   }
 
   if (m.subscription_id == subscription_update_subscription_id) {
+    Logger::trace("TCP-FORWARDER", "ACTOR-RECEIVE", "subscription update");
     if (m.publication.get_str_attr("type") == "local_subscription_update") {
       for (auto& receiver : remotes) {
         receiver.second.handle_subscription_update_notification(m.publication);
@@ -106,6 +107,7 @@ void TCPForwarder::receive(PubSub::MatchedPublication&& m) {
   }
 
   if (m.subscription_id == peer_announcement_subscription_id) {
+    Logger::trace("TCP-FORWARDER", "ACTOR-RECEIVE", "peer announcement");
     if (m.publication.get_str_attr("type") == "tcp_client_connect" &&
         m.publication.get_str_attr("node_id") == BoardFunctions::NODE_ID) {
       if (m.publication.get_str_attr("peer_node_id") !=
@@ -122,95 +124,39 @@ void TCPForwarder::receive(PubSub::MatchedPublication&& m) {
   auto receivers = subscription_mapping.find(m.subscription_id);
   if (receivers != subscription_mapping.end()) {
     auto sub_ids = receivers->second;
+    Logger::trace("TCP-FORWARDER", "ACTOR-RECEIVE",
+                  "regualar publication, %d subscribers", sub_ids.size());
 
     std::string serialized = m.publication.to_msg_pack();
-    int size = htonl(serialized.size());
+    uint32_t size_normal = serialized.size();
+    uint32_t size = htonl(size_normal);
+    auto buffer = std::make_shared<std::vector<char>>(
+        serialized.size() + sizeof(size), 0);
+    memcpy(buffer->data(), &size, sizeof(size));
+    memcpy(buffer->data() + sizeof(size), serialized.data(), serialized.size());
+
     for (uint32_t subscriber_id : sub_ids) {
       auto remote_it = remotes.find(subscriber_id);
       if (remote_it != remotes.end() && remote_it->second.sock > 0) {
         auto& remote = remote_it->second;
 
-        bool skip = false;
-
-        if (m.publication.has_attr("_internal_forwarded_by")) {
-          size_t start = 0;
-          std::string_view forwarders =
-              *m.publication.get_str_attr("_internal_forwarded_by");
-          while (start < forwarders.length()) {
-            start = forwarders.find(remote.partner_node_id, start);
-            if (start != std::string_view::npos) {
-              size_t end_pos = start + remote.partner_node_id.length();
-              if ((start == 0 || forwarders.at(start - 1) == ',') &&
-                  (end_pos == forwarders.length() ||
-                   forwarders.at(end_pos) == ',')) {
-                skip = true;
-                break;
-              } else {
-                start++;
-              }
-            } else {
-              break;
-            }
-          }
-        }
-
-        // The might be multiple subscriptions for the same message.
-        // They are indistinguishable on the remote node. Hence, filter them
-        // and prevent forwarding. This is e.g. important usefull for external
-        // deployments if the deployment manager use label filters. As this
-        // has to be per connection, this unfortunately causes a potentially
-        // large memory overhead.
-        // TODO(raphaehetzel) Add garbage collector to remove outdated
-        // sequence infos. As this is an optimization, this is safe here.
-
-        {
-          auto publisher_node_id =
-              m.publication.get_str_attr("publisher_node_id");
-          auto sequence_number =
-              m.publication.get_int_attr("_internal_sequence_number");
-          auto epoch_number = m.publication.get_int_attr("_internal_epoch");
-
-          if (publisher_node_id && sequence_number && epoch_number) {
-            auto new_sequence_info = uActor::Remote::SequenceInfo(
-                *sequence_number, *epoch_number, BoardFunctions::timestamp());
-            auto sequence_info_it = remote.connection_sequence_infos.find(
-                std::string(*publisher_node_id));
-            if (sequence_info_it == remote.connection_sequence_infos.end()) {
-              remote.connection_sequence_infos.try_emplace(
-                  std::string(*publisher_node_id),
-                  std::move(new_sequence_info));
-            } else if (sequence_info_it->second.is_older_than(*sequence_number,
-                                                              *epoch_number)) {
-              sequence_info_it->second = std::move(new_sequence_info);
-            } else {
-              skip = true;
-            }
-          }
-        }
-
-        if (!skip) {
-          if (write(remote.partner_ip, remote.partner_port, remote.sock, 4,
-                    reinterpret_cast<char*>(&size)) ||
-              write(remote.partner_ip, remote.partner_port, remote.sock,
-                    serialized.size(), serialized.c_str())) {
-            Logger::info("TCP-FORWARDER", "ACTOR-RECEIVE",
-                         "Closing connection - %s:%d",
-                         remote_it->second.partner_ip.data(),
-                         remote_it->second.partner_port);
-            shutdown(remote_it->second.sock, 0);
-            close(remote_it->second.sock);
-            remotes.erase(remote_it);
-            Logger::trace("TCP-FORWARDER", "ACTOR-RECEIVE",
-                          "Connection removed");
+        if (should_forward(m.publication, &remote)) {
+          auto result = write(&remote, buffer, std::move(remote_lock));
+          remote_lock = std::move(result.second);
+          if (result.first) {
+            Logger::info(
+                "TCP-FORWARDER", "ACTOR-RECEIVE",
+                "Publication write failed - shutdown connection - %s:%d",
+                remote_it->second.partner_ip.data(),
+                remote_it->second.partner_port);
             continue;
           } else {
-            remote.last_write_contact = BoardFunctions::timestamp();
+            Logger::trace("TCP-FORWARDER", "RECEIVE", "write successful");
           }
         }
       }
     }
   }
-  Logger::trace("TCP-FORWARDER", "ACTOR-RECEIVE", "End");
 }
 
 uint32_t TCPForwarder::add_subscription(uint32_t local_id,
@@ -238,29 +184,49 @@ void TCPForwarder::remove_subscription(uint32_t local_id, uint32_t sub_id,
   }
 }
 
-bool TCPForwarder::write(std::string remote_ip, uint16_t remote_port,
-                         int socket, int len, const char* message) {
-  int to_write = len;
-  while (to_write > 0) {
-#if defined(MSG_NOSIGNAL)  // POSIX
-    int flag = MSG_NOSIGNAL;
-#elif defined(SO_NOSIGPIPE)  // MacOS
-    int flag = SO_NOSIGPIPE;
-#endif
-    int written = send(socket, message + (len - to_write), to_write, flag);
-    if (written < 0) {
-      Logger::info("TCP-FORWARDER", "WRITE",
-                   "Error occurred during send - %s:%d - error %d",
-                   remote_ip.c_str(), remote_port, errno);
-      return true;
-    }
-    to_write -= written;
+std::pair<bool, std::unique_lock<std::mutex>> TCPForwarder::write(
+    RemoteConnection* remote, std::shared_ptr<std::vector<char>> dataset,
+    std::unique_lock<std::mutex>&& lock) {
+  while (write_in_progress) {
+    Logger::trace("TCP-FORWARDER", "WRITE",
+                  "Waiting for completion of previous write");
+    write_cv.wait(lock);
   }
-  return false;
+
+#if defined(MSG_NOSIGNAL)  // POSIX
+  int flag = MSG_NOSIGNAL | MSG_DONTWAIT;
+#elif defined(SO_NOSIGPIPE)  // MacOS
+  int flag = SO_NOSIGPIPE | MSG_DONTWAIT;
+#endif
+
+  int written = send(remote->sock, dataset->data(), dataset->size(), flag);
+  if (written < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
+    Logger::debug("TCP-FORWARDER", "WRITE",
+                  "Error occurred during send - %s:%d - error %d",
+                  remote->partner_ip.c_str(), remote->partner_port, errno);
+    shutdown(remote->sock, SHUT_RDWR);
+    return std::make_pair(true, std::move(lock));
+  } else if (written == dataset->size()) {
+    Logger::trace("TCP-FORWARDER", "WRITE", "complete : %d", written);
+  } else {
+    write_in_progress = true;
+    remote->write_in_progress = true;
+    remote->write_buffer = dataset;
+    if (written > 0) {
+      remote->write_offset = written;
+    } else {
+      remote->write_offset = 0;
+    }
+    Logger::trace("TCP-FORWARDER", "WRITE", "partial : %d", written);
+  }
+  remote->last_write_contact = BoardFunctions::seconds_timestamp();
+  return std::make_pair(false, std::move(lock));
 }
 
 void TCPForwarder::tcp_reader() {
-  fd_set sockets_to_read;
+  fd_set read_sockets;
+  fd_set write_sockets;
+  fd_set error_sockets;
 
   int addr_family = AF_INET;
   int ip_protocol = IPPROTO_IP;
@@ -332,51 +298,93 @@ void TCPForwarder::tcp_reader() {
 
   while (1) {
     std::unique_lock remote_lock(remote_mtx);
-    FD_ZERO(&sockets_to_read);
-    FD_SET(listen_sock, &sockets_to_read);
+    FD_ZERO(&read_sockets);
+    FD_ZERO(&write_sockets);
+    FD_ZERO(&error_sockets);
+    FD_SET(listen_sock, &read_sockets);
+    FD_SET(listen_sock, &write_sockets);
+    FD_SET(listen_sock, &error_sockets);
     int max_val = listen_sock;
     for (const auto& remote_pair : remotes) {
-      FD_SET(remote_pair.second.sock, &sockets_to_read);
+      FD_SET(remote_pair.second.sock, &read_sockets);
+      if (remote_pair.second.write_in_progress) {
+        FD_SET(remote_pair.second.sock, &write_sockets);
+      }
+      FD_SET(remote_pair.second.sock, &error_sockets);
       max_val = std::max(max_val, remote_pair.second.sock);
     }
+
     timeval timeout;  // We need to set a timeout to allow for new connections
     timeout.tv_sec = 5;  // to be added by other threads
 
     remote_lock.unlock();
-    int num_ready =
-        select(max_val + 1, &sockets_to_read, nullptr, nullptr, &timeout);
+    int num_ready = select(max_val + 1, &read_sockets, &write_sockets,
+                           &error_sockets, &timeout);
+    Logger::trace("TCP-FORWARDER", "ALIVE", "tcp_reader_task");
     remote_lock.lock();
-
-    Logger::trace("TCP-FORWARDER", "EVENT-LOOP", "TICK");
 
     if (num_ready > 0) {
       std::vector<uint> to_delete;
-      for (const auto& remote_pair : remotes) {
-        uActor::Remote::RemoteConnection& remote =
-            const_cast<uActor::Remote::RemoteConnection&>(remote_pair.second);
-        if (remote.sock > 0 && FD_ISSET(remote.sock, &sockets_to_read)) {
-          data_handler(&remote);
-          if (!remote.sock) {
+      for (auto& remote_pair : remotes) {
+        uActor::Remote::RemoteConnection& remote = remote_pair.second;
+        if (remote.sock > 0) {
+          if (FD_ISSET(remote.sock, &error_sockets)) {
+            Logger::debug("TCP-FORWARDER", "EVENT-LOOP", "SELCT - error");
+            shutdown(remote.sock, SHUT_RDWR);
+            close(remote.sock);
             to_delete.push_back(remote_pair.first);
+            continue;
           }
-        } else if (remote.sock < 1) {
+          if (FD_ISSET(remote.sock, &read_sockets)) {
+            Logger::trace("TCP-FORWARDER", "EVENT-LOOP", "SELECT - read");
+            if (data_handler(&remote)) {
+              Logger::info(
+                  "TCP-FORWARDER", "EVENT-LOOP",
+                  "Read error/ zero lenght message. Closing connection - %s:%d",
+                  remote.partner_ip.data(), remote.partner_port);
+              shutdown(remote.sock, SHUT_RDWR);
+              close(remote.sock);
+              to_delete.push_back(remote_pair.first);
+              continue;
+            }
+          }
+          if (FD_ISSET(remote.sock, &write_sockets)) {
+            Logger::trace("TCP-FORWARDER", "EVENT-LOOP", "SELECT - write");
+            if (write_handler(&remote)) {
+              Logger::info("TCP-FORWARDER", "EVENT-LOOP",
+                           "Closing connection - %s:%d",
+                           remote.partner_ip.data(), remote.partner_port);
+              shutdown(remote.sock, SHUT_RDWR);
+              close(remote.sock);
+              to_delete.push_back(remote_pair.first);
+            }
+          }
+        } else {
           Logger::error("TCP-FORWARDER", "RECEIVE",
                         "Socket should have already been deleted %s:%d!",
                         remote.partner_ip.data(), remote.partner_port);
+          to_delete.push_back(remote_pair.first);
         }
       }
       for (auto item : to_delete) {
         remotes.erase(item);
       }
-      if (FD_ISSET(listen_sock, &sockets_to_read)) {
+      if (FD_ISSET(listen_sock, &read_sockets)) {
         listen_handler();
+      }
+
+      if (FD_ISSET(listen_sock, &write_sockets)) {
+        Logger::info("TCP-FORWARDER", "RECEIVE", "Listen sock wants to write");
+      }
+
+      if (FD_ISSET(listen_sock, &error_sockets)) {
+        Logger::fatal("TCP-FORWARDER", "RECEIVE", "Listen sock error");
       }
     }
   }
 }
 
 void TCPForwarder::create_tcp_client(std::string_view peer_ip, uint32_t port) {
-  Logger::trace("TCP-FORWARDER", "CLIENT", "Begin");
   int addr_family = AF_INET;
   int ip_protocol = IPPROTO_IP;
 
@@ -404,11 +412,9 @@ void TCPForwarder::create_tcp_client(std::string_view peer_ip, uint32_t port) {
   set_socket_options(sock_id);
   add_remote_connection(sock_id, std::string(peer_ip), port,
                         uActor::Remote::ConnectionRole::CLIENT);
-  Logger::trace("TCP-FORWARDER", "CLIENT", "End");
 }
 
 void TCPForwarder::listen_handler() {
-  Logger::trace("TCP-FORWARDER", "SERVER", "Begin");
   int sock_id = 0;
 
   struct sockaddr_in6 source_addr;
@@ -419,6 +425,9 @@ void TCPForwarder::listen_handler() {
   if (sock_id < 0) {
     Logger::error("TCP-FORWARDER", "SERVER",
                   "Unable to accept connection - error %d", errno);
+    return;
+  } else if (sock_id == 0) {
+    Logger::error("TCP-FORWARDER", "SERVER", "Accept failed");
     return;
   }
 
@@ -439,68 +448,98 @@ void TCPForwarder::listen_handler() {
   set_socket_options(sock_id);
   add_remote_connection(sock_id, std::string(addr_string), remote_port,
                         uActor::Remote::ConnectionRole::SERVER);
-  Logger::trace("TCP-FORWARDER", "SERVER", "End");
 }
 
-void TCPForwarder::data_handler(uActor::Remote::RemoteConnection* remote) {
-  Logger::trace("TCP-FORWARDER", "RECEIVE", "Begin");
-  remote->last_read_contact = BoardFunctions::timestamp();
+bool TCPForwarder::data_handler(uActor::Remote::RemoteConnection* remote) {
+  remote->last_read_contact = BoardFunctions::seconds_timestamp();
   remote->len =
       recv(remote->sock, remote->rx_buffer.data(), remote->rx_buffer.size(), 0);
   if (remote->len < 0) {
     Logger::error("TCP-FORWARDER", "RECEIVE",
                   "Error occurred during receive - %d", errno);
+    return true;
   } else if (remote->len == 0) {
     Logger::info("TCP-FORWARDER", "RECEIVE", "Connection closed - %s:%d",
                  remote->partner_ip.data(), remote->partner_port);
+    return true;
   } else {
     remote->process_data(remote->len, remote->rx_buffer.data());
-    Logger::trace("TCP-FORWARDER", "RECEIVE", "End - Good Case");
-    return;
+    return false;
   }
+}
 
-  Logger::info("TCP-FORWARDER", "RECEIVE", "Closing connection - %s:%d",
-               remote->partner_ip.data(), remote->partner_port);
-  shutdown(remote->sock, 0);
-  close(remote->sock);
-  remote->sock = 0;
-  Logger::trace("TCP-FORWARDER", "RECEIVE", "End - Error Case");
+bool TCPForwarder::write_handler(uActor::Remote::RemoteConnection* remote) {
+#if defined(MSG_NOSIGNAL)  // POSIX
+  int flag = MSG_NOSIGNAL | MSG_DONTWAIT;
+#elif defined(SO_NOSIGPIPE)  // MacOS
+  int flag = SO_NOSIGPIPE | MSG_DONTWAIT;
+#endif
+  if (remote->write_in_progress) {
+    int written =
+        send(remote->sock, remote->write_buffer->data() + remote->write_offset,
+             remote->write_buffer->size() - remote->write_offset, flag);
+    if (written < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
+      Logger::debug("TCP-FORWARDER", "WRITE-HANDLER", "write error");
+      return true;
+    } else if (written == remote->write_buffer->size() - remote->write_offset) {
+      Logger::trace("TCP-FORWARDER", "WRITE-HANDLER", "completed");
+      write_in_progress = false;
+      remote->write_in_progress = false;
+      remote->write_buffer = std::make_shared<std::vector<char>>();
+      remote->write_offset = 0;
+      write_cv.notify_one();
+    } else {
+      Logger::trace("TCP-FORWARDER", "WRITE-HANDLER", "progress");
+      if (written > 0) {
+        remote->write_offset += written;
+      }
+    }
+    remote->last_write_contact = BoardFunctions::seconds_timestamp();
+  }
+  return false;
 }
 
 void TCPForwarder::keepalive() {
-  Logger::trace("TCP-FORWARDER", "KEEPALIVE", "Begin");
-  std::set<uint32_t> to_delete;
+  std::set<uint32_t> to_check;
+  auto buffer = std::make_shared<std::vector<char>>(4, 0);
+
   std::unique_lock lock(remote_mtx);
-  for (auto& remote : remotes) {
-    uint32_t reference = BoardFunctions::timestamp();
-    uint32_t zero_len = 0;
-    if (reference - remote.second.last_write_contact > 10000) {
-      if (write(remote.second.partner_ip, remote.second.partner_port,
-                remote.second.sock, sizeof(uint32_t),
-                reinterpret_cast<char*>(&zero_len))) {
-        Logger::info("TCP-FORWARDER", "KEEPALIVE", "Write check failed");
-        shutdown(remote.second.sock, 0);
-        close(remote.second.sock);
-        to_delete.insert(remote.first);
-      } else {
-        remote.second.last_write_contact = BoardFunctions::timestamp();
-      }
-    }
-
-    if (reference - remote.second.last_read_contact > 30000 &&
+  for (const auto& remote : remotes) {
+    if (BoardFunctions::seconds_timestamp() - remote.second.last_read_contact >
+            120 &&
         remote.second.last_read_contact > 0) {
-      Logger::info("TCP-FORWARDER", "KEEPALIVE", "Read check failed");
-      shutdown(remote.second.sock, 0);
-      close(remote.second.sock);
-      to_delete.insert(remote.first);
+      Logger::info(
+          "TCP-FORWARDER", "KEEPALIVE",
+          "Read check failed: %s - last contact: %d",
+          remote.second.partner_node_id.c_str(),
+          BoardFunctions::timestamp() - remote.second.last_read_contact);
+      shutdown(remote.second.sock, SHUT_RDWR);
+      continue;
+    }
+
+    if (BoardFunctions::seconds_timestamp() - remote.second.last_write_contact >
+        10) {
+      to_check.insert(remote.first);
     }
   }
 
-  for (auto inactive_node : to_delete) {
-    Logger::trace("TCP-Forwarder", "KEEPALIVE", "Delete remote");
-    remotes.erase(inactive_node);
+  for (uint32_t remote_id : to_check) {
+    auto remote_it = remotes.find(remote_id);
+    if (remote_it == remotes.end()) {
+      continue;
+    }
+
+    auto result = write(&remote_it->second, buffer, std::move(lock));
+    lock = std::move(result.second);
+    if (result.first) {
+      Logger::info("TCP-FORWARDER", "KEEPALIVE", "Write check failed");
+    } else {
+      Logger::trace("TCP-FORWARDER", "KEEPALIVE", "Write check %s",
+                    remote_it->second.partner_node_id.c_str());
+      remote_it->second.last_write_contact =
+          BoardFunctions::seconds_timestamp();
+    }
   }
-  Logger::trace("TCP-FORWARDER", "KEEPALIVE", "End");
 }
 
 void TCPForwarder::add_remote_connection(int socket_id, std::string remote_addr,
@@ -514,7 +553,7 @@ void TCPForwarder::add_remote_connection(int socket_id, std::string remote_addr,
     if (role == uActor::Remote::ConnectionRole::CLIENT) {
       remote_it->second.send_routing_info();
     }
-    Logger::trace("TCP-FORWARDER", "ADD-CONNECTION", "End - Good Case");
+    Logger::trace("TCP-FORWARDER", "ADD-CONNECTION", "Remote connection added");
   } else {
     Logger::warning("TCP-FORWARDER", "ADD-CONNECTION",
                     "Remote not inserted, closing "
@@ -523,8 +562,64 @@ void TCPForwarder::add_remote_connection(int socket_id, std::string remote_addr,
                     remote_addr.c_str(), remote_port);
     shutdown(socket_id, 0);
     close(socket_id);
-    Logger::trace("TCP-FORWARDER", "ADD-CONNECTION", "End - Error Case");
   }
+}
+
+bool TCPForwarder::should_forward(const PubSub::Publication& publication,
+                                  RemoteConnection* remote) {
+  if (publication.has_attr("_internal_forwarded_by")) {
+    size_t start = 0;
+    std::string_view forwarders =
+        *publication.get_str_attr("_internal_forwarded_by");
+    while (start < forwarders.length()) {
+      start = forwarders.find(remote->partner_node_id, start);
+      if (start != std::string_view::npos) {
+        size_t end_pos = start + remote->partner_node_id.length();
+        if ((start == 0 || forwarders.at(start - 1) == ',') &&
+            (end_pos == forwarders.length() || forwarders.at(end_pos) == ',')) {
+          return false;
+        } else {
+          start++;
+        }
+      } else {
+        break;
+      }
+    }
+  }
+
+  // The might be multiple subscriptions for the same message.
+  // They are indistinguishable on the remote node. Hence, filter them
+  // and prevent forwarding. This is e.g. important usefull for external
+  // deployments if the deployment manager use label filters. As this
+  // has to be per connection, this unfortunately causes a potentially
+  // large memory overhead.
+  // TODO(raphaehetzel) Add garbage collector to remove outdated
+  // sequence infos. As this is an optimization, this is safe here.
+
+  {
+    auto publisher_node_id = publication.get_str_attr("publisher_node_id");
+    auto sequence_number =
+        publication.get_int_attr("_internal_sequence_number");
+    auto epoch_number = publication.get_int_attr("_internal_epoch");
+
+    if (publisher_node_id && sequence_number && epoch_number) {
+      auto new_sequence_info = uActor::Remote::SequenceInfo(
+          *sequence_number, *epoch_number, BoardFunctions::timestamp());
+      auto sequence_info_it = remote->connection_sequence_infos.find(
+          std::string(*publisher_node_id));
+      if (sequence_info_it == remote->connection_sequence_infos.end()) {
+        remote->connection_sequence_infos.try_emplace(
+            std::string(*publisher_node_id), std::move(new_sequence_info));
+      } else if (sequence_info_it->second.is_older_than(*sequence_number,
+                                                        *epoch_number)) {
+        sequence_info_it->second = std::move(new_sequence_info);
+      } else {
+        return false;
+      }
+    }
+  }
+
+  return true;
 }
 
 void TCPForwarder::set_socket_options(int socket_id) {
@@ -532,14 +627,17 @@ void TCPForwarder::set_socket_options(int socket_id) {
   setsockopt(socket_id, IPPROTO_TCP, TCP_NODELAY, static_cast<void*>(&nodelay),
              sizeof(nodelay));
 
-  uint32_t true_flag = 1;
-  uint32_t keepcnt = 3;
-  uint32_t keepidle = 60;
-  uint32_t keepintvl = 30;
-  setsockopt(socket_id, SOL_SOCKET, SO_KEEPALIVE, &true_flag, sizeof(uint32_t));
-  setsockopt(socket_id, IPPROTO_TCP, TCP_KEEPCNT, &keepcnt, sizeof(uint32_t));
-  setsockopt(socket_id, IPPROTO_TCP, TCP_KEEPIDLE, &keepidle, sizeof(uint32_t));
-  setsockopt(socket_id, IPPROTO_TCP, TCP_KEEPINTVL, &keepintvl,
-             sizeof(uint32_t));
+  // TODO(raphaelhetzel) Reevaluate the need for this
+  // as we have an application-level keepalive system
+  // uint32_t true_flag = 1;
+  // uint32_t keepcnt = 3;
+  // uint32_t keepidle = 60;
+  // uint32_t keepintvl = 30;
+  // setsockopt(socket_id, SOL_SOCKET, SO_KEEPALIVE, &true_flag,
+  // sizeof(uint32_t)); setsockopt(socket_id, IPPROTO_TCP, TCP_KEEPCNT,
+  // &keepcnt, sizeof(uint32_t)); setsockopt(socket_id, IPPROTO_TCP,
+  // TCP_KEEPIDLE, &keepidle, sizeof(uint32_t)); setsockopt(socket_id,
+  // IPPROTO_TCP, TCP_KEEPINTVL, &keepintvl,
+  //            sizeof(uint32_t));
 }
 }  // namespace uActor::Remote
