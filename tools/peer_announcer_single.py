@@ -20,7 +20,7 @@ def main(host, port, nodes):
       peer_message["publisher_node_id"] = "bootstrap_server"
       peer_message["publisher_actor_type"] = "peer_announcer"
       peer_message["publisher_instance_id"] = "1"
-      peer_message["_internal_sequence_number"] = time.time()
+      peer_message["_internal_sequence_number"] = 1
       peer_message["_internal_epoch"] = t
 
       peer_message["type"] = "peer_announcement"

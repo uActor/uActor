@@ -14,7 +14,7 @@
 #define LOG_LEVEL_ERROR 2
 #define LOG_LEVEL_FATAL 1
 
-#define LOG_LEVEL LOG_LEVEL_DEBUG
+#define LOG_LEVEL LOG_LEVEL_INFO
 
 namespace uActor::Support {
 struct Logger {
