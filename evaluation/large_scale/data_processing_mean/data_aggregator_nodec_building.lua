@@ -5,7 +5,7 @@ function receive(message)
   if(message.type == "fake_sensor_value") then
     --- print highest delay from publication to this stage
     processing_delay = calculate_time_diff(message.time_sec, message.time_nsec)
-    --testbed_log_integer("processing_delay", processing_delay)
+    testbed_log_integer("processing_delay_inner_"..node_id, processing_delay)
 
     store[#store+1] = {message.value, message.num_values}
     collected_values = collected_values + message.num_values
@@ -24,14 +24,13 @@ function receive(message)
 
       local pub = Publication.new(
         "type", "fake_sensor_value",
+        "building", location_info["building"], 
         "value", sum / collected_values,
         "aggregation_level", "building",
         "num_values", collected_values,
         "time_sec", min_sec,
         "time_nsec", min_nsec
       )
-
-      pub["building"] = location_info["building"]
 
       publish(pub)
 
@@ -92,7 +91,7 @@ function receive(message)
       print("READY Aggregator")
       subscription = {type="fake_sensor_value"}
       subscription["building"] = location_info["building"]
-      subscription["aggregation_level"] = "node"
+      subscription["aggregation_level"] = "nodec"
       subscribe(subscription)
     end
   end

@@ -1,11 +1,11 @@
-NUM_VALUES_OUT = 171*10
+NUM_VALUES_OUT = 256*10
 
 function receive(message)
   
   if(message.type == "fake_sensor_value") then
     --- print highest delay from publication to this stage
     processing_delay = calculate_time_diff(message.time_sec, message.time_nsec)
-    testbed_log_integer("processing_delay_inner", processing_delay)
+    testbed_log_integer("processing_delay_inner_"..node_id, processing_delay)
 
     store[#store+1] = {message.value, message.num_values}
     collected_values = collected_values + message.num_values
@@ -42,7 +42,7 @@ function receive(message)
   if(message.type == "init") then
     print("INIT Aggregator")
     location_info = {}
-    location_count = 1
+    location_count = 0
     reset_collection_state()
 
     publish(
@@ -73,6 +73,13 @@ function receive(message)
         "key", "room"
       )
     )
+    publish(
+      Publication.new(
+        "type", "label_get",
+        "node_id", node_id,
+        "key", "access_1"
+      )
+    )
   end
 
   if(message.type == "label_response") then
@@ -81,7 +88,7 @@ function receive(message)
       location_count = location_count + 1
     end
     location_info[message.key] = message.value
-    if(location_count == 4) then
+    if(location_count == 5) then
       print("READY Aggregator")
       subscription = {type="fake_sensor_value"}
       subscription["building"] = location_info["building"]

@@ -1,0 +1,53 @@
+type: deployment
+name: data_processing_sink
+ttl: 0
+actor_type:  data_processing_sink_actor
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "data_sink.lua"
+constraints:
+  - "experiment_node_type": "building_server"
+  - "building": "fmi"
+---
+type: deployment
+name: data_processor_1
+ttl: 0
+actor_type:  data_processor_actor_1
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "data_aggregator_access1_building.lua"
+constraints:
+  - "experiment_node_type": "building_server"
+  - "building": "fmi"
+---
+type: deployment
+name: data_processor_2
+ttl: 0
+actor_type:  data_processor_actor_2
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "data_aggregator_node_access1.lua"
+constraints:
+  - "experiment_node_type": "access_server_1"
+  - "building": "fmi"
+---
+type: deployment
+name: data_generator
+ttl:  0
+actor_type:  data_generator_actor
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file: "data_generator.lua"
+constraints:
+  - "experiment_node_type": "sensor_node"
+  - "building": "fmi"
+---
+type: deployment
+name: message_count_echo_server
+ttl:  0
+actor_type:  message_count_echo_actor
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file: "../message_count_echo_server.lua"
+constraints:
+  - "building": "fmi"

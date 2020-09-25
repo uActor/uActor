@@ -1,4 +1,4 @@
-MESSAGES_TO_SEND = 4 * 10 * 10 * 4
+MESSAGES_TO_SEND = 4 * 10 * 10
 
 function receive(message)
   
@@ -11,11 +11,6 @@ function receive(message)
     for i=1,3 do
       math.random()
     end
-
-    building = "fmi"
-    floor = "01"
-    wing = "05"
-    room = "01.05.042"
 
     location_info = {}
     location_count = 0
@@ -48,6 +43,13 @@ function receive(message)
         "key", "room"
       )
     )
+    publish(
+      Publication.new(
+        "type", "label_get",
+        "node_id", node_id,
+        "key", "access_1"
+      )
+    )
   end
 
   if(message.type == "label_response") then
@@ -56,7 +58,7 @@ function receive(message)
       location_count = location_count + 1
     end
     location_info[message.key] = message.value
-    if(location_count == 4) then
+    if(location_count == 5) then
       print("READY Generator")
       delayed_publish(
         Publication.new(
@@ -71,6 +73,7 @@ function receive(message)
   end
 
   if(message.type == "periodic_trigger") then
+    print(location_info["access_1"])
     local time_sec, time_nsec = unix_timestamp()
     publish(
       Publication.new(
@@ -79,6 +82,7 @@ function receive(message)
         "floor", location_info['floor'],
         "wing", location_info['wing'],
         "room", location_info['room'],
+        "access_1", location_info["access_1"],
         "value", 0.1*(math.random(0, 250)),
         "aggregation_level", "node",
         "num_values", 1,
@@ -90,7 +94,13 @@ function receive(message)
 
     if(num_send >= MESSAGES_TO_SEND) then
       return;
-    end 
+    end
+
+    dalay = 250
+
+    if(num_send % 10 == 0) then
+      delay = 10000
+    end
 
     delayed_publish(
       Publication.new(

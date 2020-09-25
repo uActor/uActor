@@ -8,4 +8,5 @@ sdkconfig.old
 experiments/
 old_snippets/
 scratch_data/
+large_scale_test_results/
 *.pyc

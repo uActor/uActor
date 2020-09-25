@@ -1,4 +1,4 @@
-NUM_VALUES_OUT = 171* 10
+NUM_VALUES_OUT = 256 * 10
 
 function receive(message)
   
@@ -43,7 +43,7 @@ function receive(message)
   if(message.type == "init") then
     print("INIT Aggregator")
     location_info = {}
-    location_count = 1
+    location_count = 0
     reset_collection_state()
 
     publish(
@@ -74,6 +74,13 @@ function receive(message)
         "key", "room"
       )
     )
+    publish(
+      Publication.new(
+        "type", "label_get",
+        "node_id", node_id,
+        "key", "access_1"
+      )
+    )
   end
 
   if(message.type == "label_response") then
@@ -82,7 +89,7 @@ function receive(message)
       location_count = location_count + 1
     end
     location_info[message.key] = message.value
-    if(location_count == 4) then
+    if(location_count == 5) then
       print("READY Aggregator")
       subscription = {type="fake_sensor_value"}
       subscription["building"] = location_info["building"]
