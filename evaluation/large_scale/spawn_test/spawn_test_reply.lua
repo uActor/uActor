@@ -1,5 +1,5 @@
-NUM_NODES = 425
-MAX_ITERATIONS = 25
+NUM_NODES = 341
+MAX_ITERATIONS = 10
 HOST_NODE = "node_1"
 
 function receive(message)

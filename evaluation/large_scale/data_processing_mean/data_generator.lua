@@ -1,4 +1,4 @@
-MESSAGES_TO_SEND = 4 * 10 * 10
+MESSAGES_TO_SEND = 41 * 100
 
 function receive(message)
   
@@ -60,6 +60,7 @@ function receive(message)
     location_info[message.key] = message.value
     if(location_count == 5) then
       print("READY Generator")
+      local seconds, nanoseconds = unix_timestamp()
       delayed_publish(
         Publication.new(
           "node_id", node_id,
@@ -67,7 +68,8 @@ function receive(message)
           "instance_id", instance_id,
           "type", "periodic_trigger"
         ),
-        30000 + math.random(1, 500) // 1
+        30000
+        -- #  + seconds%30 * 1000 - nanoseconds//1000000 
       )
     end
   end
@@ -96,9 +98,9 @@ function receive(message)
       return;
     end
 
-    dalay = 250
+    delay = 250
 
-    if(num_send % 10 == 0) then
+    if(num_send % 40 == 0) then
       delay = 10000
     end
 

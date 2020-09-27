@@ -1,4 +1,4 @@
-REQUIRED_COUNT = 10
+REQUIRED_COUNT = 100
 
 function receive(message)
 

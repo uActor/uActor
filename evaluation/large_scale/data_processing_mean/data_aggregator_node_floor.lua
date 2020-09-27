@@ -1,4 +1,4 @@
-NUM_VALUES_OUT = 256 * 10
+NUM_VALUES_OUT = 256/4 * 41
 
 function receive(message)
   

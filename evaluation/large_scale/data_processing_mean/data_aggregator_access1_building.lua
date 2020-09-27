@@ -1,11 +1,11 @@
-NUM_VALUES_OUT = 256 * 10 * 4
+NUM_VALUES_OUT = 256 * 41
 
 function receive(message)
   
   if(message.type == "fake_sensor_value") then
     --- print highest delay from publication to this stage
     processing_delay = calculate_time_diff(message.time_sec, message.time_nsec)
-    testbed_log_integer("processing_delay_inner_"..node_id, processing_delay)
+    -- testbed_log_integer("processing_delay_inner_"..node_id, processing_delay)
 
     store[#store+1] = {message.value, message.num_values}
     collected_values = collected_values + message.num_values
