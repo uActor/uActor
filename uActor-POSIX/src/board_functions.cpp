@@ -10,8 +10,9 @@ const uint32_t BoardFunctions::SLEEP_FOREVER = UINT32_MAX;
 
 uint32_t BoardFunctions::timestamp() {
   return std::chrono::duration_cast<std::chrono::milliseconds>(
-             std::chrono::system_clock::now().time_since_epoch())
-      .count();
+             std::chrono::steady_clock::now().time_since_epoch())
+             .count() -
+         init_time;
 }
 
 uint32_t BoardFunctions::seconds_timestamp() {
@@ -33,5 +34,10 @@ void BoardFunctions::sleep(uint32_t sleep_ms) {
 }
 
 int32_t BoardFunctions::epoch = 0;
+
+uint64_t BoardFunctions::init_time =
+    std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now().time_since_epoch())
+        .count();
 
 }  // namespace uActor

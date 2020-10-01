@@ -19,6 +19,8 @@ struct BoardFunctions {
 
   static int32_t epoch;
 
+  static uint64_t init_time;
+
   static std::list<std::pair<std::string, std::string>> node_labels();
 
   static void sleep(uint32_t sleep_ms);
