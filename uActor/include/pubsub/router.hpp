@@ -32,6 +32,7 @@ class Router {
   ReceiverHandle new_subscriber();
 
   std::string subscriptions_for(std::string_view node_id);
+  uint32_t find_sub_id(Filter&& filter);
 
  private:
   std::atomic<uint32_t> next_sub_id{1};
@@ -42,6 +43,7 @@ class Router {
   std::set<Subscription*> no_requirements;
 
   std::atomic<bool> updated{false};
+
   std::recursive_mutex mtx;
 
   uint32_t add_subscription(
@@ -64,6 +66,10 @@ class Router {
   friend Receiver;
 
   void publish_subscription_update();
+  void publish_subscription_added(const Subscription& sub, std::string exclude,
+                                  std::string include);
+  void publish_subscription_removed(const Subscription& sub,
+                                    std::string exclude, std::string include);
 };
 
 }  // namespace uActor::PubSub

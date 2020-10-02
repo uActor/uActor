@@ -12,6 +12,7 @@ extern "C" {
 #include <map>
 #include <memory>
 #include <mutex>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -83,8 +84,10 @@ class RemoteConnection {
 
   // Subscription related
   ForwarderSubscriptionAPI* handle;
-  std::list<uint32_t> subscription_ids;
-  uint32_t update_sub_id;
+  std::set<uint32_t> subscription_ids;
+  uint32_t update_sub_id = 0;
+  uint32_t add_sub_id = 0;
+  uint32_t remove_sub_id = 0;
 
   // Peer related
   std::string partner_node_id;
@@ -115,6 +118,9 @@ class RemoteConnection {
   size_t write_offset = 0;
 
   void update_subscriptions(PubSub::Publication&& p);
+  void add_subscription(PubSub::Publication&& p);
+  void remove_subscription(PubSub::Publication&& p);
+
   friend uActor::Remote::TCPForwarder;
   friend uActor::Remote::TCPForwarder;
 };

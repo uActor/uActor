@@ -104,7 +104,7 @@ class Constraint {
     return std::string_view(_attribute);
   }
 
-  std::string serialize();
+  std::string serialize() const;
 
   static std::optional<Constraint> deserialize(std::string_view serialized,
                                                bool optional);

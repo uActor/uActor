@@ -37,23 +37,24 @@ bool Constraint::operator==(const Constraint& other) const {
   return other._attribute == _attribute && other._operand == _operand;
 }
 
-std::string Constraint::serialize() {
+std::string Constraint::serialize() const {
   std::string serialized = _attribute;
 
   if (std::holds_alternative<Container<std::string>>(_operand)) {
-    Container<std::string>& cont = std::get<Container<std::string>>(_operand);
+    const Container<std::string>& cont =
+        std::get<Container<std::string>>(_operand);
     serialized += ",s,";
     serialized +=
         std::string(ConstraintPredicates::name(cont.operation_name)) + ",";
     serialized += cont.operand;
   } else if (std::holds_alternative<Container<int32_t>>(_operand)) {
-    Container<int32_t>& cont = std::get<Container<int32_t>>(_operand);
+    const Container<int32_t>& cont = std::get<Container<int32_t>>(_operand);
     serialized += ",i,";
     serialized +=
         std::string(ConstraintPredicates::name(cont.operation_name)) + ",";
     serialized += std::to_string(cont.operand);
   } else if (std::holds_alternative<Container<float>>(_operand)) {
-    Container<float>& cont = std::get<Container<float>>(_operand);
+    const Container<float>& cont = std::get<Container<float>>(_operand);
     serialized += ",f,";
     serialized +=
         std::string(ConstraintPredicates::name(cont.operation_name)) + ",";

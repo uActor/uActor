@@ -103,9 +103,9 @@ bool Filter::operator==(const Filter& other) const {
   return true;
 }
 
-std::string Filter::serialize() {
+std::string Filter::serialize() const {
   std::string serialized;
-  for (auto& constraint : required) {
+  for (const auto& constraint : required) {
     serialized += constraint.serialize() + "^";
   }
   if (serialized.length() >= 2) {

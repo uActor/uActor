@@ -32,7 +32,7 @@ class Filter {
 
   bool operator==(const Filter& other) const;
 
-  std::string serialize();
+  std::string serialize() const;
 
   static std::optional<Filter> deserialize(std::string_view serialized);
 

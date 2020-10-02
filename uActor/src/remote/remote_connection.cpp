@@ -49,6 +49,12 @@ RemoteConnection::RemoteConnection(uint32_t local_id, int32_t socket_id,
 
 RemoteConnection::~RemoteConnection() {
   handle->remove_subscription(local_id, update_sub_id, "");
+  if (add_sub_id) {
+    handle->remove_subscription(local_id, add_sub_id, "");
+  }
+  if (remove_sub_id) {
+    handle->remove_subscription(local_id, remove_sub_id, "");
+  }
   for (const auto& subscription_id : subscription_ids) {
     handle->remove_subscription(local_id, subscription_id, std::string(""));
   }
@@ -65,7 +71,7 @@ RemoteConnection::~RemoteConnection() {
 
 void RemoteConnection::handle_subscription_update_notification(
     const PubSub::Publication& update_message) {
-  send_routing_info();
+  return;
 }
 
 void RemoteConnection::send_routing_info() {
@@ -174,6 +180,17 @@ void RemoteConnection::process_data(uint32_t len, char* data) {
 #if CONFIG_BENCHMARK_ENABLED
               current_traffic.sub_traffic_size += publicaton_full_size;
 #endif
+            } else if (p->get_str_attr("type") == "subscription_added") {
+              add_subscription(std::move(*p));
+#if CONFIG_BENCHMARK_ENABLED
+              current_traffic.sub_traffic_size += publicaton_full_size;
+#endif
+            } else if (p->get_str_attr("type") == "subscription_removed") {
+              remove_subscription(std::move(*p));
+#if CONFIG_BENCHMARK_ENABLED
+              current_traffic.sub_traffic_size += publicaton_full_size;
+#endif
+            } else {
 #if CONFIG_BENCHMARK_ENABLED
               if (p->get_str_attr("type") == "deployment") {
                 current_traffic.deployment_traffic_size += publicaton_full_size;
@@ -215,6 +232,30 @@ void RemoteConnection::process_data(uint32_t len, char* data) {
   }
 }
 
+void RemoteConnection::add_subscription(PubSub::Publication&& p) {
+  if (p.has_attr("serialized_subscription")) {
+    auto deserialized =
+        PubSub::Filter::deserialize(*p.get_str_attr("serialized_subscription"));
+    uint32_t sub_id = handle->add_subscription(
+        local_id, PubSub::Filter(*deserialized), partner_node_id);
+    subscription_ids.insert(sub_id);
+  }
+}
+
+void RemoteConnection::remove_subscription(PubSub::Publication&& p) {
+  if (p.has_attr("serialized_subscription")) {
+    auto deserialized =
+        PubSub::Filter::deserialize(*p.get_str_attr("serialized_subscription"));
+    if (deserialized) {
+      printf("CALLED UNSUB\n");
+      uint32_t sub_id =
+          PubSub::Router::get_instance().find_sub_id(std::move(*deserialized));
+      handle->remove_subscription(local_id, sub_id, partner_node_id);
+      subscription_ids.erase(sub_id);
+    }
+  }
+}
+
 void RemoteConnection::update_subscriptions(PubSub::Publication&& p) {
   std::string_view new_partner_id = *p.get_str_attr("subscription_node_id");
 
@@ -229,6 +270,29 @@ void RemoteConnection::update_subscriptions(PubSub::Publication&& p) {
     partner_node_id = std::string(new_partner_id);
 
     send_routing_info();
+    add_sub_id = handle->add_subscription(
+        local_id,
+        PubSub::Filter{
+            PubSub::Constraint{"type", "subscription_added"},
+            PubSub::Constraint{"node_id", partner_node_id,
+                               uActor::PubSub::ConstraintPredicates::EQ, true},
+            PubSub::Constraint{"exclude_node_id", partner_node_id,
+                               uActor::PubSub::ConstraintPredicates::NE, true},
+            PubSub::Constraint{"publisher_node_id",
+                               std::string(BoardFunctions::NODE_ID)}},
+        "local");
+
+    remove_sub_id = handle->add_subscription(
+        local_id,
+        PubSub::Filter{
+            PubSub::Constraint{"type", "subscription_removed"},
+            PubSub::Constraint{"node_id", partner_node_id,
+                               uActor::PubSub::ConstraintPredicates::EQ, true},
+            PubSub::Constraint{"exclude_node_id", partner_node_id,
+                               uActor::PubSub::ConstraintPredicates::NE, true},
+            PubSub::Constraint{"publisher_node_id",
+                               std::string(BoardFunctions::NODE_ID)}},
+        "local");
 
     // Flooding
     // subscription_ids.push_back(handle->add_subscription(local_id,
@@ -254,7 +318,7 @@ void RemoteConnection::update_subscriptions(PubSub::Publication&& p) {
         //   }
         // }
         if (old_subscriptions.erase(sub_id) == 0) {
-          subscription_ids.push_back(sub_id);
+          subscription_ids.insert(sub_id);
           uActor::Support::Logger::trace("REMOTE", "SUB-ID ADDED", "%d",
                                          sub_id);
         }
@@ -262,7 +326,7 @@ void RemoteConnection::update_subscriptions(PubSub::Publication&& p) {
     }
     for (auto subscription_id : old_subscriptions) {
       handle->remove_subscription(local_id, subscription_id, partner_node_id);
-      subscription_ids.remove(subscription_id);
+      subscription_ids.erase(subscription_id);
       uActor::Support::Logger::trace("REMOTE", "SUB-ID REMOVED", "%d",
                                      subscription_id);
     }
