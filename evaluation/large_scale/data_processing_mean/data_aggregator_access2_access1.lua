@@ -1,10 +1,11 @@
-NUM_VALUES_OUT = 41
+NUM_VALUES_OUT = 1024/64*41
 
 function receive(message)
   
   if(message.type == "fake_sensor_value") then
     --- print highest delay from publication to this stage
     processing_delay = calculate_time_diff(message.time_sec, message.time_nsec)
+    -- testbed_log_integer("processing_delay_inner_"..node_id, processing_delay)
 
     store[#store+1] = {message.value, message.num_values}
     collected_values = collected_values + message.num_values
@@ -24,12 +25,10 @@ function receive(message)
       local pub = Publication.new(
         "type", "fake_sensor_value",
         "building", location_info["building"],
-        "floor", location_info['floor'],
-        "wing", location_info['wing'],
-        "access_1", location_info["access_1"],
-        "node", node_id,
+        "floor", location_info["floor"],
+        "wing", location_info["wing"],
         "value", sum / collected_values,
-        "aggregation_level", "nodec",
+        "aggregation_level", "access1",
         "num_values", collected_values,
         "time_sec", min_sec,
         "time_nsec", min_nsec
@@ -97,17 +96,14 @@ function receive(message)
       location_count = location_count + 1
     end
     location_info[message.key] = message.value
-    if(location_count == 6) then
+    if(location_count == 5) then
       print("READY Aggregator")
       subscription = {type="fake_sensor_value"}
       subscription["building"] = location_info["building"]
       subscription["floor"] = location_info["floor"]
       subscription["wing"] = location_info["wing"]
-      subscription["access_1"] = location_info["access_1"]
-      subscription["access_2"] = location_info["access_2"]
-      subscription["room"] = location_info["room"]
-      subscription["aggregation_level"] = "node"
-      print("sub "..subscription.access_1)
+      subscription["access1"] = location_info["access1"]
+      subscription["aggregation_level"] = "access_2"
       subscribe(subscription)
     end
   end

@@ -32,14 +32,47 @@ constraints:
   - "building": "fmi"
 ---
 type: deployment
-name: data_processor_node_wing
+name: data_processor_access1_wing
 ttl: 120000
-actor_type:  data_processor_actor_node_wing
+actor_type:  data_processor_actor_access1_wing
 actor_runtime_type:  lua
 actor_version:  "0.1"
-actor_code_file:  "data_aggregator_node_wing.lua"
+actor_code_file:  "data_aggregator_access1_wing.lua"
 constraints:
   - "experiment_node_type": "wing_server"
+  - "building": "fmi"
+---
+type: deployment
+name: data_processor_access2_access1
+ttl: 120000
+actor_type:  data_processor_actor_access2_access1
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "data_aggregator_access2_access1.lua"
+constraints:
+  - "experiment_node_type": "access_server_1"
+  - "building": "fmi"
+---
+type: deployment
+name: data_processor_nodec_access2
+ttl: 120000
+actor_type:  data_processor_actor_node_access2
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "data_aggregator_nodec_access2.lua"
+constraints:
+  - "experiment_node_type": "access_server_2"
+  - "building": "fmi"
+---
+type: deployment
+name: data_processor_node_nodec
+ttl: 120000
+actor_type:  data_processor_actor_node_nodec
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "data_aggregator_node_nodec.lua"
+constraints:
+  - "experiment_node_type": "sensor_node"
   - "building": "fmi"
 ---
 type: deployment

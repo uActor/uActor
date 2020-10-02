@@ -1,4 +1,4 @@
-NUM_VALUES_OUT = 256/16*41
+NUM_VALUES_OUT = 1024/16*41
 
 function receive(message)
   
@@ -79,6 +79,13 @@ function receive(message)
         "type", "label_get",
         "node_id", node_id,
         "key", "access_1"
+      )
+    )
+    publish(
+      Publication.new(
+        "type", "label_get",
+        "node_id", node_id,
+        "key", "access_2"
       )
     )
   end

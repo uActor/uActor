@@ -1,3 +1,5 @@
+MESSAGES_TO_SEND = 41 * 100
+
 function receive(message)
   
   if(message.type == "init") then
@@ -48,7 +50,6 @@ function receive(message)
         "key", "access_1"
       )
     )
-
     publish(
       Publication.new(
         "type", "label_get",
@@ -80,10 +81,6 @@ function receive(message)
     end
   end
 
-  if(message.type == "exit") then
-    testbed_log_integer("total_sent", num_send)
-  end
-
   if(message.type == "periodic_trigger") then
     local time_sec, time_nsec = unix_timestamp()
     publish(
@@ -94,7 +91,6 @@ function receive(message)
         "wing", location_info['wing'],
         "room", location_info['room'],
         "access_1", location_info["access_1"],
-        "access_2", location_info["access_2"],
         "value", 0.1*(math.random(0, 250)),
         "aggregation_level", "node",
         "num_values", 1,
@@ -103,6 +99,10 @@ function receive(message)
       )
     )
     num_send = num_send + 1
+
+    if(num_send >= MESSAGES_TO_SEND) then
+      return;
+    end
 
     delayed_publish(
       Publication.new(

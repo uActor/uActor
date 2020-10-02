@@ -10,9 +10,9 @@ constraints:
   - "building": "fmi"
 ---
 type: deployment
-name: data_processor_1
+name: data_processor_floor_building
 ttl: 120000
-actor_type:  data_processor_actor_1
+actor_type:  data_processor_actor_floor_building
 actor_runtime_type:  lua
 actor_version:  "0.1"
 actor_code_file:  "data_aggregator_floor_building.lua"
@@ -21,14 +21,47 @@ constraints:
   - "building": "fmi"
 ---
 type: deployment
-name: data_processor_2
+name: data_processor_wing_floor
 ttl: 120000
-actor_type:  data_processor_actor_2
+actor_type:  data_processor_actor_wing_floor
 actor_runtime_type:  lua
 actor_version:  "0.1"
-actor_code_file:  "data_aggregator_node_floor.lua"
+actor_code_file:  "data_aggregator_wing_floor.lua"
 constraints:
   - "experiment_node_type": "floor_server"
+  - "building": "fmi"
+---
+type: deployment
+name: data_processor_access1_wing
+ttl: 120000
+actor_type:  data_processor_actor_access1_wing
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "data_aggregator_access1_wing.lua"
+constraints:
+  - "experiment_node_type": "wing_server"
+  - "building": "fmi"
+---
+type: deployment
+name: data_processor_access2_access1
+ttl: 1200000
+actor_type:  data_processor_actor_access2_access1
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "data_aggregator_access2_access1.lua"
+constraints:
+  - "experiment_node_type": "access_server_1"
+  - "building": "fmi"
+---
+type: deployment
+name: data_processor_node_access2
+ttl: 1200000
+actor_type:  data_processor_actor_node_access2
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "data_aggregator_node_access2.lua"
+constraints:
+  - "experiment_node_type": "access_server_2"
   - "building": "fmi"
 ---
 type: deployment

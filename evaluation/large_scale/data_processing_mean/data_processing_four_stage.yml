@@ -1,6 +1,6 @@
 type: deployment
 name: data_processing_sink
-ttl: 0
+ttl: 120000
 actor_type:  data_processing_sink_actor
 actor_runtime_type:  lua
 actor_version:  "0.1"
@@ -10,9 +10,9 @@ constraints:
   - "building": "fmi"
 ---
 type: deployment
-name: data_processor_1
-ttl: 0
-actor_type:  data_processor_actor_1
+name: data_processor_floor_building
+ttl: 120000
+actor_type:  data_processor_actor_floor_building
 actor_runtime_type:  lua
 actor_version:  "0.1"
 actor_code_file:  "data_aggregator_floor_building.lua"
@@ -21,9 +21,9 @@ constraints:
   - "building": "fmi"
 ---
 type: deployment
-name: data_processor_2
-ttl: 0
-actor_type:  data_processor_actor_2
+name: data_processor_wing_floor
+ttl: 120000
+actor_type:  data_processor_actor_wing_floor
 actor_runtime_type:  lua
 actor_version:  "0.1"
 actor_code_file:  "data_aggregator_wing_floor.lua"
@@ -33,7 +33,7 @@ constraints:
 ---
 type: deployment
 name: data_processor_3
-ttl: 0
+ttl: 120000
 actor_type:  data_processor_actor_3
 actor_runtime_type:  lua
 actor_version:  "0.1"
@@ -44,7 +44,7 @@ constraints:
 ---
 type: deployment
 name: data_processor_4
-ttl: 0
+ttl: 120000
 actor_type:  data_processor_actor_4
 actor_runtime_type:  lua
 actor_version:  "0.1"
@@ -55,7 +55,7 @@ constraints:
 ---
 type: deployment
 name: data_generator
-ttl:  0
+ttl:  120000
 actor_type:  data_generator_actor
 actor_runtime_type:  lua
 actor_version:  "0.1"
@@ -66,7 +66,7 @@ constraints:
 ---
 type: deployment
 name: message_count_echo_server
-ttl:  0
+ttl:  120000
 actor_type:  message_count_echo_actor
 actor_runtime_type:  lua
 actor_version:  "0.1"

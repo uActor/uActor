@@ -1,4 +1,4 @@
-NUM_VALUES_OUT = 41
+NUM_VALUES_OUT = 1024 / 256 * 41
 
 function receive(message)
   
@@ -27,9 +27,9 @@ function receive(message)
         "floor", location_info['floor'],
         "wing", location_info['wing'],
         "access_1", location_info["access_1"],
-        "node", node_id,
+        "access_2", location_info["access_2"],
         "value", sum / collected_values,
-        "aggregation_level", "nodec",
+        "aggregation_level", "access_2",
         "num_values", collected_values,
         "time_sec", min_sec,
         "time_nsec", min_nsec
@@ -105,9 +105,7 @@ function receive(message)
       subscription["wing"] = location_info["wing"]
       subscription["access_1"] = location_info["access_1"]
       subscription["access_2"] = location_info["access_2"]
-      subscription["room"] = location_info["room"]
-      subscription["aggregation_level"] = "node"
-      print("sub "..subscription.access_1)
+      subscription["aggregation_level"] = "nodec"
       subscribe(subscription)
     end
   end
