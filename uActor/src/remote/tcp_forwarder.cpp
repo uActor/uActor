@@ -187,7 +187,7 @@ void TCPForwarder::remove_subscription(uint32_t local_id, uint32_t sub_id,
 std::pair<bool, std::unique_lock<std::mutex>> TCPForwarder::write(
     RemoteConnection* remote, std::shared_ptr<std::vector<char>> dataset,
     std::unique_lock<std::mutex>&& lock) {
-  while (write_in_progress) {
+  while (remote->write_in_progress) {
     Logger::trace("TCP-FORWARDER", "WRITE",
                   "Waiting for completion of previous write");
     write_cv.wait(lock);
@@ -209,7 +209,6 @@ std::pair<bool, std::unique_lock<std::mutex>> TCPForwarder::write(
   } else if (written == dataset->size()) {
     Logger::trace("TCP-FORWARDER", "WRITE", "complete : %d", written);
   } else {
-    write_in_progress = true;
     remote->write_in_progress = true;
     remote->write_buffer = dataset;
     if (written > 0) {
@@ -483,7 +482,6 @@ bool TCPForwarder::write_handler(uActor::Remote::RemoteConnection* remote) {
       return true;
     } else if (written == remote->write_buffer->size() - remote->write_offset) {
       Logger::trace("TCP-FORWARDER", "WRITE-HANDLER", "completed");
-      write_in_progress = false;
       remote->write_in_progress = false;
       remote->write_buffer = std::make_shared<std::vector<char>>();
       remote->write_offset = 0;
