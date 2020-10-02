@@ -22,6 +22,8 @@ class Receiver {
   explicit Receiver(Router* router);
   ~Receiver();
 
+  static std::atomic<int> size_diff;
+
  private:
   Router* router;
   std::unique_ptr<Queue> queue;

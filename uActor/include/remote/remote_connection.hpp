@@ -29,6 +29,9 @@ struct ConnectionTraffic {
   std::atomic<size_t> num_duplicate_messages{0};
   std::atomic<size_t> size_accepted_messages{0};
   std::atomic<size_t> size_duplicate_messages{0};
+  std::atomic<size_t> regular_traffic_size{0};
+  std::atomic<size_t> sub_traffic_size{0};
+  std::atomic<size_t> deployment_traffic_size{0};
 };
 #endif
 

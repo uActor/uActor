@@ -69,4 +69,6 @@ void Receiver::unsubscribe(uint32_t sub_id, std::string node_id) {
     subscriptions.erase(sub_id);
   }
 }
+
+std::atomic<int> Receiver::size_diff{0};
 }  // namespace uActor::PubSub

@@ -17,6 +17,7 @@ class Receiver::Queue {
     std::unique_lock lock(mtx);
     auto was_empty = queue.begin() == queue.end();
     queue.emplace_back(std::move(publication));
+    Receiver::size_diff++;
     if (was_empty) {
       queue_cv.notify_one();
     }
@@ -30,6 +31,7 @@ class Receiver::Queue {
     if (queue.begin() != queue.end()) {
       MatchedPublication pub = std::move(*queue.begin());
       queue.pop_front();
+      Receiver::size_diff--;
       return std::move(pub);
     } else {
       return std::nullopt;
@@ -73,5 +75,7 @@ void Receiver::unsubscribe(uint32_t sub_id, std::string node_id) {
     subscriptions.erase(sub_id);
   }
 }
+
+std::atomic<int> Receiver::size_diff{0};
 
 }  // namespace uActor::PubSub

@@ -14,8 +14,8 @@
 #include "actor_runtime/native_executor.hpp"
 #include "controllers/deployment_manager.hpp"
 #include "controllers/topology_manager.hpp"
+#include "remote/remote_connection.hpp"
 #include "remote/tcp_forwarder.hpp"
-
 #if CONFIG_BENCHMARK_ENABLED
 #include "support/testbed.h"
 #endif
@@ -249,6 +249,35 @@ int main(int arg_count, char** args) {
 #if CONFIG_BENCHMARK_ENABLED
   sleep(2);
   testbed_log_rt_integer("_ready", boot_timestamp);
+
+  do {
+    testbed_log_integer("current_message_information_timestamp",
+                        uActor::BoardFunctions::seconds_timestamp());
+    testbed_log_integer("current_accepted_message_count",
+                        uActor::Remote::RemoteConnection::current_traffic
+                            .num_accepted_messages.exchange(0));
+    testbed_log_integer("current_accepted_message_size",
+                        uActor::Remote::RemoteConnection::current_traffic
+                            .size_accepted_messages.exchange(0));
+    testbed_log_integer("current_rejected_message_count",
+                        uActor::Remote::RemoteConnection::current_traffic
+                            .num_duplicate_messages.exchange(0));
+    testbed_log_integer("current_rejected_message_size",
+                        uActor::Remote::RemoteConnection::current_traffic
+                            .size_duplicate_messages.exchange(0));
+    testbed_log_integer("current_sub_message_size",
+                        uActor::Remote::RemoteConnection::current_traffic
+                            .sub_traffic_size.exchange(0));
+    testbed_log_integer("current_deployment_message_size",
+                        uActor::Remote::RemoteConnection::current_traffic
+                            .deployment_traffic_size.exchange(0));
+    testbed_log_integer("current_regular_message_size",
+                        uActor::Remote::RemoteConnection::current_traffic
+                            .regular_traffic_size.exchange(0));
+    testbed_log_integer("current_queue_size_max",
+                        uActor::PubSub::Receiver::size_max.exchange(0));
+    sleep(1);
+  } while (true);
 #endif
 
   tcp_task2.join();

@@ -171,7 +171,16 @@ void RemoteConnection::process_data(uint32_t len, char* data) {
 
             if (p->get_str_attr("type") == "subscription_update") {
               update_subscriptions(std::move(*p));
-            } else {
+#if CONFIG_BENCHMARK_ENABLED
+              current_traffic.sub_traffic_size += publicaton_full_size;
+#endif
+#if CONFIG_BENCHMARK_ENABLED
+              if (p->get_str_attr("type") == "deployment") {
+                current_traffic.deployment_traffic_size += publicaton_full_size;
+              } else {
+                current_traffic.regular_traffic_size += publicaton_full_size;
+              }
+#endif
               if (p->has_attr("_internal_forwarded_by")) {
                 p->set_attr(
                     "_internal_forwarded_by",
