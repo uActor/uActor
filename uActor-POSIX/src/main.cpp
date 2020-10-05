@@ -274,8 +274,10 @@ int main(int arg_count, char** args) {
     testbed_log_integer("current_regular_message_size",
                         uActor::Remote::RemoteConnection::current_traffic
                             .regular_traffic_size.exchange(0));
-    testbed_log_integer("current_queue_size_max",
-                        uActor::PubSub::Receiver::size_max.exchange(0));
+    testbed_log_integer("current_queue_size_diff",
+                        uActor::PubSub::Receiver::size_diff.exchange(0));
+    testbed_log_integer("number_of_subscriptions",
+                        uActor::PubSub::Router::get_instance().number_of_subscriptions());
     sleep(1);
   } while (true);
 #endif

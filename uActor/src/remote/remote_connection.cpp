@@ -18,6 +18,7 @@
 #include "pubsub/router.hpp"
 #include "remote/forwarder_api.hpp"
 #include "support/logger.hpp"
+#include "support/testbed.h"
 
 namespace uActor::Remote {
 
@@ -274,7 +275,7 @@ void RemoteConnection::update_subscriptions(PubSub::Publication&& p) {
         local_id,
         PubSub::Filter{
             PubSub::Constraint{"type", "subscription_added"},
-            PubSub::Constraint{"node_id", partner_node_id,
+            PubSub::Constraint{"include_node_id", partner_node_id,
                                uActor::PubSub::ConstraintPredicates::EQ, true},
             PubSub::Constraint{"exclude_node_id", partner_node_id,
                                uActor::PubSub::ConstraintPredicates::NE, true},
@@ -286,7 +287,7 @@ void RemoteConnection::update_subscriptions(PubSub::Publication&& p) {
         local_id,
         PubSub::Filter{
             PubSub::Constraint{"type", "subscription_removed"},
-            PubSub::Constraint{"node_id", partner_node_id,
+            PubSub::Constraint{"include_node_id", partner_node_id,
                                uActor::PubSub::ConstraintPredicates::EQ, true},
             PubSub::Constraint{"exclude_node_id", partner_node_id,
                                uActor::PubSub::ConstraintPredicates::NE, true},
