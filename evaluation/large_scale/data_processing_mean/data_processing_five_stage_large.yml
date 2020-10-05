@@ -43,25 +43,25 @@ constraints:
   - "building": "fmi"
 ---
 type: deployment
-name: data_processor_access2_access1
+name: data_processor_room_access1
 ttl: 120000
-actor_type:  data_processor_actor_access2_access1
+actor_type:  data_processor_actor_room_access1
 actor_runtime_type:  lua
 actor_version:  "0.1"
-actor_code_file:  "data_aggregator_access2_access1.lua"
+actor_code_file:  "data_aggregator_room_access1.lua"
 constraints:
   - "experiment_node_type": "access_server_1"
   - "building": "fmi"
 ---
 type: deployment
-name: data_processor_node_access2
+name: data_processor_node_room
 ttl: 120000
-actor_type:  data_processor_actor_node_access2
+actor_type:  data_processor_actor_node_room
 actor_runtime_type:  lua
 actor_version:  "0.1"
-actor_code_file:  "data_aggregator_node_access2.lua"
+actor_code_file:  "data_aggregator_node_room.lua"
 constraints:
-  - "experiment_node_type": "access_server_2"
+  - "experiment_node_type": "room_server"
   - "building": "fmi"
 ---
 type: deployment

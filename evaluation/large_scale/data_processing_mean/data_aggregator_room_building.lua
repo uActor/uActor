@@ -1,10 +1,11 @@
-NUM_VALUES_OUT = 1024 / 256 * 41
+NUM_VALUES_OUT = 1024 * 41
 
 function receive(message)
   
   if(message.type == "fake_sensor_value") then
     --- print highest delay from publication to this stage
     processing_delay = calculate_time_diff(message.time_sec, message.time_nsec)
+    -- testbed_log_integer("processing_delay_inner_"..node_id, processing_delay)
 
     store[#store+1] = {message.value, message.num_values}
     collected_values = collected_values + message.num_values
@@ -23,13 +24,9 @@ function receive(message)
 
       local pub = Publication.new(
         "type", "fake_sensor_value",
-        "building", location_info["building"],
-        "floor", location_info['floor'],
-        "wing", location_info['wing'],
-        "access_1", location_info["access_1"],
-        "access_2", location_info["access_2"],
+        "building", location_info["building"], 
         "value", sum / collected_values,
-        "aggregation_level", "access_2",
+        "aggregation_level", "building",
         "num_values", collected_values,
         "time_sec", min_sec,
         "time_nsec", min_nsec
@@ -72,13 +69,6 @@ function receive(message)
       Publication.new(
         "type", "label_get",
         "node_id", node_id,
-        "key", "room"
-      )
-    )
-    publish(
-      Publication.new(
-        "type", "label_get",
-        "node_id", node_id,
         "key", "access_1"
       )
     )
@@ -86,7 +76,7 @@ function receive(message)
       Publication.new(
         "type", "label_get",
         "node_id", node_id,
-        "key", "access_2"
+        "key", "room"
       )
     )
   end
@@ -97,15 +87,11 @@ function receive(message)
       location_count = location_count + 1
     end
     location_info[message.key] = message.value
-    if(location_count == 6) then
+    if(location_count == 5) then
       print("READY Aggregator")
       subscription = {type="fake_sensor_value"}
       subscription["building"] = location_info["building"]
-      subscription["floor"] = location_info["floor"]
-      subscription["wing"] = location_info["wing"]
-      subscription["access_1"] = location_info["access_1"]
-      subscription["access_2"] = location_info["access_2"]
-      subscription["aggregation_level"] = "node"
+      subscription["aggregation_level"] = "room"
       subscribe(subscription)
     end
   end

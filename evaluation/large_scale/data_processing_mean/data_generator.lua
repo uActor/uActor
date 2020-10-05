@@ -38,13 +38,6 @@ function receive(message)
       Publication.new(
         "type", "label_get",
         "node_id", node_id,
-        "key", "room"
-      )
-    )
-    publish(
-      Publication.new(
-        "type", "label_get",
-        "node_id", node_id,
         "key", "access_1"
       )
     )
@@ -53,7 +46,7 @@ function receive(message)
       Publication.new(
         "type", "label_get",
         "node_id", node_id,
-        "key", "access_2"
+        "key", "room"
       )
     )
   end
@@ -64,7 +57,7 @@ function receive(message)
       location_count = location_count + 1
     end
     location_info[message.key] = message.value
-    if(location_count == 6) then
+    if(location_count == 5) then
       print("READY Generator")
       local seconds, nanoseconds = unix_timestamp()
       testbed_log_string("start_time", seconds.."."..nanoseconds)
@@ -92,9 +85,8 @@ function receive(message)
         "building", location_info['building'],
         "floor", location_info['floor'],
         "wing", location_info['wing'],
-        "room", location_info['room'],
         "access_1", location_info["access_1"],
-        "access_2", location_info["access_2"],
+        "room", location_info["room"],
         "value", num_send % 41 + .0,
         "aggregation_level", "node",
         "num_values", 1,

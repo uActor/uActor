@@ -10,3 +10,6 @@ old_snippets/
 scratch_data/
 large_scale_test_results/
 *.pyc
+large_scale_results/
+large_scale_results2/
+results/

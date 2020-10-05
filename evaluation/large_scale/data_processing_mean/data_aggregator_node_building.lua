@@ -70,13 +70,6 @@ function receive(message)
       Publication.new(
         "type", "label_get",
         "node_id", node_id,
-        "key", "room"
-      )
-    )
-    publish(
-      Publication.new(
-        "type", "label_get",
-        "node_id", node_id,
         "key", "access_1"
       )
     )
@@ -84,7 +77,7 @@ function receive(message)
       Publication.new(
         "type", "label_get",
         "node_id", node_id,
-        "key", "access_2"
+        "key", "room"
       )
     )
   end
@@ -95,7 +88,7 @@ function receive(message)
       location_count = location_count + 1
     end
     location_info[message.key] = message.value
-    if(location_count == 6) then
+    if(location_count == 5) then
       print("READY Aggregator")
       subscription = {type="fake_sensor_value"}
       subscription["building"] = location_info["building"]
