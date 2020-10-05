@@ -95,7 +95,7 @@ function receive(message)
         "room", location_info['room'],
         "access_1", location_info["access_1"],
         "access_2", location_info["access_2"],
-        "value", 0.1*(math.random(0, 250)),
+        "value", num_send % 41 + .0,
         "aggregation_level", "node",
         "num_values", 1,
         "time_sec", time_sec,

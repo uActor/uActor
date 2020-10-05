@@ -6,7 +6,15 @@ function receive(message)
     processing_delay = calculate_time_diff(message.time_sec, message.time_nsec)
     testbed_log_integer("processing_delay", processing_delay)
     testbed_log_integer("num", message.num_values)
+    testbed_log_integer("value", message.value)
+
+    if(last_time_sec) then
+      period = calculate_time_diff(last_time_sec, last_time_nsec)
+      testbed_log_integer("processing_period", period)
+    end
+
     count = count + 1
+    last_time_sec, last_time_nsec = unix_timestamp()
   end
 
   if(message.type == "init") then

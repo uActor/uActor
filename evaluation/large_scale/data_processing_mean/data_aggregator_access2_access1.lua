@@ -27,8 +27,9 @@ function receive(message)
         "building", location_info["building"],
         "floor", location_info["floor"],
         "wing", location_info["wing"],
+        "access_1", location_info["access_1"],
         "value", sum / collected_values,
-        "aggregation_level", "access1",
+        "aggregation_level", "access_1",
         "num_values", collected_values,
         "time_sec", min_sec,
         "time_nsec", min_nsec
@@ -102,7 +103,7 @@ function receive(message)
       subscription["building"] = location_info["building"]
       subscription["floor"] = location_info["floor"]
       subscription["wing"] = location_info["wing"]
-      subscription["access1"] = location_info["access1"]
+      subscription["access_1"] = location_info["access_1"]
       subscription["aggregation_level"] = "access_2"
       subscribe(subscription)
     end

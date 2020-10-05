@@ -27,6 +27,7 @@ function receive(message)
         "floor", location_info['floor'],
         "wing", location_info['wing'],
         "access_1", location_info["access_1"],
+        "access_2", location_info["access_2"],
         "node", node_id,
         "value", sum / collected_values,
         "aggregation_level", "nodec",
@@ -105,7 +106,7 @@ function receive(message)
       subscription["wing"] = location_info["wing"]
       subscription["access_1"] = location_info["access_1"]
       subscription["access_2"] = location_info["access_2"]
-      subscription["room"] = location_info["room"]
+      subscription["publisher_node_id"] = node_id
       subscription["aggregation_level"] = "node"
       print("sub "..subscription.access_1)
       subscribe(subscription)

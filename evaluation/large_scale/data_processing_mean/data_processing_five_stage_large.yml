@@ -44,7 +44,7 @@ constraints:
 ---
 type: deployment
 name: data_processor_access2_access1
-ttl: 1200000
+ttl: 120000
 actor_type:  data_processor_actor_access2_access1
 actor_runtime_type:  lua
 actor_version:  "0.1"
@@ -55,7 +55,7 @@ constraints:
 ---
 type: deployment
 name: data_processor_node_access2
-ttl: 1200000
+ttl: 120000
 actor_type:  data_processor_actor_node_access2
 actor_runtime_type:  lua
 actor_version:  "0.1"

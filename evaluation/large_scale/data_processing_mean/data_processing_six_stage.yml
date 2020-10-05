@@ -56,7 +56,7 @@ constraints:
 type: deployment
 name: data_processor_nodec_access2
 ttl: 120000
-actor_type:  data_processor_actor_node_access2
+actor_type:  data_processor_actor_nodec_access2
 actor_runtime_type:  lua
 actor_version:  "0.1"
 actor_code_file:  "data_aggregator_nodec_access2.lua"
