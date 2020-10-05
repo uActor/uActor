@@ -13,9 +13,9 @@ function receive(message)
     end
 
     if(iteration % 25 == 0) then
-      delayed_publish(Publication.new("node_id", node_id, "actor_type", actor_type, "instance_id", instance_id, "type", "setup"), math.random(0, 199))
+      delayed_publish(Publication.new("node_id", node_id, "actor_type", actor_type, "instance_id", instance_id, "type", "setup"), 100)
     else
-      delayed_publish(Publication.new("node_id", node_id, "actor_type", actor_type, "instance_id", instance_id, "type", "trigger"), math.random(0, 199))
+      delayed_publish(Publication.new("node_id", node_id, "actor_type", actor_type, "instance_id", instance_id, "type", "trigger"), 100)
     end
   end
 
@@ -31,7 +31,7 @@ function receive(message)
   if(message["_internal_timeout"] == "_timeout") then
     print("Timeout - retrying")
     iteration = iteration -1
-    delayed_publish(Publication.new("node_id", node_id, "actor_type", actor_type, "instance_id", instance_id, "type", "trigger"), math.random(0, 199)) 
+    delayed_publish(Publication.new("node_id", node_id, "actor_type", actor_type, "instance_id", instance_id, "type", "trigger"), 100) 
   end
   
   if(message.type == "init" or message.type == "setup") then
@@ -47,7 +47,7 @@ function receive(message)
 
     testbed_log_string("_logger_test_postfix", peer_id)
     collectgarbage()
-    delayed_publish(Publication.new("node_id", node_id, "actor_type", actor_type, "instance_id", instance_id, "type", "trigger"), math.random(0, 199))
+    delayed_publish(Publication.new("node_id", node_id, "actor_type", actor_type, "instance_id", instance_id, "type", "trigger"), 100)
   end
 
   if(message.type == "trigger") then
