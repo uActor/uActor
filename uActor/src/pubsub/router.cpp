@@ -142,7 +142,9 @@ std::string Router::subscriptions_for(std::string_view node_id) {
         }
         // Overapproximate node_id based subscriptions as they would otherwise
         // floud the routing tables
-        if (constraint.attribute() == "node_id" && std::get<std::string>(constraint.operand()) == BoardFunctions::NODE_ID) {
+        if (constraint.attribute() == "node_id" &&
+            std::get<std::string>(constraint.operand()) ==
+                BoardFunctions::NODE_ID) {
           send_node_id = true;
           skip = true;
         }
@@ -153,8 +155,10 @@ std::string Router::subscriptions_for(std::string_view node_id) {
     }
   }
 
-  if(send_node_id) {
-    serialized_sub += Filter{Constraint{"node_id", BoardFunctions::NODE_ID}}.serialize() + "&";
+  if (send_node_id) {
+    serialized_sub +=
+        Filter{Constraint{"node_id", BoardFunctions::NODE_ID}}.serialize() +
+        "&";
     node_id_sent_to.insert(std::string(node_id));
   }
 
@@ -175,9 +179,7 @@ uint32_t Router::find_sub_id(Filter&& filter) {
   return 0;
 }
 
-uint32_t Router::number_of_subscriptions() {
-  return subscriptions.size();
-}
+uint32_t Router::number_of_subscriptions() { return subscriptions.size(); }
 
 uint32_t Router::add_subscription(Filter&& f, Receiver* r,
                                   std::string subscriber_node_id) {
@@ -189,15 +191,15 @@ uint32_t Router::add_subscription(Filter&& f, Receiver* r,
     Subscription& sub = it->second;
     bool updated = sub.add_receiver(r, subscriber_node_id);
     if (updated) {
-        if (sub.nodes.size() == 2) {
-          std::string other_sub = "";
-          for (const auto& n : sub.nodes) {
-            if(n.first != subscriber_node_id) {
-              other_sub = n.first;
-            }
+      if (sub.nodes.size() == 2) {
+        std::string other_sub = "";
+        for (const auto& n : sub.nodes) {
+          if (n.first != subscriber_node_id) {
+            other_sub = n.first;
           }
-          publish_subscription_added(sub, "", other_sub);
         }
+        publish_subscription_added(sub, "", other_sub);
+      }
     }
     return sub.subscription_id;
   } else {  // new subscription
@@ -295,13 +297,17 @@ void Router::publish_subscription_added(const Subscription& sub,
       }
     }
     // Overapproximate node_id
-    if (constraint.attribute() == "node_id" && std::get<std::string>(constraint.operand()) == BoardFunctions::NODE_ID) {
-      for(const auto& node : peer_node_ids) {
-        if(node != exclude && node_id_sent_to.find(node) == node_id_sent_to.end()) {
-          testbed_log_integer("publish_node_id_sub", 1); 
+    if (constraint.attribute() == "node_id" &&
+        std::get<std::string>(constraint.operand()) ==
+            BoardFunctions::NODE_ID) {
+      for (const auto& node : peer_node_ids) {
+        if (node != exclude &&
+            node_id_sent_to.find(node) == node_id_sent_to.end()) {
           Publication update{BoardFunctions::NODE_ID, "router", "1"};
           update.set_attr("type", "subscription_added");
-          update.set_attr("serialized_subscription", Filter{Constraint{"node_id", BoardFunctions::NODE_ID}}.serialize());
+          update.set_attr("serialized_subscription",
+                          Filter{Constraint{"node_id", BoardFunctions::NODE_ID}}
+                              .serialize());
           update.set_attr("include_node_id", node);
           publish(std::move(update));
           node_id_sent_to.insert(node);
@@ -337,7 +343,9 @@ void Router::publish_subscription_removed(const Subscription& sub,
     }
     // TODO(raphaelhetzel) Keep track of the published node ids and remove them
     // as required
-    if (constraint.attribute() == "node_id" && std::get<std::string>(constraint.operand()) == BoardFunctions::NODE_ID) {
+    if (constraint.attribute() == "node_id" &&
+        std::get<std::string>(constraint.operand()) ==
+            BoardFunctions::NODE_ID) {
       return;
     }
   }
