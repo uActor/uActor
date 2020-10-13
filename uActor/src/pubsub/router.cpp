@@ -14,7 +14,7 @@
 #include "board_functions.hpp"
 #include "pubsub/constraint.hpp"
 #include "pubsub/matched_publication.hpp"
-#include "remote/remote_connection.hpp"
+#include "remote/sequence_number_forwarding_strategy.hpp"
 
 namespace uActor::PubSub {
 
@@ -55,8 +55,8 @@ void Router::publish(Publication&& publication) {
   if (publication.get_str_attr("publisher_node_id") ==
           BoardFunctions::NODE_ID &&
       !publication.has_attr("_internal_sequence_number")) {
-    int32_t seq =
-        static_cast<int32_t>(Remote::RemoteConnection::sequence_number++);
+    int32_t seq = static_cast<int32_t>(
+        Remote::SequenceNumberForwardingStrategy::sequence_number++);
     publication.set_attr("_internal_sequence_number", seq);
     publication.set_attr("_internal_epoch", BoardFunctions::epoch);
   }

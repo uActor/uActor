@@ -140,7 +140,7 @@ void TCPForwarder::receive(PubSub::MatchedPublication&& m) {
       if (remote_it != remotes.end() && remote_it->second.sock > 0) {
         auto& remote = remote_it->second;
 
-        if (should_forward(m.publication, &remote)) {
+        if (remote.forwarding_strategy->should_forward(m.publication)) {
           auto result = write(&remote, buffer, std::move(remote_lock));
           remote_lock = std::move(result.second);
           if (result.first) {
@@ -561,63 +561,6 @@ void TCPForwarder::add_remote_connection(int socket_id, std::string remote_addr,
     shutdown(socket_id, 0);
     close(socket_id);
   }
-}
-
-bool TCPForwarder::should_forward(const PubSub::Publication& publication,
-                                  RemoteConnection* remote) {
-  if (publication.has_attr("_internal_forwarded_by")) {
-    size_t start = 0;
-    std::string_view forwarders =
-        *publication.get_str_attr("_internal_forwarded_by");
-    while (start < forwarders.length()) {
-      start = forwarders.find(remote->partner_node_id, start);
-      if (start != std::string_view::npos) {
-        size_t end_pos = start + remote->partner_node_id.length();
-        if ((start == 0 || forwarders.at(start - 1) == ',') &&
-            (end_pos == forwarders.length() || forwarders.at(end_pos) == ',')) {
-          return false;
-        } else {
-          start++;
-        }
-      } else {
-        break;
-      }
-    }
-  }
-
-  // The might be multiple subscriptions for the same message.
-  // They are indistinguishable on the remote node. Hence, filter them
-  // and prevent forwarding. This is e.g. important usefull for external
-  // deployments if the deployment manager use label filters. As this
-  // has to be per connection, this unfortunately causes a potentially
-  // large memory overhead.
-  // TODO(raphaehetzel) Add garbage collector to remove outdated
-  // sequence infos. As this is an optimization, this is safe here.
-
-  {
-    auto publisher_node_id = publication.get_str_attr("publisher_node_id");
-    auto sequence_number =
-        publication.get_int_attr("_internal_sequence_number");
-    auto epoch_number = publication.get_int_attr("_internal_epoch");
-
-    if (publisher_node_id && sequence_number && epoch_number) {
-      auto new_sequence_info = uActor::Remote::SequenceInfo(
-          *sequence_number, *epoch_number, BoardFunctions::timestamp());
-      auto sequence_info_it = remote->connection_sequence_infos.find(
-          std::string(*publisher_node_id));
-      if (sequence_info_it == remote->connection_sequence_infos.end()) {
-        remote->connection_sequence_infos.try_emplace(
-            std::string(*publisher_node_id), std::move(new_sequence_info));
-      } else if (sequence_info_it->second.is_older_than(*sequence_number,
-                                                        *epoch_number)) {
-        sequence_info_it->second = std::move(new_sequence_info);
-      } else {
-        return false;
-      }
-    }
-  }
-
-  return true;
 }
 
 void TCPForwarder::set_socket_options(int socket_id) {

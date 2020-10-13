@@ -74,9 +74,6 @@ class TCPForwarder : public uActor::Remote::ForwarderSubscriptionAPI {
       RemoteConnection* remote, std::shared_ptr<std::vector<char>> dataset,
       std::unique_lock<std::mutex>&& lock);
 
-  bool should_forward(const PubSub::Publication& publication,
-                      RemoteConnection* remote);
-
   void tcp_reader();
 
   void create_tcp_client(std::string_view peer_ip, uint32_t port);

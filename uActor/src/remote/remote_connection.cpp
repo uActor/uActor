@@ -3,7 +3,7 @@
 #ifdef ESP_IDF
 #include <sdkconfig.h>
 #endif
-#if CONFIG_BENCHMARK_BREAKDOWN
+#if CONFIG_BENCHMARK_ENABLED
 #include <support/testbed.h>
 #endif
 
@@ -17,15 +17,10 @@
 #include "board_functions.hpp"
 #include "pubsub/router.hpp"
 #include "remote/forwarder_api.hpp"
+#include "remote/sequence_number_forwarding_strategy.hpp"
 #include "support/logger.hpp"
-#include "support/testbed.h"
 
 namespace uActor::Remote {
-
-std::unordered_map<std::string, Remote::SequenceInfo>
-    RemoteConnection::sequence_infos;
-std::atomic<uint32_t> RemoteConnection::sequence_number{1};
-std::mutex RemoteConnection::mtx;
 
 RemoteConnection::RemoteConnection(uint32_t local_id, int32_t socket_id,
                                    std::string remote_addr,
@@ -37,7 +32,9 @@ RemoteConnection::RemoteConnection(uint32_t local_id, int32_t socket_id,
       partner_ip(remote_addr),
       partner_port(remote_port),
       connection_role(connection_role),
-      handle(handle) {
+      handle(handle),
+      forwarding_strategy(
+          std::make_unique<SequenceNumberForwardingStrategy>()) {
   update_sub_id = handle->add_subscription(
       local_id,
       PubSub::Filter{
@@ -143,92 +140,65 @@ void RemoteConnection::process_data(uint32_t len, char* data) {
         } else {
           // printf("null message\n");
         }
-        if (p && p->has_attr("publisher_node_id") &&
-            p->get_str_attr("publisher_node_id") != BoardFunctions::NODE_ID) {
-          auto publisher_node_id = p->get_str_attr("publisher_node_id");
-          uActor::Support::Logger::trace("REMOTE-CONNECTION", "MESSAGE",
-                                         publisher_node_id->data());
-          auto sequence_number = p->get_int_attr("_internal_sequence_number");
-          auto epoch_number = p->get_int_attr("_internal_epoch");
-          std::unique_lock lck(mtx);
-          auto sequence_info_it =
-              sequence_infos.find(std::string(*publisher_node_id));
-          if (sequence_info_it == sequence_infos.end() ||
-              (epoch_number && sequence_number &&
-               sequence_info_it->second.is_older_than(*sequence_number,
-                                                      *epoch_number))) {
-            if (sequence_info_it != sequence_infos.end() &&
-                *epoch_number - sequence_info_it->second.epoch >= 0 &&
-                *sequence_number - sequence_info_it->second.sequence_number >
-                    1) {
-              Support::Logger::debug(
-                  "REMOTE-CONNECTION", "RECEIVE",
-                  "Potentially lost %d message(s)",
-                  *sequence_number - sequence_info_it->second.sequence_number);
-            }
-            auto new_sequence_info = Remote::SequenceInfo(
-                *sequence_number, *epoch_number, BoardFunctions::timestamp());
-            if (sequence_info_it != sequence_infos.end()) {
-              sequence_info_it->second = std::move(new_sequence_info);
-            } else {
-              sequence_infos.try_emplace(std::string(*publisher_node_id),
-                                         std::move(new_sequence_info));
-            }
-            lck.unlock();
-
-            if (p->get_str_attr("type") == "subscription_update") {
-              update_subscriptions(std::move(*p));
-#if CONFIG_BENCHMARK_ENABLED
-              current_traffic.sub_traffic_size += publicaton_full_size;
-#endif
-            } else if (p->get_str_attr("type") == "subscription_added") {
-              add_subscription(std::move(*p));
-#if CONFIG_BENCHMARK_ENABLED
-              current_traffic.sub_traffic_size += publicaton_full_size;
-#endif
-            } else if (p->get_str_attr("type") == "subscription_removed") {
-              remove_subscription(std::move(*p));
-#if CONFIG_BENCHMARK_ENABLED
-              current_traffic.sub_traffic_size += publicaton_full_size;
-#endif
-            } else {
-#if CONFIG_BENCHMARK_ENABLED
-              if (p->get_str_attr("type") == "deployment") {
-                current_traffic.deployment_traffic_size += publicaton_full_size;
-              } else {
-                current_traffic.regular_traffic_size += publicaton_full_size;
-              }
-#endif
-              if (p->has_attr("_internal_forwarded_by")) {
-                p->set_attr(
-                    "_internal_forwarded_by",
-                    std::string(*p->get_str_attr("_internal_forwarded_by")) +
-                        "," + partner_node_id);
-              } else {
-                p->set_attr("_internal_forwarded_by", partner_node_id);
-              }
-              PubSub::Router::get_instance().publish(std::move(*p));
-            }
-#if CONFIG_BENCHMARK_ENABLED
-            current_traffic.num_accepted_messages++;
-            current_traffic.size_accepted_messages += publicaton_full_size;
-#endif
-          } else {
-            Support::Logger::debug("REMOTE-CONNECTION", "RECEIVE",
-                                   "Message Dropped from %s, forwarded-by: %s",
-                                   publisher_node_id->data(),
-                                   partner_node_id.data());
-#if CONFIG_BENCHMARK_ENABLED
-            current_traffic.num_duplicate_messages++;
-            current_traffic.size_duplicate_messages += publicaton_full_size;
-#endif
-          }
+        if (p) {
+          process_publication(std::move(*p));
         }
         publication_buffer.clear();
         publication_buffer.shrink_to_fit();
         state = empty;
         assert(publicaton_remaining_bytes == 0);
       }
+    }
+  }
+}
+
+void RemoteConnection::process_publication(PubSub::Publication&& p) {
+  if (p.has_attr("publisher_node_id") &&
+      p.get_str_attr("publisher_node_id") != BoardFunctions::NODE_ID) {
+    auto publisher_node_id = std::string(*p.get_str_attr("publisher_node_id"));
+    uActor::Support::Logger::trace("REMOTE-CONNECTION", "MESSAGE from",
+                                   publisher_node_id.c_str());
+
+    if (forwarding_strategy->should_accept(p)) {
+      if (p.get_str_attr("type") == "subscription_update") {
+        update_subscriptions(std::move(p));
+#if CONFIG_BENCHMARK_ENABLED
+        current_traffic.sub_traffic_size += publicaton_full_size;
+#endif
+      } else if (p.get_str_attr("type") == "subscription_added") {
+        add_subscription(std::move(p));
+#if CONFIG_BENCHMARK_ENABLED
+        current_traffic.sub_traffic_size += publicaton_full_size;
+#endif
+      } else if (p.get_str_attr("type") == "subscription_removed") {
+        remove_subscription(std::move(p));
+#if CONFIG_BENCHMARK_ENABLED
+        current_traffic.sub_traffic_size += publicaton_full_size;
+#endif
+      } else {
+#if CONFIG_BENCHMARK_ENABLED
+        if (p.get_str_attr("type") == "deployment") {
+          current_traffic.deployment_traffic_size += publicaton_full_size;
+        } else {
+          current_traffic.regular_traffic_size += publicaton_full_size;
+        }
+#endif
+        forwarding_strategy->add_incomming_routing_fields(&p);
+        PubSub::Router::get_instance().publish(std::move(p));
+      }
+#if CONFIG_BENCHMARK_ENABLED
+      current_traffic.num_accepted_messages++;
+      current_traffic.size_accepted_messages += publicaton_full_size;
+#endif
+    } else {
+      Support::Logger::debug("REMOTE-CONNECTION", "RECEIVE",
+                             "Message Dropped from %s, forwarded-by: %s",
+                             publisher_node_id.c_str(),
+                             partner_node_id.c_str());
+#if CONFIG_BENCHMARK_ENABLED
+      current_traffic.num_duplicate_messages++;
+      current_traffic.size_duplicate_messages += publicaton_full_size;
+#endif
     }
   }
 }
@@ -271,6 +241,7 @@ void RemoteConnection::update_subscriptions(PubSub::Publication&& p) {
     partner_node_id = std::string(new_partner_id);
 
     send_routing_info();
+
     add_sub_id = handle->add_subscription(
         local_id,
         PubSub::Filter{
@@ -294,6 +265,8 @@ void RemoteConnection::update_subscriptions(PubSub::Publication&& p) {
             PubSub::Constraint{"publisher_node_id",
                                std::string(BoardFunctions::NODE_ID)}},
         "local");
+
+    forwarding_strategy->partner_node_id(partner_node_id);
 
     // Flooding
     // subscription_ids.push_back(handle->add_subscription(local_id,

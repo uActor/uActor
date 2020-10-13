@@ -246,7 +246,7 @@ int main(int arg_count, char** args) {
 
   auto lua_executor = start_lua_executor();
 
-#if CONFIG_BENCHMARK_ENABLED
+#if CONFIG_BENCHMARK_ENABLED2
   sleep(2);
   testbed_log_rt_integer("_ready", boot_timestamp);
 
@@ -276,8 +276,9 @@ int main(int arg_count, char** args) {
                             .regular_traffic_size.exchange(0));
     testbed_log_integer("current_queue_size_diff",
                         uActor::PubSub::Receiver::size_diff.exchange(0));
-    testbed_log_integer("number_of_subscriptions",
-                        uActor::PubSub::Router::get_instance().number_of_subscriptions());
+    testbed_log_integer(
+        "number_of_subscriptions",
+        uActor::PubSub::Router::get_instance().number_of_subscriptions());
     sleep(1);
   } while (true);
 #endif

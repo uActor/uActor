@@ -18,6 +18,7 @@ extern "C" {
 #include <vector>
 
 #include "forwarder_api.hpp"
+#include "forwarding_strategy.hpp"
 #include "remote/sequence_info.hpp"
 
 namespace uActor::Remote {
@@ -65,8 +66,6 @@ class RemoteConnection {
 
   void process_data(uint32_t len, char* data);
 
-  static std::atomic<uint32_t> sequence_number;
-
 #if CONFIG_BENCHMARK_ENABLED
   static ConnectionTraffic current_traffic;
 #endif
@@ -108,14 +107,13 @@ class RemoteConnection {
   uint32_t publicaton_full_size{0};
   std::vector<char> publication_buffer;
 
-  static std::unordered_map<std::string, Remote::SequenceInfo> sequence_infos;
-  static std::mutex mtx;
-
-  std::map<std::string, Remote::SequenceInfo> connection_sequence_infos;
+  std::unique_ptr<ForwardingStrategy> forwarding_strategy;
 
   bool write_in_progress = false;
   std::shared_ptr<std::vector<char>> write_buffer;
   size_t write_offset = 0;
+
+  void process_publication(PubSub::Publication&& p);
 
   void update_subscriptions(PubSub::Publication&& p);
   void add_subscription(PubSub::Publication&& p);
