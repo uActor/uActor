@@ -231,7 +231,7 @@ void TCPForwarder::tcp_reader() {
   int ip_protocol = IPPROTO_IP;
 
   sockaddr_in dest_addr;
-  dest_addr.sin_addr.s_addr = inet_addr(_address_arguments.listen_ip.data());
+  dest_addr.sin_addr.s_addr = inet_addr(_address_arguments.listen_ip.c_str());
   dest_addr.sin_family = AF_INET;
   dest_addr.sin_port = htons(_address_arguments.port);
 
