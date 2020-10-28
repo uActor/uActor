@@ -1,12 +1,14 @@
 type: deployment
-name: de.tum.smart_office.deployment.temperature_printer
+name: de.tum.smart_office.deployment.environment_printer
 ttl:  0
-actor_type:  de.tum.smart_office.actor.temperature_printer
+actor_type:  de.tum.smart_office.actor.environment_printer
 actor_runtime_type:  lua
 actor_version:  "0.1"
-actor_code_file:  "local_temperature_printer.lua"
+actor_code_file:  "local_environment_info_printer.lua"
 required_actors:
+  - "core.sensors.co2"
   - "core.sensors.temperature"
+  - "core.sensors.relative_humidity"
 ---
 type: deployment
 name: de.tum.deployment.notification_scroll_local_button

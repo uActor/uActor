@@ -1,5 +1,6 @@
 #include "board_functions.hpp"
 
+#include <driver/i2c.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <sdkconfig.h>
@@ -49,6 +50,21 @@ std::list<std::pair<std::string, std::string>> BoardFunctions::node_labels() {
 
 void BoardFunctions::sleep(uint32_t sleep_ms) {
   vTaskDelay(sleep_ms / portTICK_PERIOD_MS);
+}
+
+void BoardFunctions::setup_hardware() {
+#if CONFIG_ENABLE_I2C
+  i2c_config_t conf;
+  conf.mode = I2C_MODE_MASTER;
+  conf.sda_io_num = static_cast<gpio_num_t>(CONFIG_I2C_SDA_PIN);
+  conf.scl_io_num = static_cast<gpio_num_t>(CONFIG_I2C_SCL_PIN);
+  conf.sda_pullup_en = GPIO_PULLUP_ENABLE;
+  conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
+  conf.master.clk_speed = 50000;
+  i2c_param_config(I2C_NUM_0, &conf);
+  i2c_driver_install(I2C_NUM_0, conf.mode, 0, 0, 0);
+  i2c_set_timeout(I2C_NUM_0, 0xFFFFF);
+#endif
 }
 
 }  // namespace uActor

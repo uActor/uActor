@@ -24,6 +24,8 @@ struct BoardFunctions {
   static std::list<std::pair<std::string, std::string>> node_labels();
 
   static void sleep(uint32_t sleep_ms);
+
+  static void setup_hardware();
 };
 
 }  // namespace uActor

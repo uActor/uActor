@@ -43,6 +43,28 @@ menu "Board Configuration"
         default ""
         help
             Topology control
+    config ENABLE_I2C
+        bool "Enable I2C Bus"
+        default n
+    config I2C_SDA_PIN
+        int "I2C SDA PIN"
+        default 22
+        depends on ENABLE_I2C
+    config I2C_SCL_PIN
+        int "I2C SCL PIN"
+        default 21
+        depends on ENABLE_I2C
+    config ENABLE_SCD30
+       bool "Board has SCD30 Sensor"
+       default n
+       depends on ENABLE_I2C
+    config ENABLE_BMP180
+       bool "Board has BMP180 Sensor"
+       default n
+       depends on ENABLE_I2C
+    config ENABLE_EPAPER_DISPLAY
+       bool "Board has EPaper Display"
+       default n
 endmenu
 menu "Benchmark Configuration"
     config BENCHMARK_ENABLED

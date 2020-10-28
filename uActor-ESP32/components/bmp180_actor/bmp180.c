@@ -287,25 +287,25 @@ esp_err_t bmp180_init(int pin_sda, int pin_scl)
 {
     esp_err_t err;
 
-    i2c_config_t conf;
-    conf.mode = I2C_MODE_MASTER;
-    conf.sda_io_num = pin_sda;
-    conf.sda_pullup_en = GPIO_PULLUP_ENABLE;
-    conf.scl_io_num = pin_scl;
-    conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
-    conf.master.clk_speed = 100000 ;
+    // i2c_config_t conf;
+    // conf.mode = I2C_MODE_MASTER;
+    // conf.sda_io_num = pin_sda;
+    // conf.sda_pullup_en = GPIO_PULLUP_ENABLE;
+    // conf.scl_io_num = pin_scl;
+    // conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
+    // conf.master.clk_speed = 100000 ;
 
-    err = i2c_param_config(I2C_NUM_0, &conf);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "I2C driver configuration failed with error = %d", err);
-        return ESP_ERR_BMP180_NOT_DETECTED;
-    }
-    i2c_driver_install(I2C_NUM_0, I2C_MODE_MASTER, 0, 0, 0);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "I2C driver installation failed with error = %d", err);
-        return ESP_ERR_BMP180_NOT_DETECTED;
-    }
-    ESP_LOGI(TAG, "I2C master driver has been installed.");
+    // err = i2c_param_config(I2C_NUM_0, &conf);
+    // if (err != ESP_OK) {
+    //     ESP_LOGE(TAG, "I2C driver configuration failed with error = %d", err);
+    //     return ESP_ERR_BMP180_NOT_DETECTED;
+    // }
+    // i2c_driver_install(I2C_NUM_0, I2C_MODE_MASTER, 0, 0, 0);
+    // if (err != ESP_OK) {
+    //     ESP_LOGE(TAG, "I2C driver installation failed with error = %d", err);
+    //     return ESP_ERR_BMP180_NOT_DETECTED;
+    // }
+    // ESP_LOGI(TAG, "I2C master driver has been installed.");
 
     uint8_t reg = 0x00;
     err = bmp180_master_write_slave(I2C_NUM_0, &reg, 1);

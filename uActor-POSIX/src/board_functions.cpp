@@ -40,4 +40,6 @@ uint64_t BoardFunctions::init_time =
         std::chrono::steady_clock::now().time_since_epoch())
         .count();
 
+void BoardFunctions::setup_hardware() {}
+
 }  // namespace uActor

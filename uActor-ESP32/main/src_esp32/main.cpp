@@ -17,18 +17,9 @@ extern "C" {
 #include "actor_runtime/managed_native_actor.hpp"
 #include "actor_runtime/native_executor.hpp"
 #include "ble_actor.hpp"
-#include "bmp180_actor.hpp"
 #include "board_functions.hpp"
 #include "controllers/deployment_manager.hpp"
 #include "controllers/topology_manager.hpp"
-
-// #define CONFIG_EPAPER_NODE 1
-
-// TODO(raphaelhetzel) this currently required patching callEPD
-#if CONFIG_EPAPER_NODE
-#include "epaper_actor.hpp"
-#endif
-
 #include "io/gpio_actor.hpp"
 #include "lua.hpp"
 #include "pubsub/router.hpp"
@@ -36,12 +27,25 @@ extern "C" {
 #include "remote/wifi_stack.hpp"
 #include "support/testbed.h"
 
+#if CONFIG_ENABLE_BMP180
+#include "bmp180_actor.hpp"
+#endif
+#if CONFIG_ENABLE_SCD30
+#include "scd30_actor.hpp"
+#endif
+// TODO(raphaelhetzel) this currently required patching callEPD
+#if CONFIG_ENABLE_EPAPER_DISPLAY
+#include "epaper_actor.hpp"
+#endif
+
 extern "C" {
 void app_main(void);
 }
 
 void main_task(void *) {
   printf("InitialHeap: %d \n", xPortGetFreeHeapSize());
+
+  uActor::BoardFunctions::setup_hardware();
 
   xTaskCreatePinnedToCore(&uActor::PubSub::Router::os_task, "Router", 4192,
                           nullptr, 3, nullptr, 0);
@@ -56,12 +60,18 @@ void main_task(void *) {
       uActor::Controllers::TopologyManager>("topology_manager");
   uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
       uActor::Controllers::DeploymentManager>("deployment_manager");
+#if CONFIG_ENABLE_BMP180
   uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
       uActor::ESP32::IO::BMP180Actor>("bmp180_sensor");
+#endif
+#if CONFIG_ENABLE_SCD30
+  uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
+      uActor::ESP32::Sensors::SCD30Actor>("scd30_sensor");
+#endif
   uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
       uActor::ActorRuntime::CodeStore>("code_store");
 
-#if CONFIG_EPAPER_NODE
+#if CONFIG_ENABLE_EPAPER_DISPLAY
   uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
       uActor::ESP32::Notifications::EPaperNotificationActor>(
       "epaper_notification_actor");
@@ -133,38 +143,53 @@ void main_task(void *) {
   create_code_store.set_attr("instance_id", "1");
   uActor::PubSub::Router::get_instance().publish(std::move(create_code_store));
 
-  if (std::string("node_1111") == uActor::BoardFunctions::NODE_ID) {
-    auto create_bmp180_sensor = uActor::PubSub::Publication(
-        uActor::BoardFunctions::NODE_ID, "root", "1");
-    create_bmp180_sensor.set_attr("command", "spawn_native_actor");
-    create_bmp180_sensor.set_attr("spawn_code", "");
-    create_bmp180_sensor.set_attr("spawn_node_id",
-                                  uActor::BoardFunctions::NODE_ID);
-    create_bmp180_sensor.set_attr("spawn_actor_version", "default");
-    create_bmp180_sensor.set_attr("spawn_actor_type", "bmp180_sensor");
-    create_bmp180_sensor.set_attr("spawn_instance_id", "1");
-    create_bmp180_sensor.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
-    create_bmp180_sensor.set_attr("actor_type", "native_executor");
-    create_bmp180_sensor.set_attr("instance_id", "1");
-    uActor::PubSub::Router::get_instance().publish(
-        std::move(create_bmp180_sensor));
-  }
+#if CONFIG_ENABLE_BMP180
+  auto create_bmp180_sensor =
+      uActor::PubSub::Publication(uActor::BoardFunctions::NODE_ID, "root", "1");
+  create_bmp180_sensor.set_attr("command", "spawn_native_actor");
+  create_bmp180_sensor.set_attr("spawn_code", "");
+  create_bmp180_sensor.set_attr("spawn_node_id",
+                                uActor::BoardFunctions::NODE_ID);
+  create_bmp180_sensor.set_attr("spawn_actor_version", "default");
+  create_bmp180_sensor.set_attr("spawn_actor_type", "bmp180_sensor");
+  create_bmp180_sensor.set_attr("spawn_instance_id", "1");
+  create_bmp180_sensor.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
+  create_bmp180_sensor.set_attr("actor_type", "native_executor");
+  create_bmp180_sensor.set_attr("instance_id", "1");
+  uActor::PubSub::Router::get_instance().publish(
+      std::move(create_bmp180_sensor));
+#endif
 
-#if CONFIG_EPAPER_NODE
-  if (std::string("node_1") == uActor::BoardFunctions::NODE_ID) {
-    auto create_display = uActor::PubSub::Publication(
-        uActor::BoardFunctions::NODE_ID, "root", "1");
-    create_display.set_attr("command", "spawn_native_actor");
-    create_display.set_attr("spawn_code", "");
-    create_display.set_attr("spawn_node_id", uActor::BoardFunctions::NODE_ID);
-    create_display.set_attr("spawn_actor_type", "epaper_notification_actor");
-    create_display.set_attr("spawn_actor_version", "default");
-    create_display.set_attr("spawn_instance_id", "1");
-    create_display.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
-    create_display.set_attr("actor_type", "native_executor");
-    create_display.set_attr("instance_id", "1");
-    uActor::PubSub::Router::get_instance().publish(std::move(create_display));
-  }
+#if CONFIG_ENABLE_SCD30
+  auto create_scd30_sensor =
+      uActor::PubSub::Publication(uActor::BoardFunctions::NODE_ID, "root", "1");
+  create_scd30_sensor.set_attr("command", "spawn_native_actor");
+  create_scd30_sensor.set_attr("spawn_code", "");
+  create_scd30_sensor.set_attr("spawn_node_id",
+                               uActor::BoardFunctions::NODE_ID);
+  create_scd30_sensor.set_attr("spawn_actor_type", "scd30_sensor");
+  create_scd30_sensor.set_attr("spawn_instance_id", "1");
+  create_scd30_sensor.set_attr("spawn_actor_version", "default");
+  create_scd30_sensor.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
+  create_scd30_sensor.set_attr("actor_type", "native_executor");
+  create_scd30_sensor.set_attr("instance_id", "1");
+  uActor::PubSub::Router::get_instance().publish(
+      std::move(create_scd30_sensor));
+#endif
+
+#if CONFIG_ENABLE_EPAPER_DISPLAY
+  auto create_display =
+      uActor::PubSub::Publication(uActor::BoardFunctions::NODE_ID, "root", "1");
+  create_display.set_attr("command", "spawn_native_actor");
+  create_display.set_attr("spawn_code", "");
+  create_display.set_attr("spawn_node_id", uActor::BoardFunctions::NODE_ID);
+  create_display.set_attr("spawn_actor_type", "epaper_notification_actor");
+  create_display.set_attr("spawn_actor_version", "default");
+  create_display.set_attr("spawn_instance_id", "1");
+  create_display.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
+  create_display.set_attr("actor_type", "native_executor");
+  create_display.set_attr("instance_id", "1");
+  uActor::PubSub::Router::get_instance().publish(std::move(create_display));
 #endif
 
   vTaskDelay(50 / portTICK_PERIOD_MS);
@@ -211,7 +236,8 @@ void main_task(void *) {
       &uActor::Remote::TCPForwarder::tcp_reader_task, "TCP2", 4192,
       reinterpret_cast<void *>(tcp_task_args.tcp_forwarder), 4, nullptr, 0);
 
-  xTaskCreatePinnedToCore(&uActor::ESP32::BLE::BLEActor::os_task, "BLE", 4192,
+  xTaskCreatePinnedToCore(&uActor::ESP32::BLE::BLEActor::os_task, "BLE",
+  4192,
                           nullptr, 4, nullptr, 0);
 
   printf("StaticHeap: %d \n", xPortGetFreeHeapSize());
