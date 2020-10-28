@@ -49,3 +49,11 @@ apt-get install build-essential cmake ninja-build libboost-all-dev
 ```bash
 brew install cmake ninja boost
 ```
+
+## License and Copyright
+
+uActor is released under the [MIT license](LICENSE.txt). Please refer to CONTRIBUTORS.md for a list of contributors and their affiliations.
+
+uActor was originally developed and licensed under the MIT license by Raphael Hetzel.
+Parts of the software where developed while being employed at the Technical University of Munich,
+which now holds a copyright on this project. 

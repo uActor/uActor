@@ -16,3 +16,6 @@
 [submodule "vendor/base64/cpp-base64"]
 	path = vendor/base64/cpp-base64
 	url = git@github.com:ReneNyffenegger/cpp-base64.git
+[submodule "uActor-ESP32/components/sensiron-scd"]
+	path = uActor-ESP32/components/sensiron-scd
+	url = git@gitlab.lrz.de:cm/sensirion-embedded-scd.git
