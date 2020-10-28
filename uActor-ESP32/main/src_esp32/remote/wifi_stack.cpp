@@ -40,10 +40,10 @@ void WifiStack::sntp_synced(timeval* tv) {
   testbed_log_rt_integer("syncronized", 1);
 }
 
-void WifiStack::init(void) {
+esp_netif_t* WifiStack::init(void) {
   esp_netif_init();
   ESP_ERROR_CHECK(esp_event_loop_create_default());
-  esp_netif_create_default_wifi_sta();
+  auto new_netif_p = esp_netif_create_default_wifi_sta();
 
   wifi_init_config_t default_cfg = WIFI_INIT_CONFIG_DEFAULT();
   ESP_ERROR_CHECK(esp_wifi_init(&default_cfg));
@@ -87,10 +87,28 @@ void WifiStack::init(void) {
   sntp_init();
 
   ESP_LOGI(TAG, "wifi_init_sta finished.");
+  return new_netif_p;
 }
 
 void WifiStack::os_task(void* args) {
-  WifiStack::get_instance().init();
+  auto netif = WifiStack::get_instance().init();
+
+  esp_netif_ip_info_t ip_info;
+  while (true) {
+    esp_netif_get_ip_info(netif, &ip_info);
+    // TODO(raphaelhetzel) this might arrive to early
+    char buffer[16];
+    snprintf(buffer, sizeof(buffer), "%d.%d.%d.%d", IP2STR(&ip_info.ip));
+    uActor::PubSub::Publication ip_info(uActor::BoardFunctions::NODE_ID, "root",
+                                        "1");
+    ip_info.set_attr("type", "notification");
+    ip_info.set_attr("notification_text", std::string("Device IP:\n") + buffer);
+    ip_info.set_attr("notification_id", "device_ip");
+    ip_info.set_attr("notification_lifetime", 0);
+    uActor::PubSub::Router::get_instance().publish(std::move(ip_info));
+    vTaskDelay(5000);
+  }
+
   vTaskDelete(NULL);
 }
 
@@ -115,18 +133,6 @@ void WifiStack::event_handler(esp_event_base_t event_base, int32_t event_id,
     testbed_log_ipv4_address(event->ip_info.ip);
     testbed_log_ipv4_netmask(event->ip_info.netmask);
     testbed_log_ipv4_gateway(event->ip_info.gw);
-
-    // TODO(raphaelhetzel) this might arrive to early
-    char buffer[16];
-    snprintf(buffer, sizeof(buffer), "%d.%d.%d.%d", IP2STR(&event->ip_info.ip));
-    uActor::PubSub::Publication ip_info(uActor::BoardFunctions::NODE_ID, "root",
-                                        "1");
-    ip_info.set_attr("type", "notification");
-    ip_info.set_attr("notification_text",
-                     std::string("Current IP:\n") + buffer);
-    ip_info.set_attr("notification_id", "ip");
-    ip_info.set_attr("notification_lifetime", 0);
-    uActor::PubSub::Router::get_instance().publish(std::move(ip_info));
 
     retry_count = 0;
     xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
