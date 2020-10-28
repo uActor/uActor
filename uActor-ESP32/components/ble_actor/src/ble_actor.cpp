@@ -200,8 +200,6 @@ void BLEActor::handle_discovery_event(ble_gap_event* event) {
       "address", base64_encode(std::string(
                      reinterpret_cast<const char*>(event->disc.addr.val), 6)));
 
-
-
   std::string type;
   switch (event->disc.addr.type) {
     case BLE_ADDR_PUBLIC:

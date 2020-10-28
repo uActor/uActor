@@ -1,7 +1,10 @@
 #ifndef UACTOR_INCLUDE_SUPPORT_LOGGER_HPP_
 #define UACTOR_INCLUDE_SUPPORT_LOGGER_HPP_
 
+#define __STDC_FORMAT_MACROS
 #include <chrono>
+#include <cinttypes>
+#include <cstdarg>
 #include <cstdint>
 #include <cstdio>
 #include <mutex>
@@ -65,17 +68,20 @@ struct Logger {
     log("FATAL", component, sub_component, args...);
 #endif
   }
-  template <typename... Args>
+
   static void log(std::string_view level, std::string_view component,
-                  std::string_view sub_component, Args... args) {
-    // std::unique_lock lock(mtx);
-    printf("[%lld][%s][%s][%s]",
-           static_cast<long long int>(
+                  std::string_view sub_component, const char* fmt, ...) {
+    printf("[%" PRIu64 "][%s][%s][%s]",
+           static_cast<uint64_t>(
                std::chrono::duration_cast<std::chrono::milliseconds>(
                    std::chrono::system_clock::now().time_since_epoch())
                    .count()),
            level.data(), component.data(), sub_component.data());
-    printf(args...);
+
+    va_list params;
+    va_start(params, fmt);
+    vprintf(fmt, params);
+    va_end(params);
     printf("\n");
   }
 
