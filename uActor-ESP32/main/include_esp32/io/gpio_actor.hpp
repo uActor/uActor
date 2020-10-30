@@ -142,8 +142,7 @@ class GPIOActor {
     pins[27].set_as_output(1);
     pins[26].set_as_output(1);
     pins[25].set_as_output(1);
-    pins[32].set_as_input(true, false);
-    pins[33].set_as_interrupt(interrupt_queue, true, false);
+    pins[19].set_as_interrupt(interrupt_queue, false, true);
 
     PubSub::Publication p{BoardFunctions::NODE_ID, "core.io.gpio", "1"};
     p.set_attr("type", "unmanaged_actor_update");
