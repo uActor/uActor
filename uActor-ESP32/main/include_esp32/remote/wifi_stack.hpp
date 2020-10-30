@@ -29,7 +29,7 @@ class WifiStack {
 
   static void sntp_synced(timeval* tv);
 
-  void init(void);
+  esp_netif_t* init(void);
 
  private:
   EventGroupHandle_t s_wifi_event_group;
