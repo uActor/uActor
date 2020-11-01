@@ -79,12 +79,6 @@ int ManagedLuaActor::publish_wrapper(lua_State* state) {
   if (lua_isuserdata(state, 1) &&
       luaL_checkudata(state, 1, "uActor.Publication")) {
     auto pub = reinterpret_cast<PubSub::Publication*>(lua_touserdata(state, 1));
-    pub->set_attr(std::string_view("publisher_node_id"),
-                  std::string(actor->node_id()));
-    pub->set_attr(std::string_view("publisher_instance_id"),
-                  std::string(actor->instance_id()));
-    pub->set_attr(std::string_view("publisher_actor_type"),
-                  std::string(actor->actor_type()));
     actor->publish(std::move(*pub));
   } else if (lua_istable(state, -1)) {
     printf("using outdated API!\n");
