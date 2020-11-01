@@ -1,6 +1,8 @@
 #include "pubsub/publication.hpp"
 
-#include "msgpack.hpp"
+#include <msgpack.hpp>
+
+#include "support/logger.hpp"
 
 namespace uActor::PubSub {
 
@@ -69,6 +71,10 @@ bool Publication::operator==(const Publication& other) {
 }
 
 std::string Publication::to_msg_pack() {
+  if (!attributes) {
+    Support::Logger::warning("PUBLICATION", "TO_MP", "MOVED");
+    return "";
+  }
   msgpack::sbuffer sbuf{64ul};
   msgpack::packer<msgpack::sbuffer> packer(sbuf);
   packer.pack_map(attributes->size());
@@ -115,6 +121,10 @@ std::optional<Publication> Publication::from_msg_pack(
 
 std::variant<std::monostate, std::string_view, int32_t, float>
 Publication::get_attr(std::string_view name) const {
+  if (!attributes) {
+    Support::Logger::warning("PUBLICATION", "GET", "MOVED");
+    return std::variant<std::monostate, std::string_view, int32_t, float>();
+  }
   auto result = attributes->find(std::string(name));
   if (result != attributes->end()) {
     if (std::holds_alternative<std::string>(result->second)) {
@@ -130,6 +140,10 @@ Publication::get_attr(std::string_view name) const {
 
 std::optional<const std::string_view> Publication::get_str_attr(
     std::string_view name) const {
+  if (!attributes) {
+    Support::Logger::warning("PUBLICATION", "GET", "MOVED");
+    return std::nullopt;
+  }
   auto result = attributes->find(std::string(name));
   if (result != attributes->end()) {
     if (std::holds_alternative<std::string>(result->second)) {
@@ -140,6 +154,10 @@ std::optional<const std::string_view> Publication::get_str_attr(
 }
 
 std::optional<int32_t> Publication::get_int_attr(std::string_view name) const {
+  if (!attributes) {
+    Support::Logger::warning("PUBLICATION", "GET", "MOVED");
+    return std::nullopt;
+  }
   auto result = attributes->find(std::string(name));
   if (result != attributes->end()) {
     if (std::holds_alternative<int32_t>(result->second)) {
@@ -147,6 +165,52 @@ std::optional<int32_t> Publication::get_int_attr(std::string_view name) const {
     }
   }
   return std::nullopt;
+}
+
+std::optional<float> Publication::get_float_attr(std::string_view name) const {
+  if (!attributes) {
+    Support::Logger::warning("PUBLICATION", "GET", "MOVED");
+    return std::nullopt;
+  }
+  auto result = attributes->find(std::string(name));
+  if (result != attributes->end()) {
+    if (std::holds_alternative<float>(result->second)) {
+      return std::get<float>(result->second);
+    }
+  }
+  return std::nullopt;
+}
+
+void Publication::set_attr(std::string_view name, std::string_view value) {
+  if (!attributes) {
+    Support::Logger::warning("PUBLICATION", "SET", "MOVED");
+    return;
+  }
+  attributes->insert_or_assign(std::string(name), std::string(value));
+}
+
+void Publication::set_attr(std::string_view name, int32_t value) {
+  if (!attributes) {
+    Support::Logger::warning("PUBLICATION", "SET", "MOVED");
+    return;
+  }
+  attributes->insert_or_assign(std::string(name), value);
+}
+
+void Publication::set_attr(std::string_view name, float value) {
+  if (!attributes) {
+    Support::Logger::warning("PUBLICATION", "SET", "MOVED");
+    return;
+  }
+  attributes->insert_or_assign(std::string(name), value);
+}
+
+void Publication::erase_attr(std::string_view name) {
+  if (!attributes) {
+    Support::Logger::warning("PUBLICATION", "ERASE", "MOVED");
+    return;
+  }
+  attributes->erase(std::string(name));
 }
 
 }  //  namespace uActor::PubSub

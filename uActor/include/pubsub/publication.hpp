@@ -57,22 +57,15 @@ class Publication {
   std::optional<const std::string_view> get_str_attr(
       std::string_view name) const;
   std::optional<int32_t> get_int_attr(std::string_view name) const;
+  std::optional<float> get_float_attr(std::string_view name) const;
 
-  void set_attr(std::string_view name, std::string_view value) {
-    attributes->insert_or_assign(std::string(name), std::string(value));
-  }
+  void set_attr(std::string_view name, std::string_view value);
 
-  void set_attr(std::string_view name, int32_t value) {
-    attributes->insert_or_assign(std::string(name), value);
-  }
+  void set_attr(std::string_view name, int32_t value);
 
-  void set_attr(std::string_view name, float value) {
-    attributes->insert_or_assign(std::string(name), value);
-  }
+  void set_attr(std::string_view name, float value);
 
-  void erase_attr(std::string_view name) {
-    attributes->erase(std::string(name));
-  }
+  void erase_attr(std::string_view name);
 
  private:
   // TODO(raphaelhetzel) It might be beneficial to use a
