@@ -160,11 +160,16 @@ class Executor : public ExecutorApi {
           auto receivers =
               subscription_mapping.find(publication->subscription_id);
           if (receivers != subscription_mapping.end()) {
+            int receiver_count = receivers->second.size();
             for (uint32_t receiver_id : receivers->second) {
               auto actor = actors.find(receiver_id);
               if (actor != actors.end()) {
-                if (actor->second.enqueue(PubSub::Publication(
-                        std::move(publication->publication)))) {
+                auto to_send =
+                    (receiver_count == 1)
+                        ? std::move(publication->publication)
+                        : PubSub::Publication(publication->publication);
+                receiver_count--;
+                if (actor->second.enqueue(std::move(to_send))) {
                   if (std::find(ready_queue.begin(), ready_queue.end(),
                                 receiver_id) == ready_queue.end()) {
                     ready_queue.push_back(receiver_id);
