@@ -11,6 +11,28 @@ required_actors:
   - "core.sensors.relative_humidity"
 ---
 type: deployment
+name: de.tum.smart_office.deployment.environment_collector
+ttl:  0
+actor_type:  de.tum.smart_office.actor.environment_collector
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "local_environment_info_collector.lua"
+required_actors:
+  - "core.sensors.co2"
+  - "core.sensors.temperature"
+  - "core.sensors.relative_humidity"
+---
+type: deployment
+name: de.tum.smart_office.deployment.environment_logger
+ttl:  0
+actor_type:  de.tum.smart_office.actor.environment_logger
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "environment_logger.lua"
+constraints:
+  - "node_id": "smart_office_central"
+---
+type: deployment
 name: de.tum.deployment.notification_scroll_local_button
 ttl:  0
 actor_type:  de.tum.smart_office.actor.notification_scroll_local_button
