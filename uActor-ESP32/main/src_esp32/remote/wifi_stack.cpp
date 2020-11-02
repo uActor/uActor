@@ -71,7 +71,9 @@ esp_netif_t* WifiStack::init(void) {
   ESP_ERROR_CHECK(esp_wifi_sta_wpa2_ent_enable());
 #endif
 
-  // ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
+#if CONFIG_DISABLE_WIFI_PS
+  ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
+#endif
 
   ESP_ERROR_CHECK(esp_wifi_start());
 

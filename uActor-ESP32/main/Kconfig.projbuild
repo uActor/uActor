@@ -65,6 +65,15 @@ menu "Board Configuration"
     config ENABLE_EPAPER_DISPLAY
        bool "Board has EPaper Display"
        default n
+    config ENABLE_BLE_ACTOR
+       bool "Enable BLE Actor"
+       default y
+    config DISABLE_WIFI_PS
+       bool "Disable WiFi PS"
+       default n
+       depends on !ENABLE_BLE_ACTOR
+       help
+        Power Saving can only be disabled when bluetooth is disabled.
 endmenu
 menu "Benchmark Configuration"
     config BENCHMARK_ENABLED

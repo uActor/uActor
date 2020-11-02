@@ -16,7 +16,6 @@ extern "C" {
 #include "actor_runtime/managed_actor.hpp"
 #include "actor_runtime/managed_native_actor.hpp"
 #include "actor_runtime/native_executor.hpp"
-#include "ble_actor.hpp"
 #include "board_functions.hpp"
 #include "controllers/deployment_manager.hpp"
 #include "controllers/topology_manager.hpp"
@@ -36,6 +35,10 @@ extern "C" {
 // TODO(raphaelhetzel) this currently required patching callEPD
 #if CONFIG_ENABLE_EPAPER_DISPLAY
 #include "epaper_actor.hpp"
+#endif
+
+#if CONFIG_ENABLE_BLE_ACTOR
+#include "ble_actor.hpp"
 #endif
 
 extern "C" {
@@ -236,9 +239,11 @@ void main_task(void *) {
       &uActor::Remote::TCPForwarder::tcp_reader_task, "TCP2", 4192,
       reinterpret_cast<void *>(tcp_task_args.tcp_forwarder), 4, nullptr, 0);
 
+#if CONFIG_ENABLE_BLE_ACTOR
   xTaskCreatePinnedToCore(&uActor::ESP32::BLE::BLEActor::os_task, "BLE",
   4192,
                           nullptr, 4, nullptr, 0);
+#endif
 
   printf("StaticHeap: %d \n", xPortGetFreeHeapSize());
   testbed_log_rt_integer("boot_timestamp", t);
