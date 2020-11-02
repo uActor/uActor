@@ -24,6 +24,15 @@ function receive(message)
       handle_value(variable, message.value, configuration.repeatability)
     end
   end
+
+  if(message.type == "exit") then
+    Publication.new(
+      "type", "notification_cancelation",
+      "node_id", node_id,
+      "notification_id", node_id.."."..actor_type.."."..instance_id..".environment_information"
+    )
+  end
+
 end
 
 function handle_value(variable, value, repeatability)
@@ -55,7 +64,7 @@ function update_notification()
       "node_id", node_id,
       "notification_id", node_id.."."..actor_type.."."..instance_id..".environment_information",
       "notification_text", notification_text,
-      "notification_lifetime", 60000
+      "notification_lifetime", 0
     )
   )
 end
