@@ -29,6 +29,9 @@ extern "C" {
 #if CONFIG_ENABLE_BMP180
 #include "bmp180_actor.hpp"
 #endif
+#if CONFIG_ENABLE_BME280
+#include "bme280_actor.hpp"
+#endif
 #if CONFIG_ENABLE_SCD30
 #include "scd30_actor.hpp"
 #endif
@@ -66,6 +69,10 @@ void main_task(void *) {
 #if CONFIG_ENABLE_BMP180
   uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
       uActor::ESP32::IO::BMP180Actor>("bmp180_sensor");
+#endif
+#if CONFIG_ENABLE_BME280
+  uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
+      uActor::ESP32::Sensors::BME280Actor>("bme280_sensor");
 #endif
 #if CONFIG_ENABLE_SCD30
   uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
@@ -161,6 +168,23 @@ void main_task(void *) {
   create_bmp180_sensor.set_attr("instance_id", "1");
   uActor::PubSub::Router::get_instance().publish(
       std::move(create_bmp180_sensor));
+#endif
+
+#if CONFIG_ENABLE_BME280
+  auto create_bme280_sensor =
+      uActor::PubSub::Publication(uActor::BoardFunctions::NODE_ID, "root", "1");
+  create_bme280_sensor.set_attr("command", "spawn_native_actor");
+  create_bme280_sensor.set_attr("spawn_code", "");
+  create_bme280_sensor.set_attr("spawn_node_id",
+                                uActor::BoardFunctions::NODE_ID);
+  create_bme280_sensor.set_attr("spawn_actor_version", "default");
+  create_bme280_sensor.set_attr("spawn_actor_type", "bme280_sensor");
+  create_bme280_sensor.set_attr("spawn_instance_id", "1");
+  create_bme280_sensor.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
+  create_bme280_sensor.set_attr("actor_type", "native_executor");
+  create_bme280_sensor.set_attr("instance_id", "1");
+  uActor::PubSub::Router::get_instance().publish(
+      std::move(create_bme280_sensor));
 #endif
 
 #if CONFIG_ENABLE_SCD30

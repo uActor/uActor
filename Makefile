@@ -24,7 +24,7 @@ test:
 	./uActor_test
 
 GENERIC_CODE_FILES = $(shell find uActor -name '*.*pp')
-ESP32_CODE_FILES = $(shell find uActor-ESP32/main uActor-ESP32/components/ble_actor uActor-ESP32/components/epaper_actor uActor-ESP32/components/bmp18_actor -name '*.*pp')
+ESP32_CODE_FILES = $(shell find uActor-ESP32/main uActor-ESP32/components/ble_actor uActor-ESP32/components/epaper_actor uActor-ESP32/components/bmp180_actor uActor-ESP32/components/bme280_actor -name '*.*pp')
 POSIX_CODE_FILES = $(shell find uActor-POSIX -name '*.*pp') 
 CODE_FILES = $(GENERIC_CODE_FILES) $(ESP32_CODE_FILES) $(POSIX_CODE_FILES)
 

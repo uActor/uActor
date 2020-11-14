@@ -18,4 +18,7 @@
 	url = git@github.com:ReneNyffenegger/cpp-base64.git
 [submodule "uActor-ESP32/components/sensiron-scd"]
 	path = uActor-ESP32/components/sensiron-scd
-	url = git@gitlab.lrz.de:cm/sensirion-embedded-scd.git
+	url = ../sensirion-embedded-scd.git
+[submodule "uActor-ESP32/components/bme280_actor/BME280_driver"]
+	path = uActor-ESP32/components/bme280_actor/BME280_driver
+	url = https://github.com/BoschSensortec/BME280_driver.git

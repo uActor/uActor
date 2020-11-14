@@ -26,12 +26,13 @@ menu "Wifi Configuration"
             WiFi password
 endmenu
 menu "Board Configuration"
+    config USE_MAC_AS_NODE_ID
+        bool "Use the MAC address as the node_id"
+        default n
     config NODE_ID
         string "Unique Node ID"
         default "node_1"
-        help
-            Unique Node ID
-
+        depends on !USE_MAC_AS_NODE_ID
     config NODE_LABELS
         string "Node Labels"
         default ""
@@ -43,6 +44,12 @@ menu "Board Configuration"
         default ""
         help
             Topology control
+    config PERSISTENT_PEERS
+        string "PERSISTENT PEER"
+        default ""
+        help
+            node_id:node_ip:node_port,node_id..
+
     config ENABLE_I2C
         bool "Enable I2C Bus"
         default n
@@ -62,6 +69,10 @@ menu "Board Configuration"
        bool "Board has BMP180 Sensor"
        default n
        depends on ENABLE_I2C
+    config ENABLE_BME280
+       bool "Board has BME280 Sensor"
+       default n
+       depends on ENABLE_I2C 
     config ENABLE_EPAPER_DISPLAY
        bool "Board has EPaper Display"
        default n
