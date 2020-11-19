@@ -14,6 +14,7 @@
 #include "actor_runtime/native_executor.hpp"
 #include "controllers/deployment_manager.hpp"
 #include "controllers/topology_manager.hpp"
+#include "influxdb_actor.hpp"
 #include "remote/remote_connection.hpp"
 #include "remote/tcp_forwarder.hpp"
 #if CONFIG_BENCHMARK_ENABLED
@@ -165,7 +166,9 @@ int main(int arg_count, char** args) {
       uActor::Controllers::DeploymentManager>("deployment_manager");
   uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
       uActor::ActorRuntime::CodeStore>("code_store");
-  auto native_executor = start_native_executor();
+  uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
+      uActor::Database::InfluxDBActor>("influxdb_connector");
+  auto nativeexecutor = start_native_executor();
 
   sleep(2);
 
@@ -209,6 +212,20 @@ int main(int arg_count, char** args) {
   create_code_store.set_attr("actor_type", "native_executor");
   create_code_store.set_attr("instance_id", "1");
   uActor::PubSub::Router::get_instance().publish(std::move(create_code_store));
+
+  auto create_influxdb_actor =
+      uActor::PubSub::Publication(uActor::BoardFunctions::NODE_ID, "root", "1");
+  create_influxdb_actor.set_attr("command", "spawn_native_actor");
+  create_influxdb_actor.set_attr("spawn_actor_version", "default");
+  create_influxdb_actor.set_attr("spawn_node_id",
+                                 uActor::BoardFunctions::NODE_ID);
+  create_influxdb_actor.set_attr("spawn_actor_type", "influxdb_connector");
+  create_influxdb_actor.set_attr("spawn_instance_id", "1");
+  create_influxdb_actor.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
+  create_influxdb_actor.set_attr("actor_type", "native_executor");
+  create_influxdb_actor.set_attr("instance_id", "1");
+  uActor::PubSub::Router::get_instance().publish(
+      std::move(create_influxdb_actor));
 
   sleep(2);
 

@@ -1,0 +1,29 @@
+version: "3.8"
+services:
+  influxdb:
+    image: "influxdb:1.8"
+    ports:
+      - "8086:8086"
+    networks:
+      - "smart_office"
+    volumes:
+      - "$PWD/smart_office_data/influx_db:/var/lib/influxdb"
+    environment:
+      - INFLUXDB_DB=smart_office
+      - INFLUXDB_ADMIN_USER=admin
+      - INFLUXDB_ADMIN_PASSWORD=smart_office_admin
+      - INFLUXDB_USER=smart_office
+      - INFLUXDB_USER_PASSWORD=smart_office_user
+      - INFLUXDB_HTTP_AUTH_ENABLED=true
+  grafana:
+    image: "grafana/grafana"
+    ports:
+      - "3000:3000"
+    networks:
+      - "smart_office"
+    volumes:
+      - $PWD/smart_office_data/grafana:/var/lib/grafana
+      - $PWD/grafana_configuration/provisioning:/etc/grafana/provisioning
+
+networks:
+  smart_office:

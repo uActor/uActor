@@ -1,0 +1,13 @@
+apiVersion: 1
+
+datasources:
+  - name: smart_office_influxdb
+    type: influxdb
+    access: proxy
+    database: smart_office
+    user: smart_office
+    url: http://influxdb:8086
+    jsonData:
+      httpMode: POST
+    secureJsonData:
+      password: smart_office_user

@@ -19,6 +19,9 @@
 [submodule "uActor-ESP32/components/sensiron-scd"]
 	path = uActor-ESP32/components/sensiron-scd
 	url = ../sensirion-embedded-scd.git
+[submodule "vendor/influxdb-cxx"]
+	path = vendor/influxdb-cxx
+	url = https://github.com/offa/influxdb-cxx.git
 [submodule "uActor-ESP32/components/bme280_actor/BME280_driver"]
 	path = uActor-ESP32/components/bme280_actor/BME280_driver
 	url = https://github.com/BoschSensortec/BME280_driver.git
