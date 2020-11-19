@@ -1,20 +1,30 @@
 VARIABLES = {
-  temperature={unit="degree_celsius"},
-  co2={unit="ppm"},
-  relative_humidity={unit="percent"}
+  temperature={unit="degree_celsius", sensor="bme280"},
+  co2={unit="ppm", sensor="scd30"},
+  relative_humidity={unit="percent", sensor="bme280"},
+  pressure={unit="pa", sensor="bme280"}
 }
 
 function receive(message)
   
-  if(message.type == "init") then
+  local current_seconds, current_nanos = unix_timestamp()
+  local current_minute = current_seconds // 60
+  
+  if(not value_store) then
     value_store = {}
-    
-    for variable, configuration in pairs(VARIABLES) do
-      subscribe{type="sensor_update_"..variable, unit=configuration.unit, publisher_node_id=node_id}
-      value_store[variable] = {}
-    end
+  end
 
-    current_seconds, current_nanos = unix_timestamp()
+  if(not value_store[current_minute]) then
+    value_store[current_minute] = {}
+    for variable, configuration in pairs(VARIABLES) do
+      value_store[current_minute][variable] = {}
+    end
+  end
+
+  if(message.type == "init") then
+    for variable, configuration in pairs(VARIABLES) do
+      subscribe{type="sensor_update_"..variable, unit=configuration.unit, publisher_node_id=node_id, sensor=configuration.value}
+    end
 
     delayed_publish(
       Publication.new(
@@ -30,32 +40,40 @@ function receive(message)
 
   for variable, _configuration in pairs(VARIABLES) do
     if(message.type == "sensor_update_"..variable) then
-      local next_slot = #value_store[variable] + 1
-      value_store[variable][next_slot] = message.value
+      local outer = value_store[current_minute]
+      local next_slot = #outer[variable] + 1
+      value_store[current_minute][variable][next_slot] = message.value
     end
   end
 
   if(message.type == "trigger_calculate_average") then
-    local publication = Publication.new("type", "node_environment_info")
-    local should_publish = false
+    for minute, data in pairs(value_store) do
+      print("- "..minute.." - "..current_minute)
+      if(minute < current_minute) then
+        print("is smaller")
 
-    for variable, _configuration in pairs(VARIABLES) do
-      if(#value_store[variable] > 0) then
-        should_publish = true
-        local current_sum = 0
-        for i = 1,#value_store[variable] do
-          item = value_store[variable][i]
-          current_sum = current_sum + item
+        local publication = Publication.new("type", "node_environment_info", "timestamp", minute*60)
+        local should_publish = false
+
+        for variable, _configuration in pairs(VARIABLES) do
+          if(#data[variable] > 0) then
+            should_publish = true
+            local current_sum = 0
+            for i = 1,#data[variable] do
+              item = data[variable][i]
+              current_sum = current_sum + item
+            end
+            publication["value_"..variable] = current_sum / #data[variable]
+            publication["num_"..variable] = #data[variable]
+          end
         end
-        publication["value_"..variable] = current_sum / #value_store[variable]
-        publication["num_"..variable] = #value_store[variable]
-  
-        value_store[variable] = {}
+        value_store[minute] = nil
+        
+        if(should_publish) then
+          print("publish"..minute)
+          publish(publication)
+        end
       end
-    end
-    
-    if(should_publish) then
-      publish(publication)
     end
 
     delayed_publish(

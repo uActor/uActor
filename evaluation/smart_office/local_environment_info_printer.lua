@@ -1,7 +1,8 @@
 VARIABLES = {
-  temperature={unit="degree_celsius", repeatability=0.1, name_printed="TEMP", unit_printed="°C"},
-  co2={unit="ppm", repeatability=10, name_printed="CO2", unit_printed="ppm"},
-  relative_humidity={unit="percent", repeatability=0.1 , name_printed="RH", unit_printed="%"}
+  temperature={unit="degree_celsius", repeatability=0.1, name_printed="TEMP", unit_printed="°C", sensor="bme280"},
+  co2={unit="ppm", repeatability=10, name_printed="CO2", unit_printed="ppm", sensor="scd30"},
+  relative_humidity={unit="percent", repeatability=0.1 , name_printed="RH", unit_printed="%", sensor="bme280"},
+  pressure={unit="pa", repeatability=0.1 , name_printed="Pressure", unit_printed="Pa", sensor="bme280"}
 }
 
 function receive(message)
@@ -14,7 +15,7 @@ function receive(message)
 
     for variable, configuration in pairs(VARIABLES) do
       total_num_values = total_num_values + 1
-      subscribe{type="sensor_update_"..variable, unit=configuration.unit, publisher_node_id=node_id}
+      subscribe{type="sensor_update_"..variable, unit=configuration.unit, publisher_node_id=node_id, sensor=configuration.sensor}
     end
   end
 
