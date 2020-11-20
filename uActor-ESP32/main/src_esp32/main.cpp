@@ -53,6 +53,18 @@ void main_task(void *) {
 
   uActor::BoardFunctions::setup_hardware();
 
+#if CONFIG_USE_MAC_AS_NODE_ID
+  uint8_t mac_buffer[6];
+  char mac_hex_buffer[13];
+  ESP_ERROR_CHECK(esp_efuse_mac_get_default(mac_buffer));
+  snprintf(mac_hex_buffer, sizeof(mac_hex_buffer), "%02X%02X%02X%02X%02X%02X",
+           mac_buffer[0], mac_buffer[1], mac_buffer[2], mac_buffer[3],
+           mac_buffer[4], mac_buffer[5]);
+  uActor::BoardFunctions::NODE_ID = mac_hex_buffer;
+#else
+  uActor::BoardFunctions::NODE_ID = CONFIG_NODE_ID;
+#endif
+
   xTaskCreatePinnedToCore(&uActor::PubSub::Router::os_task, "Router", 4192,
                           nullptr, 3, nullptr, 0);
 
@@ -275,6 +287,28 @@ void main_task(void *) {
   vTaskDelay(2000);
   testbed_log_rt_integer("_ready", t);
 
+  std::string_view raw_static_peers = std::string_view(CONFIG_PERSISTENT_PEERS);
+  for (std::string_view raw_static_peer :
+       uActor::Support::StringHelper::string_split(raw_static_peers)) {
+    uint32_t first_split_pos = raw_static_peer.find_first_of(":");
+    uint32_t second_split_pos = raw_static_peer.find_last_of(":");
+
+    std::string_view peer_node_id = raw_static_peer.substr(0, first_split_pos);
+    std::string_view peer_ip = raw_static_peer.substr(
+        first_split_pos + 1, second_split_pos - first_split_pos - 1);
+    std::string_view peer_port = raw_static_peer.substr(second_split_pos + 1);
+
+    uActor::PubSub::Publication add_persistent_peer(
+        uActor::BoardFunctions::NODE_ID, "root", "1");
+    add_persistent_peer.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
+    add_persistent_peer.set_attr("type", "add_static_peer");
+    add_persistent_peer.set_attr("peer_node_id", peer_node_id);
+    add_persistent_peer.set_attr("peer_ip", peer_ip);
+    add_persistent_peer.set_attr("peer_port",
+                                 std::stoi(std::string(peer_port)));
+    uActor::PubSub::Router::get_instance().publish(
+        std::move(add_persistent_peer));
+  }
   vTaskDelete(nullptr);
 
   // while (true) {

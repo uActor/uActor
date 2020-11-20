@@ -27,7 +27,7 @@ uint32_t BoardFunctions::seconds_timestamp() {
 
 void BoardFunctions::exit_thread() { vTaskDelete(nullptr); }
 
-const char* BoardFunctions::NODE_ID = CONFIG_NODE_ID;
+const char* BoardFunctions::NODE_ID = "";
 
 std::vector<std::string> BoardFunctions::SERVER_NODES =
     std::vector<std::string>{std::string(CONFIG_SERVER_NODE)};
