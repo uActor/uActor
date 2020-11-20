@@ -71,7 +71,9 @@ void EPaperNotificationActor::init() {
   subscribe(
       PubSub::Filter{PubSub::Constraint("command", "scroll_notifications"),
                      PubSub::Constraint("node_id", this->node_id().data())});
-  subscribe(PubSub::Filter{PubSub::Constraint("type", "notification")});
+  subscribe(
+      PubSub::Filter{PubSub::Constraint("type", "notification"),
+                     PubSub::Constraint("node_id", std::string(node_id()))});
   subscribe(
       PubSub::Filter{PubSub::Constraint("type", "notification_cancelation"),
                      PubSub::Constraint("node_id", this->node_id().data())});
@@ -176,15 +178,14 @@ void EPaperNotificationActor::update(State&& new_state, bool force) {
 
   display.fillScreen(EPD_WHITE);
   display.setCursor(0, 14);
-  // This is seems to be a bug in the underlying library
-  display.setTextColor(EPD_WHITE);
+  display.setTextColor(EPD_BLACK);
 
   display.setFont(&FreeMono9pt7b);
   display.println(current_state.node_id + " - " +
                   std::to_string(current_state.number_of_notifications));
 
   for (int i = 0; i < 250; i++) {
-    display.drawPixel(i, 22, 1);
+    display.drawPixel(i, 22, EPD_BLACK);
   }
 
   display.println(current_state.notification_text);
