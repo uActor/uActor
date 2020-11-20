@@ -21,6 +21,7 @@ extern "C" {
 
 #include <cstring>
 
+#include "board_functions.hpp"
 #include "pubsub/publication.hpp"
 #include "pubsub/router.hpp"
 
@@ -104,6 +105,7 @@ void WifiStack::os_task(void* args) {
     uActor::PubSub::Publication ip_info(uActor::BoardFunctions::NODE_ID, "root",
                                         "1");
     ip_info.set_attr("type", "notification");
+    ip_info.set_attr("node_id", BoardFunctions::NODE_ID);
     ip_info.set_attr("notification_text", std::string("Device IP:\n") + buffer);
     ip_info.set_attr("notification_id", "device_ip");
     ip_info.set_attr("notification_lifetime", 0);
