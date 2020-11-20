@@ -127,13 +127,7 @@ void TCPForwarder::receive(PubSub::MatchedPublication&& m) {
     Logger::trace("TCP-FORWARDER", "ACTOR-RECEIVE",
                   "regualar publication, %d subscribers", sub_ids.size());
 
-    std::string serialized = m.publication.to_msg_pack();
-    uint32_t size_normal = serialized.size();
-    uint32_t size = htonl(size_normal);
-    auto buffer = std::make_shared<std::vector<char>>(
-        serialized.size() + sizeof(size), 0);
-    memcpy(buffer->data(), &size, sizeof(size));
-    memcpy(buffer->data() + sizeof(size), serialized.data(), serialized.size());
+    std::shared_ptr<std::vector<char>> serialized;
 
     for (uint32_t subscriber_id : sub_ids) {
       auto remote_it = remotes.find(subscriber_id);
@@ -141,7 +135,14 @@ void TCPForwarder::receive(PubSub::MatchedPublication&& m) {
         auto& remote = remote_it->second;
 
         if (remote.forwarding_strategy->should_forward(m.publication)) {
-          auto result = write(&remote, buffer, std::move(remote_lock));
+          if (!serialized) {
+            serialized = m.publication.to_msg_pack();
+            uint32_t size_normal = serialized->size() - 4;
+            *reinterpret_cast<uint32_t*>(serialized->data()) =
+                htonl(size_normal);
+          }
+
+          auto result = write(&remote, serialized, std::move(remote_lock));
           remote_lock = std::move(result.second);
           if (result.first) {
             Logger::info(

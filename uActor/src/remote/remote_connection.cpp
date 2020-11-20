@@ -94,7 +94,6 @@ void RemoteConnection::process_data(uint32_t len, char* data) {
         publicaton_full_size =
             ntohl(*reinterpret_cast<uint32_t*>(data + (len - bytes_remaining)));
         publicaton_remaining_bytes = publicaton_full_size;
-        publication_buffer.resize(publicaton_full_size);
         bytes_remaining -= 4;
         state = waiting_for_data;
       } else {
@@ -109,7 +108,6 @@ void RemoteConnection::process_data(uint32_t len, char* data) {
         std::memcpy(size_buffer + (4 - size_field_remaining_bytes),
                     data + (len - bytes_remaining), size_field_remaining_bytes);
         publicaton_full_size = ntohl(*reinterpret_cast<uint32_t*>(size_buffer));
-        publication_buffer.resize(publicaton_full_size);
         publicaton_remaining_bytes = publicaton_full_size;
         bytes_remaining -= size_field_remaining_bytes;
         size_field_remaining_bytes = 0;
@@ -123,9 +121,7 @@ void RemoteConnection::process_data(uint32_t len, char* data) {
       }
     } else if (state == waiting_for_data) {
       uint32_t to_move = std::min(publicaton_remaining_bytes, bytes_remaining);
-      std::memcpy(publication_buffer.data() +
-                      (publicaton_full_size - publicaton_remaining_bytes),
-                  data + (len - bytes_remaining), to_move);
+      publication_buffer.write(data + (len - bytes_remaining), to_move);
       bytes_remaining -= to_move;
       publicaton_remaining_bytes -= to_move;
       if (publicaton_remaining_bytes == 0) {
@@ -135,16 +131,14 @@ void RemoteConnection::process_data(uint32_t len, char* data) {
 #endif
         std::optional<PubSub::Publication> p;
         if (publicaton_full_size > 0) {
-          p = PubSub::Publication::from_msg_pack(std::string_view(
-              publication_buffer.data(), publicaton_full_size));
+          p = publication_buffer.build();
         } else {
           // printf("null message\n");
         }
         if (p) {
           process_publication(std::move(*p));
         }
-        publication_buffer.clear();
-        publication_buffer.shrink_to_fit();
+        publication_buffer = PubSub::PublicationFactory();
         state = empty;
         assert(publicaton_remaining_bytes == 0);
       }

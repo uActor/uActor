@@ -19,6 +19,7 @@ extern "C" {
 
 #include "forwarder_api.hpp"
 #include "forwarding_strategy.hpp"
+#include "pubsub/publication_factory.hpp"
 #include "remote/sequence_info.hpp"
 
 namespace uActor::Remote {
@@ -105,7 +106,7 @@ class RemoteConnection {
 
   uint32_t publicaton_remaining_bytes{0};
   uint32_t publicaton_full_size{0};
-  std::vector<char> publication_buffer;
+  PubSub::PublicationFactory publication_buffer = PubSub::PublicationFactory();
 
   std::unique_ptr<ForwardingStrategy> forwarding_strategy;
 

@@ -2,14 +2,16 @@
 
 #include <msgpack.hpp>
 
+#include "pubsub/vector_buffer.hpp"
 #include "support/logger.hpp"
 
 namespace uActor::PubSub {
 
 Publication::Publication(std::string_view publisher_node_id,
                          std::string_view publisher_actor_type,
-                         std::string_view publisher_instance_id) {
-  attributes = new std::unordered_map<std::string, variant_type>();
+                         std::string_view publisher_instance_id)
+    : attributes(std::make_shared<InternalType>()),
+      shallow_copy(false) {
   attributes->emplace(std::string("publisher_node_id"),
                       std::string(publisher_node_id));
   attributes->emplace(std::string("publisher_instance_id"),
@@ -19,47 +21,35 @@ Publication::Publication(std::string_view publisher_node_id,
 }
 
 Publication::Publication()
-    : attributes(new std::unordered_map<std::string, variant_type>()) {}
+    : attributes(std::make_shared<InternalType>()),
+      shallow_copy(false) {}
 
 Publication::Publication(size_t size_hint)
-    : attributes(new std::unordered_map<std::string, variant_type>(size_hint)) {
-}
+    : attributes(std::make_shared<InternalType>(size_hint)),
+      shallow_copy(false) {}
 
-Publication::~Publication() {
-  if (attributes) {
-    attributes->clear();
-    delete attributes;
-  }
-}
+Publication::~Publication() = default;
 
-Publication::Publication(const Publication& old) {
-  if (old.attributes != nullptr) {
-    attributes =
-        new std::unordered_map<std::string, variant_type>(*(old.attributes));
-  } else {
-    attributes = nullptr;
-  }
+Publication::Publication(const Publication& old)
+    : attributes(old.attributes), shallow_copy(true) {
+  const_cast<Publication&>(old).shallow_copy = true;
 }
 
 Publication& Publication::operator=(const Publication& old) {
-  delete attributes;
-  if (old.attributes != nullptr) {
-    attributes =
-        new std::unordered_map<std::string, variant_type>(*(old.attributes));
-  } else {
-    attributes = nullptr;
-  }
+  attributes = old.attributes;
+  shallow_copy = true;
+  const_cast<Publication&>(old).shallow_copy = true;
   return *this;
 }
 
-Publication::Publication(Publication&& old) : attributes(old.attributes) {
-  old.attributes = nullptr;
+Publication::Publication(Publication&& old)
+    : attributes(std::move(old.attributes)),
+      shallow_copy(old.shallow_copy) {
 }
 
 Publication& Publication::operator=(Publication&& old) {
-  delete attributes;
-  attributes = old.attributes;
-  old.attributes = nullptr;
+  attributes = std::move(old.attributes);
+  shallow_copy = old.shallow_copy;
   return *this;
 }
 
@@ -70,53 +60,34 @@ bool Publication::operator==(const Publication& other) {
   return false;
 }
 
-std::string Publication::to_msg_pack() {
-  if (!attributes) {
-    Support::Logger::warning("PUBLICATION", "TO_MP", "MOVED");
-    return "";
-  }
-  msgpack::sbuffer sbuf{64ul};
-  msgpack::packer<msgpack::sbuffer> packer(sbuf);
-  packer.pack_map(attributes->size());
-  for (const auto& attr : *attributes) {
-    if (std::holds_alternative<std::string>(attr.second)) {
-      packer.pack(attr.first);
-      packer.pack(std::get<std::string>(attr.second));
-    } else if (std::holds_alternative<int32_t>(attr.second)) {
-      packer.pack(attr.first);
-      packer.pack(std::get<int32_t>(attr.second));
-    } else if (std::holds_alternative<float>(attr.second)) {
-      packer.pack(attr.first);
-      packer.pack(std::get<float>(attr.second));
+std::shared_ptr<std::vector<char>> Publication::to_msg_pack() {
+  try {
+    if (!attributes) {
+      Support::Logger::warning("PUBLICATION", "TO_MP", "MOVED");
+      return std::make_shared<std::vector<char>>(4);
     }
-  }
-  return std::string(sbuf.data(), sbuf.size());
-}
-
-std::optional<Publication> Publication::from_msg_pack(
-    std::string_view message) {
-  msgpack::object_handle message_object =
-      msgpack::unpack(message.data(), message.size());
-  if (!(message_object->type == msgpack::type::object_type::MAP)) {
-    return std::nullopt;
-  }
-  Publication p{};
-  for (const auto& value_pair : message_object->via.map) {
-    if (value_pair.val.type == msgpack::type::object_type::STR) {
-      p.set_attr(value_pair.key.as<std::string>(),
-                 value_pair.val.as<std::string>());
-    } else if (value_pair.val.type == msgpack::type::object_type::FLOAT32 ||
-               value_pair.val.type == msgpack::type::object_type::FLOAT64) {
-      p.set_attr(value_pair.key.as<std::string>(), value_pair.val.as<float>());
-    } else if (value_pair.val.type ==
-                   msgpack::type::object_type::POSITIVE_INTEGER ||
-               value_pair.val.type ==
-                   msgpack::type::object_type::NEGATIVE_INTEGER) {
-      p.set_attr(value_pair.key.as<std::string>(),
-                 value_pair.val.as<int32_t>());
+    VectorBuffer buffer;
+    msgpack::packer<VectorBuffer> packer(buffer);
+    packer.pack_map(attributes->size());
+    for (const auto& attr : *attributes) {
+      if (std::holds_alternative<std::string>(attr.second)) {
+        packer.pack(attr.first);
+        packer.pack(std::get<std::string>(attr.second));
+      } else if (std::holds_alternative<int32_t>(attr.second)) {
+        packer.pack(attr.first);
+        packer.pack(std::get<int32_t>(attr.second));
+      } else if (std::holds_alternative<float>(attr.second)) {
+        packer.pack(attr.first);
+        packer.pack(std::get<float>(attr.second));
+      }
     }
+    return std::move(buffer.fetch_buffer());
+  } catch (std::bad_alloc& exception) {
+    Support::Logger::error(
+        "PUBLICATION", "TO_MSG_PACK",
+        "Dropped outgoin message as the system is out of memory");
+    return std::make_shared<std::vector<char>>(4);
   }
-  return std::move(p);
 }
 
 std::variant<std::monostate, std::string_view, int32_t, float>
@@ -186,6 +157,10 @@ void Publication::set_attr(std::string_view name, std::string_view value) {
     Support::Logger::warning("PUBLICATION", "SET", "MOVED");
     return;
   }
+  if (shallow_copy) {
+    attributes = std::make_shared<InternalType>(*attributes);
+    shallow_copy = false;
+  }
   attributes->insert_or_assign(std::string(name), std::string(value));
 }
 
@@ -193,6 +168,10 @@ void Publication::set_attr(std::string_view name, int32_t value) {
   if (!attributes) {
     Support::Logger::warning("PUBLICATION", "SET", "MOVED");
     return;
+  }
+  if (shallow_copy) {
+    attributes = std::make_shared<InternalType>(*attributes);
+    shallow_copy = false;
   }
   attributes->insert_or_assign(std::string(name), value);
 }
@@ -202,6 +181,10 @@ void Publication::set_attr(std::string_view name, float value) {
     Support::Logger::warning("PUBLICATION", "SET", "MOVED");
     return;
   }
+  if (shallow_copy) {
+    attributes = std::make_shared<InternalType>(*attributes);
+    shallow_copy = false;
+  }
   attributes->insert_or_assign(std::string(name), value);
 }
 
@@ -209,6 +192,10 @@ void Publication::erase_attr(std::string_view name) {
   if (!attributes) {
     Support::Logger::warning("PUBLICATION", "ERASE", "MOVED");
     return;
+  }
+  if (shallow_copy) {
+    attributes = std::make_shared<InternalType>(*attributes);
+    shallow_copy = false;
   }
   attributes->erase(std::string(name));
 }

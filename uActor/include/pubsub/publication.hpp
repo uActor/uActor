@@ -1,17 +1,20 @@
 #ifndef UACTOR_INCLUDE_PUBSUB_PUBLICATION_HPP_
 #define UACTOR_INCLUDE_PUBSUB_PUBLICATION_HPP_
 
+#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
 #include <variant>
+#include <vector>
 
 namespace uActor::PubSub {
 
 class Publication {
  public:
   using variant_type = std::variant<std::string, int32_t, float>;
+  using InternalType = std::unordered_map<std::string, variant_type>;
 
   // TODO(raphaelhetzel) implement custom iterator to allow for a more efficient
   // implementation later
@@ -30,12 +33,7 @@ class Publication {
 
   ~Publication();
 
-  std::string to_msg_pack();
-
-  static std::optional<Publication> from_msg_pack(std::string_view message);
-
-  // Required for using the freeRTOS queues
-  void moved() { attributes = nullptr; }
+  std::shared_ptr<std::vector<char>> to_msg_pack();
 
   Publication(const Publication& old);
 
@@ -70,7 +68,11 @@ class Publication {
  private:
   // TODO(raphaelhetzel) It might be beneficial to use a
   // datastructure with less overhead (size+allocations) here.
-  std::unordered_map<std::string, variant_type>* attributes;
+  std::shared_ptr<InternalType> attributes;
+  bool shallow_copy;
+
+ public:
+  uint32_t size;
 };
 
 }  //  namespace uActor::PubSub
