@@ -41,7 +41,6 @@ class Router {
 
  private:
   std::atomic<uint32_t> next_sub_id{1};
-  std::list<Receiver*> receivers;
   std::map<uint32_t, Subscription> subscriptions;
   std::map<std::string, ConstraintIndex> constraints;
   // Index for all subscriptions without required constraints.
@@ -59,16 +58,6 @@ class Router {
       std::string subscriber_node_id = std::string("local"));
   uint32_t remove_subscription(uint32_t sub_id, Receiver* r,
                                std::string node_id = "");
-
-  void deregister_receiver(Receiver* r) {
-    std::unique_lock lock(mtx);
-    receivers.remove(r);
-  }
-
-  void register_receiver(Receiver* r) {
-    std::unique_lock lock(mtx);
-    receivers.push_back(r);
-  }
 
   friend ReceiverHandle;
   friend Receiver;

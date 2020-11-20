@@ -38,7 +38,6 @@ class Receiver::Queue {
 };
 
 Receiver::Receiver(Router* router) : router(router) {
-  router->register_receiver(this);
   queue = std::make_unique<Receiver::Queue>();
 }
 
@@ -46,7 +45,6 @@ Receiver::~Receiver() {
   for (auto sub : subscriptions) {
     router->remove_subscription(sub, this);
   }
-  router->deregister_receiver(this);
 }
 
 std::optional<MatchedPublication> Receiver::receive(uint32_t timeout) {
