@@ -1,3 +1,19 @@
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+stages:
+  - build
+  - lint
 lint:
+  stage: lint
   image: python:3-alpine
   script: apk update && apk upgrade && apk add --no-cache make && pip install cpplint && make lint
+build_linux_x64:
+  before_script:
+    - export DEBIAN_FRONTEND="noninteractive" && apt-get update -y && apt-get upgrade -y && apt-get install -y git ssh-client build-essential cmake ninja-build libboost-all-dev curl libcurl4-openssl-dev
+  stage: build
+  image: ubuntu:20.04
+  script: make
+build_esp32:
+  stage: build
+  image: espressif/idf:release-v4.2
+  script: make build_esp32

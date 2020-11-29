@@ -6,19 +6,19 @@
 	url = https://github.com/google/googletest.git
 [submodule "vendor/msgpack/msgpack-c"]
 	path = vendor/msgpack/msgpack-c
-	url = git@github.com:msgpack/msgpack-c.git
+	url = https://github.com/msgpack/msgpack-c.git
 [submodule "esp32_components/callEPD"]
 	path = uActor-ESP32/components/callEPD
-	url = git@github.com:martinberlin/CalEPD.git
+	url = https://github.com/martinberlin/CalEPD.git
 [submodule "esp32_components/Adafruit-GFX"]
 	path = uActor-ESP32/components/Adafruit-GFX
-	url = git@github.com:martinberlin/Adafruit-GFX-Library-ESP-IDF.git
+	url = https://github.com/martinberlin/Adafruit-GFX-Library-ESP-IDF.git
 [submodule "vendor/base64/cpp-base64"]
 	path = vendor/base64/cpp-base64
-	url = git@github.com:ReneNyffenegger/cpp-base64.git
+	url = https://github.com/ReneNyffenegger/cpp-base64.git
 [submodule "uActor-ESP32/components/sensiron-scd"]
 	path = uActor-ESP32/components/sensiron-scd
-	url = ../sensirion-embedded-scd.git
+	url = ../../cm/sensirion-embedded-scd.git
 [submodule "vendor/influxdb-cxx"]
 	path = vendor/influxdb-cxx
 	url = https://github.com/offa/influxdb-cxx.git
@@ -27,4 +27,7 @@
 	url = https://github.com/BoschSensortec/BME280_driver.git
 [submodule "vendor/lua/lua-rotable"]
 	path = vendor/lua/lua-rotable
-	url = git@github.com:siffiejoe/lua-rotable.git
+	url = https://github.com/siffiejoe/lua-rotable.git
+[submodule "uActor-ESP32/components/FT6X36-IDF"]
+	path = uActor-ESP32/components/FT6X36-IDF
+	url = https://github.com/martinberlin/FT6X36-IDF.git

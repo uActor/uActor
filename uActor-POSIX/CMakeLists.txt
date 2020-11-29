@@ -21,12 +21,13 @@ target_include_directories(uActorBin PRIVATE ${Boost_INCLUDE_DIRS})
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../uActor ${CMAKE_CURRENT_BINARY_DIR}/uActor)
 
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
-target_compile_options(uActorBin PRIVATE -std=c++17)
+add_compile_options(-Werror -std=c++17 -Wall -Wextra -pedantic)
+
 target_compile_options(uActor PUBLIC -DCONFIG_BENCHMARK_ENABLED=1)
 
-if (NOT TARGET lib_influxdb)
-  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../vendor/influxdb-cxx ${CMAKE_CURRENT_BINARY_DIR}/lib_influxdb-cxx)
-endif()
+#if (NOT TARGET InfluxData::InfluxDB)
+  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../vendor/influxdb-cxx ${CMAKE_CURRENT_BINARY_DIR}/lib_influxdb)
+#endif()
 target_link_libraries(uActorBin InfluxData::InfluxDB)
 
 target_link_libraries(uActorBin uActor)

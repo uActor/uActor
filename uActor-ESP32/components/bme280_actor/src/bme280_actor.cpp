@@ -195,7 +195,8 @@ int8_t BME280Actor::user_i2c_write(uint8_t reg_addr, const uint8_t *reg_data,
   if (i2c_master_write_byte(cmd, reg_addr, true) != ESP_OK) {
     return -3;
   }
-  if (i2c_master_write(cmd, reg_data, len, true) != ESP_OK) {
+  if (i2c_master_write(cmd, const_cast<uint8_t *>(reg_data), len, true) !=
+      ESP_OK) {
     return -4;
   }
   if (i2c_master_stop(cmd) != ESP_OK) {

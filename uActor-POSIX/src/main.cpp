@@ -12,9 +12,9 @@
 #include "actor_runtime/lua_executor.hpp"
 #include "actor_runtime/managed_native_actor.hpp"
 #include "actor_runtime/native_executor.hpp"
+#include "actors/influxdb_actor.hpp"
 #include "controllers/deployment_manager.hpp"
 #include "controllers/topology_manager.hpp"
-#include "influxdb_actor.hpp"
 #include "remote/remote_connection.hpp"
 #include "remote/tcp_forwarder.hpp"
 #if CONFIG_BENCHMARK_ENABLED

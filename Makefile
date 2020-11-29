@@ -1,20 +1,20 @@
 default: build_local
 
 build_local:
-	mkdir -p build/local/release/default/ && \
-	cd build/local/release/default && \
-	cmake -G Ninja ../../../../uActor-POSIX && \
+	mkdir -p build/$(shell uname)_$(shell uname -m)/release && \
+	cd build/$(shell uname)_$(shell uname -m)/release && \
+	cmake -G Ninja ../../../uActor-POSIX && \
 	ninja
 
 build_local_debug:
-	mkdir -p build/local/release/default/ && \
-	cd build/local/release/default && \
-	cmake -G Ninja ../../../../uActor-POSIX -DCMAKE_BUILD_TYPE=Debug && \
+		mkdir -p build/$(shell uname)_$(shell uname -m)/debug/ && \
+	cd build/$(shell uname)_$(shell uname -m)/debug && \
+	cmake -G Ninja ../../../uActor-POSIX -DCMAKE_BUILD_TYPE=Debug && \
 	ninja
 
 build_esp32:
-	mkdir -p build/esp32/release/default/ && \
-	idf.py -C uActor-ESP32 -B build/esp32/release/default build
+	mkdir -p build/esp32/release/ && \
+	idf.py -C uActor-ESP32 -B build/esp32/release build
 
 test:
 	mkdir -p build/test/ && \
