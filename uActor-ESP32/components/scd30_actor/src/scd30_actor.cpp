@@ -33,7 +33,7 @@ namespace uActor::ESP32::Sensors {
         register_unmanaged_actor("core.sensors.temperature");
         register_unmanaged_actor("core.sensors.relative_humidity");
         register_unmanaged_actor("core.sensors.co2");
-        send_delayed_trigger(2100, "trigger_measurement");
+        send_delayed_trigger(10100, "trigger_measurement");
       }
     } else if(publication.get_str_attr("type") == "exit") {
       for(auto actor_type : registered_actors) {
@@ -63,13 +63,13 @@ namespace uActor::ESP32::Sensors {
     if (scd30_read_measurement(&co2, &temperature, &relative_humidity) != STATUS_OK) {
       Support::Logger::warning("SCD30", "FETCH", "Read error\n");
       send_failure_notification();
-      send_delayed_trigger(2000, "trigger_measurement");
+      send_delayed_trigger(10000, "trigger_measurement");
     } else {
       Support::Logger::trace("SCD30", "FETCH", "read: %f %f %f\n", temperature, relative_humidity, co2);
       send_update("temperature", "degree_celsius", temperature);
       send_update("co2", "ppm", co2);
       send_update("relative_humidity", "percent", relative_humidity);
-      send_delayed_trigger(2000, "trigger_measurement");
+      send_delayed_trigger(10000, "trigger_measurement");
     }
   }
 
