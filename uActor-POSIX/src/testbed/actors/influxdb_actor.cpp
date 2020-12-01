@@ -48,9 +48,8 @@ void InfluxDBActor::receive_data_point(const PubSub::Publication& publication) {
     }
 
     if (publication.has_attr("timestamp")) {
-      p.setTimestamp(
-          std::chrono::time_point<std::chrono::high_resolution_clock>(
-              std::chrono::seconds(*publication.get_int_attr("timestamp"))));
+      p.setTimestamp(std::chrono::time_point<std::chrono::system_clock>(
+          std::chrono::seconds(*publication.get_int_attr("timestamp"))));
     }
 
     connection->write(std::move(p));
