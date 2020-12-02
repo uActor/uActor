@@ -277,8 +277,7 @@ void main_task(void *) {
       reinterpret_cast<void *>(tcp_task_args.tcp_forwarder), 4, nullptr, 0);
 
 #if CONFIG_ENABLE_BLE_ACTOR
-  xTaskCreatePinnedToCore(&uActor::ESP32::BLE::BLEActor::os_task, "BLE",
-  4192,
+  xTaskCreatePinnedToCore(&uActor::ESP32::BLE::BLEActor::os_task, "BLE", 4192,
                           nullptr, 4, nullptr, 0);
 #endif
 

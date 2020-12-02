@@ -67,7 +67,7 @@ void BLEActor::receive(PubSub::Publication&& publication) {
 
 void BLEActor::handle_advertisement_receive(PubSub::Publication&& publication) {
   std::map<uint8_t, std::string> attributes;
-  for (uint8_t i = 0x01; i <= 0xFF && i > 0x00; i++) {
+  for (uint8_t i = 0x01; i > 0x00; i++) {
     char attr_id_string[5];
     snprintf(attr_id_string, sizeof(attr_id_string), "0x%02X", i);
     if (publication.has_attr(attr_id_string)) {

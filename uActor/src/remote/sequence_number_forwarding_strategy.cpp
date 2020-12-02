@@ -30,7 +30,7 @@ bool SequenceNumberForwardingStrategy::should_accept(
   } else {
     auto& sequence_info = sequence_info_it->second;
     if (sequence_info.is_older_than(*sequence_number, *epoch_number)) {
-      if (*epoch_number - sequence_info.epoch >= 0 &&
+      if (*epoch_number >= sequence_info.epoch &&
           *sequence_number - sequence_info.sequence_number > 1) {
         Support::Logger::debug(
             "REMOTE-CONNECTION", "RECEIVE", "Potentially lost %d message(s)",

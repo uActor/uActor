@@ -25,9 +25,9 @@ add_compile_options(-Werror -std=c++17 -Wall -Wextra -pedantic)
 
 target_compile_options(uActor PUBLIC -DCONFIG_BENCHMARK_ENABLED=1)
 
-#if (NOT TARGET InfluxData::InfluxDB)
+if (NOT TARGET InfluxData::InfluxDB)
   add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../vendor/influxdb-cxx ${CMAKE_CURRENT_BINARY_DIR}/lib_influxdb)
-#endif()
+endif()
 target_link_libraries(uActorBin InfluxData::InfluxDB)
 
 target_link_libraries(uActorBin uActor)

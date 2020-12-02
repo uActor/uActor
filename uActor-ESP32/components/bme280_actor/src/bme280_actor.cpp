@@ -79,7 +79,6 @@ void BME280Actor::receive(const PubSub::Publication &publication) {
 }
 
 void BME280Actor::fetch_send_updates() {
-  int8_t rslt;
   bme280_data comp_data;
   if (bme280_get_sensor_data(BME280_ALL, &comp_data, &dev)) {
     Support::Logger::warning("BME280", "FETCH", "Ready error\n");

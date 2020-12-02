@@ -494,5 +494,4 @@ PubSub::Publication ManagedLuaActor::parse_publication(ManagedLuaActor* actor,
   return std::move(p);
 }
 
-
 }  // namespace uActor::ActorRuntime
