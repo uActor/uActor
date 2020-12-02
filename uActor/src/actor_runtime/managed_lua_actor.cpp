@@ -18,6 +18,8 @@ ManagedLuaActor::~ManagedLuaActor() {
   uActor::Support::Logger::trace("LUA-ACTOR", "STOP", "LUA Actor Stopped.");
   lua_pushnil(state);
   lua_setglobal(state, std::to_string(id()).data());
+  lua_pushnil(state);
+  lua_setglobal(state, (std::string("state_") + std::to_string(id())).c_str());
   lua_gc(state, LUA_GCCOLLECT, 0);
 }
 
@@ -262,71 +264,27 @@ int ManagedLuaActor::testbed_stop_timekeeping_inner_wrapper(lua_State* state) {
 #endif
 #endif
 
-bool ManagedLuaActor::createActorEnvironment(std::string receive_function) {
-  lua_createtable(state, 0, 18);        // 1
-  lua_pushlightuserdata(state, this);   // 2
-  luaL_setfuncs(state, actor_core, 1);  // 1
+bool ManagedLuaActor::createActorEnvironment(
+    std::string_view receive_function) {
+  lua_createtable(state, 0, 4);  // 1
 
   lua_pushstring(state, node_id());
-  lua_setfield(state, -2, "node_id");
+  lua_setfield(state, -2, "node_id");  // 1
 
   lua_pushstring(state, actor_type());
-  lua_setfield(state, -2, "actor_type");
+  lua_setfield(state, -2, "actor_type");  // 1
 
   lua_pushstring(state, instance_id());
-  lua_setfield(state, -2, "instance_id");
+  lua_setfield(state, -2, "instance_id");  // 1
 
-  lua_getglobal(state, "print");
-  lua_setfield(state, -2, "print");
+  lua_newtable(state);                       // 2
+  lua_pushlightuserdata(state, this);        // 3
+  lua_pushcclosure(state, &actor_index, 1);  // 3
+  lua_setfield(state, -2, "__index");        // 2
+  lua_setmetatable(state, -2);               // 1
 
-  lua_getglobal(state, "type");
-  lua_setfield(state, -2, "type");
-
-  lua_getglobal(state, "pairs");
-  lua_setfield(state, -2, "pairs");
-
-  lua_getglobal(state, "tostring");
-  lua_setfield(state, -2, "tostring");
-
-  lua_getglobal(state, "tonumber");
-  lua_setfield(state, -2, "tonumber");
-
-  lua_getglobal(state, "Publication");
-  lua_setfield(state, -2, "Publication");
-
-  // Benchmarking
-  lua_getglobal(state, "collectgarbage");
-  lua_setfield(state, -2, "collectgarbage");
-
-  lua_getglobal(state, "math");
-  assert(lua_istable(state, -1));
-  lua_setfield(state, -2, "math");
-
-  lua_getglobal(state, "string");
-  assert(lua_istable(state, -1));
-  lua_setfield(state, -2, "string");
-
-  for (uint32_t i = 1; i <= PubSub::ConstraintPredicates::MAX_INDEX; i++) {
-    const char* name = PubSub::ConstraintPredicates::name(i);
-    if (name) {
-      lua_pushinteger(state, i);
-      lua_setfield(state, -2, name);
-    }
-  }
-
-  lua_newtable(state);               // 2
-  lua_pushvalue(state, -1);          // 3
-  lua_setfield(state, -3, "state");  // 2
-
-  lua_newtable(state);                    // 3
-  lua_pushvalue(state, -2);               // 4
-  lua_setfield(state, -2, "__index");     // 3
-  lua_pushvalue(state, -2);               // 4
-  lua_setfield(state, -2, "__newindex");  // 3
-  lua_setmetatable(state, -3);            // 2
-  lua_pop(state, 1);                      // 1
-
-  if (luaL_loadstring(state, receive_function.c_str())) {
+  if (luaL_loadbuffer(state, receive_function.data(), receive_function.size(),
+                      actor_type())) {
     printf("LUA LOAD ERROR for actor %s.%s.%s\n", node_id(), actor_type(),
            instance_id());
     printf("ERROR: %s\n", lua_tostring(state, -1));
@@ -348,6 +306,11 @@ bool ManagedLuaActor::createActorEnvironment(std::string receive_function) {
     return false;
   }
 
+  lua_getmetatable(state, -1);
+  lua_getglobal(state, (std::string("state_") + std::to_string(id())).c_str());
+  lua_setfield(state, -2, "__newindex");  // 3
+  lua_pop(state, 1);
+
   lua_getfield(state, -1, "receive");  // 2
   if (!lua_isfunction(state, -1)) {
     lua_pop(state, 3);
@@ -356,7 +319,60 @@ bool ManagedLuaActor::createActorEnvironment(std::string receive_function) {
   lua_pop(state, 1);  // 1
 
   lua_setglobal(state, std::to_string(id()).data());  // 0
+  lua_gc(state, LUA_GCCOLLECT, 0);
   return true;
+}
+
+int ManagedLuaActor::actor_index(lua_State* state) {
+  ManagedLuaActor* actor = reinterpret_cast<ManagedLuaActor*>(
+      lua_touserdata(state, lua_upvalueindex(1)));
+
+  std::string_view key = std::string_view(lua_tostring(state, 2));
+
+  auto closure = closures.find(frozen::string(key));
+  if (closure != closures.end()) {
+    lua_pushvalue(state, lua_upvalueindex(1));
+    lua_pushcclosure(state, closure->second, 1);
+    return 1;
+  }
+
+  auto function = LuaFunctions::base_functions.find(frozen::string(key));
+  if (function != LuaFunctions::base_functions.end() &&
+      function->second.first) {
+    lua_pushcfunction(state, *(function->second.second));
+    return 1;
+  }
+
+  for (uint32_t i = 1; i <= PubSub::ConstraintPredicates::MAX_INDEX; i++) {
+    if (key == PubSub::ConstraintPredicates::name(i)) {
+      lua_pushinteger(state, i);
+      return 1;
+    }
+  }
+
+  if (key == "math") {
+    lua_getglobal(state, "math");
+    return 1;
+  }
+
+  if (key == "string") {
+    lua_getglobal(state, "string");
+    return 1;
+  }
+
+  if (key == "Publication") {
+    lua_getglobal(state, "Publication");
+    return 1;
+  }
+
+  lua_getglobal(
+      state,
+      (std::string("state_") + std::to_string(actor->id())).c_str());  // 2
+  lua_getfield(state, -1, key.data());
+  return 1;
+
+  lua_pushnil(state);
+  return 1;
 }
 
 PubSub::Filter ManagedLuaActor::parse_filters(lua_State* state, size_t index) {
@@ -457,28 +473,5 @@ PubSub::Publication ManagedLuaActor::parse_publication(ManagedLuaActor* actor,
   return std::move(p);
 }
 
-luaL_Reg ManagedLuaActor::actor_core[] = {
-    {"publish", &publish_wrapper},
-    {"delayed_publish", &delayed_publish_wrapper},
-    {"deferred_block_for", &deferred_block_for_wrapper},
-    {"subscribe", &subscribe_wrapper},
-    {"unsubscribe", &unsubscribe_wrapper},
-    {"now", &now_wrapper},
-    {"encode_base64", &encode_base64},
-    {"decode_base64", &decode_base64},
-    {"unix_timestamp", &unix_timestamp_wrapper},
-#if CONFIG_BENCHMARK_ENABLED
-    {"testbed_log_integer", &testbed_log_integer_wrapper},
-    {"testbed_log_double", &testbed_log_double_wrapper},
-    {"testbed_log_string", &testbed_log_string_wrapper},
-    {"testbed_start_timekeeping", &testbed_start_timekeeping_wrapper},
-    {"testbed_stop_timekeeping", &testbed_stop_timekeeping_wrapper},
-    {"calculate_time_diff", &calculate_time_diff},
-    {"connection_traffic", &connection_traffic},
-#if CONFIG_TESTBED_NESTED_TIMEKEEPING
-    {"testbed_stop_timekeeping_inner", &testbed_stop_timekeeping_inner_wrapper},
-#endif
-#endif
-    {NULL, NULL}};
 
 }  // namespace uActor::ActorRuntime

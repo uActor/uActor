@@ -8,12 +8,19 @@
 #include <support/testbed.h>
 #endif
 
+#include <frozen/string.h>
+#include <frozen/unordered_map.h>
+
 #include <cstdio>
 #include <list>
 #include <string>
+#include <string_view>
 #include <utility>
 
+#include <frozen/unordered_map.h>
+#include <frozen/string.h>
 #include "lua.hpp"
+#include "lua_functions.hpp"
 #include "managed_actor.hpp"
 #include "pubsub/router.hpp"
 
@@ -26,7 +33,11 @@ class ManagedLuaActor : public ManagedActor {
                   const char* instance_id, lua_State* global_state)
       : ManagedActor(api, unique_id, node_id, actor_type, actor_version,
                      instance_id),
-        state(global_state) {}
+        state(global_state) {
+    lua_newtable(state);
+    lua_setglobal(state,
+                  (std::string("state_") + std::to_string(id())).c_str());
+  }
 
   ~ManagedLuaActor();
 
@@ -84,14 +95,41 @@ class ManagedLuaActor : public ManagedActor {
 
 #endif
 
-  bool createActorEnvironment(std::string receive_function);
+  bool createActorEnvironment(std::string_view receive_function);
+
+  static int actor_index(lua_State* state);
 
   static PubSub::Filter parse_filters(lua_State* state, size_t index);
 
   static PubSub::Publication parse_publication(ManagedLuaActor* actor,
                                                lua_State* state, size_t index);
 
-  static luaL_Reg actor_core[];
+  constexpr static auto closures =
+      frozen::make_unordered_map<frozen::string, lua_CFunction>({
+        {"publish", &publish_wrapper},
+            {"delayed_publish", &delayed_publish_wrapper},
+            {"deferred_block_for", &deferred_block_for_wrapper},
+            {"subscribe", &subscribe_wrapper},
+            {"unsubscribe", &unsubscribe_wrapper}, {"now", &now_wrapper},
+            {"encode_base64", &encode_base64},
+            {"decode_base64", &decode_base64},
+#if CONFIG_BENCHMARK_ENABLED
+            {"testbed_log_integer", &testbed_log_integer_wrapper},
+            {"testbed_log_double", &testbed_log_double_wrapper},
+            {"testbed_log_string", &testbed_log_string_wrapper},
+            {"testbed_start_timekeeping", &testbed_start_timekeeping_wrapper},
+            {"testbed_stop_timekeeping", &testbed_stop_timekeeping_wrapper},
+            {"calculate_time_diff", &calculate_time_diff},
+            {"connection_traffic", &connection_traffic},
+#if CONFIG_TESTBED_NESTED_TIMEKEEPING
+            {"testbed_stop_timekeeping_inner",
+             &testbed_stop_timekeeping_inner_wrapper},
+#endif
+#endif
+        {
+          "unix_timestamp", &unix_timestamp_wrapper
+        }
+      });
 };
 
 }  //  namespace uActor::ActorRuntime

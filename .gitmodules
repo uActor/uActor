@@ -31,3 +31,6 @@
 [submodule "uActor-ESP32/components/FT6X36-IDF"]
 	path = uActor-ESP32/components/FT6X36-IDF
 	url = https://github.com/martinberlin/FT6X36-IDF.git
+[submodule "vendor/frozen"]
+	path = vendor/frozen
+	url = https://github.com/serge-sans-paille/frozen.git
