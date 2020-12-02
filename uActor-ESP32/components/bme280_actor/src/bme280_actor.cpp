@@ -30,6 +30,7 @@ void BME280Actor::receive(const PubSub::Publication &publication) {
     auto ret = bme280_init(&dev);
     if (ret != BME280_OK) {
       Support::Logger::warning("BME280", "INIT", "Sensor init error %d\n", ret);
+      ready_retries++;
       if (ready_retries < 5) {
         send_delayed_trigger(1000, "trigger_sensor_wait");
       } else {
