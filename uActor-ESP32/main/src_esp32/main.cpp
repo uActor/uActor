@@ -12,6 +12,7 @@ extern "C" {
 #include <cstring>
 #include <utility>
 
+#include "actor_runtime/code_store_actor.hpp"
 #include "actor_runtime/lua_executor.hpp"
 #include "actor_runtime/managed_actor.hpp"
 #include "actor_runtime/managed_native_actor.hpp"
@@ -91,7 +92,7 @@ void main_task(void *) {
       uActor::ESP32::Sensors::SCD30Actor>("scd30_sensor");
 #endif
   uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
-      uActor::ActorRuntime::CodeStore>("code_store");
+      uActor::ActorRuntime::CodeStoreActor>("code_store");
 
 #if CONFIG_ENABLE_EPAPER_DISPLAY
   uActor::ActorRuntime::ManagedNativeActor::register_actor_type<

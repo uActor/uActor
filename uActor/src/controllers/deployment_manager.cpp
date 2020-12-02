@@ -114,10 +114,10 @@ void DeploymentManager::receive_deployment(
           decrement_deployed_actor_type_count(deployment.actor_type);
           deployment.actor_type = std::string(actor_type);
           deployment.actor_version = std::string(actor_version);
-          publish_code_package(deployment, std::string(actor_code));
           increment_deployed_actor_type_count(deployment.actor_type);
           start_deployment(&deployment, &ExecutorIdentifier);
         }
+        publish_code_package(deployment, std::string(actor_code));
 
         deployment.lifetime_end = end_time;
       }

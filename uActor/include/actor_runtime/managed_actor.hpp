@@ -43,6 +43,22 @@ class ManagedActor {
 
   bool late_initialize(std::string&& code);
 
+  bool hibernate() {
+    if (hibernate_internal()) {
+      _initialized = false;
+      return true;
+    }
+    return false;
+  }
+
+  bool wakeup() {
+    if (wakeup_internal()) {
+      _initialized = true;
+      return true;
+    }
+    return false;
+  }
+
   ReceiveResult receive_next_internal();
 
   bool enqueue(PubSub::Publication&& message);
@@ -60,11 +76,15 @@ class ManagedActor {
 
   const char* instance_id() const { return _instance_id.c_str(); }
 
+  const char* actor_version() const { return _actor_version.c_str(); }
+
   bool initialized() const { return _initialized; }
 
  protected:
   virtual bool early_internal_initialize() = 0;
   virtual bool late_internal_initialize(std::string&& code) = 0;
+  virtual bool hibernate_internal() = 0;
+  virtual bool wakeup_internal() = 0;
 
   uint32_t subscribe(PubSub::Filter&& f);
   void unsubscribe(uint32_t sub_id);
@@ -91,6 +111,7 @@ class ManagedActor {
   ExecutorApi* api;
 
   bool _initialized = false;
+
   uint32_t code_fetch_retries = 0;
   bool waiting_for_code = false;
 

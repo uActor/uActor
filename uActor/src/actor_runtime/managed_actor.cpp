@@ -55,7 +55,11 @@ ManagedActor::ReceiveResult ManagedActor::receive_next_internal() {
       success = false;
     }
   } else {
+    if (!initialized()) {
+      wakeup();
+    }
     success = this->receive(std::move(next_message));
+    hibernate();
   }
   if (!success || is_exit) {
     if (success) {

@@ -27,6 +27,8 @@ class ManagedNativeActor : public ManagedActor {
 
   bool early_internal_initialize() override { return true; }
   bool late_internal_initialize(std::string&& _code) override { return true; }
+  bool hibernate_internal() override { return false; };
+  bool wakeup_internal() override { return true; };
 
   // Basic type-registration system based on
   // https://www.bfilipek.com/2018/02/factory-selfregister.html

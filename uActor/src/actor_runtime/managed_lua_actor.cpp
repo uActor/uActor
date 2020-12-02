@@ -70,7 +70,13 @@ bool ManagedLuaActor::receive(PubSub::Publication&& m) {
   }
 
   lua_gc(state, LUA_GCCOLLECT, 0);
+  return true;
+}
 
+bool ManagedLuaActor::hibernate_internal() {
+  lua_pushnil(state);
+  lua_setglobal(state, std::to_string(id()).c_str());
+  lua_gc(state, LUA_GCCOLLECT, 0);
   return true;
 }
 
@@ -373,6 +379,21 @@ int ManagedLuaActor::actor_index(lua_State* state) {
 
   lua_pushnil(state);
   return 1;
+}
+
+bool ManagedLuaActor::fetch_code_and_init() {
+  int retries = 0;
+  while (retries < 10) {
+    auto result = CodeStore::get_instance().retrieve(
+        CodeIdentifier(actor_type(), actor_version(), std::string_view("lua")));
+    if (result) {
+      return createActorEnvironment(result->code);
+    } else {
+      BoardFunctions::sleep(1000);
+      retries++;
+    }
+  }
+  return false;
 }
 
 PubSub::Filter ManagedLuaActor::parse_filters(lua_State* state, size_t index) {

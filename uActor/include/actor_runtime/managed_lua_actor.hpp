@@ -17,8 +17,7 @@
 #include <string_view>
 #include <utility>
 
-#include <frozen/unordered_map.h>
-#include <frozen/string.h>
+#include "code_store.hpp"
 #include "lua.hpp"
 #include "lua_functions.hpp"
 #include "managed_actor.hpp"
@@ -47,16 +46,23 @@ class ManagedLuaActor : public ManagedActor {
 
  protected:
   bool early_internal_initialize() override {
-    trigger_code_fetch();
-    return false;
+    // trigger_code_fetch();
+    // return false;
+    return fetch_code_and_init();
   }
 
   bool late_internal_initialize(std::string&& code) override {
     return createActorEnvironment(std::move(code));
   }
 
+  bool hibernate_internal() override;
+
+  bool wakeup_internal() override { return fetch_code_and_init(); }
+
  private:
   lua_State* state;
+
+  bool fetch_code_and_init();
 
   static int publish_wrapper(lua_State* state);
 

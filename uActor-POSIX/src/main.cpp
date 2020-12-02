@@ -7,7 +7,7 @@
 #include <utility>
 #include <vector>
 
-#include "actor_runtime/code_store.hpp"
+#include "actor_runtime/code_store_actor.hpp"
 #include "actor_runtime/executor.hpp"
 #include "actor_runtime/lua_executor.hpp"
 #include "actor_runtime/managed_native_actor.hpp"
@@ -165,7 +165,7 @@ int main(int arg_count, char** args) {
   uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
       uActor::Controllers::DeploymentManager>("deployment_manager");
   uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
-      uActor::ActorRuntime::CodeStore>("code_store");
+      uActor::ActorRuntime::CodeStoreActor>("code_store");
   uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
       uActor::Database::InfluxDBActor>("influxdb_connector");
   auto nativeexecutor = start_native_executor();
