@@ -48,9 +48,7 @@ function receive(message)
 
   if(message.type == "trigger_calculate_average") then
     for minute, data in pairs(value_store) do
-      print("- "..minute.." - "..current_minute)
       if(minute < current_minute) then
-        print("is smaller")
 
         local publication = Publication.new("type", "node_environment_info", "timestamp", minute*60)
         local should_publish = false
@@ -70,7 +68,6 @@ function receive(message)
         value_store[minute] = nil
         
         if(should_publish) then
-          print("publish"..minute)
           publish(publication)
         end
       end

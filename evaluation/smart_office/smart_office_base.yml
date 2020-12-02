@@ -44,3 +44,23 @@ required_actors:
   - "core.notification_center"
 # constraints:
   # - "de.tum.smart_office.settings.button1_function": "scroll_notifications"
+---
+type: deployment
+name: de.tum.smart_office.deployment.en_logger
+ttl:  60000
+actor_type:  de.tum.smart_office.actor.en_logger
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "en_number_logger.lua"
+constraints:
+  - "node_id": "smart_office_central"
+---
+type: deployment
+name: de.tum.smart_office.deployment.node_en_number_tracker
+ttl:  60000
+actor_type:  de.tum.smart_office.actor.node_en_number_tracker
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "node_en_number_tracker.lua"
+required_actors:
+  - "core.io.ble"

@@ -44,9 +44,11 @@ function handle_value(variable, value, repeatability)
     if(num_values == total_num_values) then
       update_notification()
     end
-  elseif(value > comparison_values[variable] + repeatability or value < comparison_values["temperature"] - repeatability) then
+  elseif(value > comparison_values[variable] + repeatability or value < comparison_values[variable] - repeatability) then
     comparison_values[variable] = value
-    update_notification()
+    if(num_values == total_num_values) then
+      update_notification()
+    end
   end
 end
 
