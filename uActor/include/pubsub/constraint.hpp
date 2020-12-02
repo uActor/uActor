@@ -21,14 +21,29 @@ struct ConstraintPredicates {
 class Constraint {
   template <typename T>
   struct Container {
-    Container(T operand, std::function<bool(const T&, const T&)> operation,
-              ConstraintPredicates::Predicate operation_name)
-        : operand(operand),
-          operation(operation),
-          operation_name(operation_name) {}
+    Container(T operand, ConstraintPredicates::Predicate operation_name)
+        : operand(operand), operation_name(operation_name) {}
     T operand;
-    std::function<bool(const T&, const T&)> operation;
+
     ConstraintPredicates::Predicate operation_name;
+
+    bool match(T input) const {
+      switch (operation_name) {
+        case ConstraintPredicates::Predicate::EQ:
+          return std::equal_to<T>()(input, operand);
+        case ConstraintPredicates::Predicate::LT:
+          return std::less<T>()(input, operand);
+        case ConstraintPredicates::Predicate::GT:
+          return std::greater<T>()(input, operand);
+        case ConstraintPredicates::Predicate::GE:
+          return std::greater_equal<T>()(input, operand);
+        case ConstraintPredicates::Predicate::LE:
+          return std::less_equal<T>()(input, operand);
+        case ConstraintPredicates::Predicate::NE:
+          return std::not_equal_to<T>()(input, operand);
+      }
+      return false;
+    }
 
     bool operator==(const Container<T>& other) const {
       return operand == other.operand;
@@ -61,26 +76,7 @@ class Constraint {
   template <typename T>
   void setup(std::string attribute, T operand,
              ConstraintPredicates::Predicate predicate, bool optional) {
-    switch (predicate) {
-      case ConstraintPredicates::Predicate::EQ:
-        _operand = Container<T>(operand, std::equal_to<T>(), predicate);
-        break;
-      case ConstraintPredicates::Predicate::LT:
-        _operand = Container<T>(operand, std::less<T>(), predicate);
-        break;
-      case ConstraintPredicates::Predicate::GT:
-        _operand = Container<T>(operand, std::greater<T>(), predicate);
-        break;
-      case ConstraintPredicates::Predicate::GE:
-        _operand = Container<T>(operand, std::greater_equal<T>(), predicate);
-        break;
-      case ConstraintPredicates::Predicate::LE:
-        _operand = Container<T>(operand, std::less_equal<T>(), predicate);
-        break;
-      case ConstraintPredicates::Predicate::NE:
-        _operand = Container<T>(operand, std::not_equal_to<T>(), predicate);
-        break;
-    }
+    _operand = Container<T>(operand, predicate);
     if (attribute.at(0) == '?') {
       _attribute = attribute.substr(1);
       _optional = true;

@@ -8,8 +8,7 @@ namespace uActor::PubSub {
 bool Constraint::operator()(std::string_view input) const {
   if (std::holds_alternative<Container<std::string>>(_operand)) {
     return (std::get<Container<std::string>>(_operand))
-        .operation(std::string(input),
-                   std::get<Container<std::string>>(_operand).operand);
+        .match(std::string(input));
   } else {
     return false;
   }
@@ -17,8 +16,7 @@ bool Constraint::operator()(std::string_view input) const {
 
 bool Constraint::operator()(int32_t input) const {
   if (std::holds_alternative<Container<int32_t>>(_operand)) {
-    return (std::get<Container<int32_t>>(_operand))
-        .operation(input, std::get<Container<int32_t>>(_operand).operand);
+    return (std::get<Container<int32_t>>(_operand)).match(input);
   } else {
     return false;
   }
@@ -26,8 +24,7 @@ bool Constraint::operator()(int32_t input) const {
 
 bool Constraint::operator()(float input) const {
   if (std::holds_alternative<Container<float>>(_operand)) {
-    return (std::get<Container<float>>(_operand))
-        .operation(input, std::get<Container<float>>(_operand).operand);
+    return (std::get<Container<float>>(_operand)).match(input);
   } else {
     return false;
   }
