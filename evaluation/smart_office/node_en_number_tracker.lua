@@ -12,7 +12,7 @@ function receive(message)
   end
   
   if(message.type == "init") then
-    sub = {type="ble_discovery"}
+    sub = {type="ble_discovery", publisher_node_id=node_id}
     sub["0x03"] = encode_base64(string.char(0x6F, 0xFD))
     subscribe(sub)
 
