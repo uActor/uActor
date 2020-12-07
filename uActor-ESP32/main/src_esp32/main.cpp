@@ -55,11 +55,13 @@ void main_task(void *) {
 
 #if CONFIG_USE_MAC_AS_NODE_ID
   uint8_t mac_buffer[6];
-  char mac_hex_buffer[13];
+  // TODO(raphaelhetzel) change BoardFunctionsAPI to better support dynamicly
+  // set node_ids.
+  // This memory is never freed.
+  char *mac_hex_buffer = new char[7];
   ESP_ERROR_CHECK(esp_efuse_mac_get_default(mac_buffer));
-  snprintf(mac_hex_buffer, sizeof(mac_hex_buffer), "%02X%02X%02X%02X%02X%02X",
-           mac_buffer[0], mac_buffer[1], mac_buffer[2], mac_buffer[3],
-           mac_buffer[4], mac_buffer[5]);
+  snprintf(mac_hex_buffer, 7, "%02X%02X%02X",  // NOLINT
+           mac_buffer[3], mac_buffer[4], mac_buffer[5]);
   uActor::BoardFunctions::NODE_ID = mac_hex_buffer;
 #else
   uActor::BoardFunctions::NODE_ID = CONFIG_NODE_ID;
