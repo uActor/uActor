@@ -66,7 +66,6 @@ class TCPForwarder : public uActor::Remote::ForwarderSubscriptionAPI {
   std::map<uint32_t, std::set<uint32_t>> subscription_mapping;
 
   std::mutex remote_mtx;
-  std::condition_variable write_cv;
 
   int listen_sock;
 

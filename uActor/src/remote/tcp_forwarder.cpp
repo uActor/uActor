@@ -188,11 +188,7 @@ void TCPForwarder::remove_subscription(uint32_t local_id, uint32_t sub_id,
 std::pair<bool, std::unique_lock<std::mutex>> TCPForwarder::write(
     RemoteConnection* remote, std::shared_ptr<std::vector<char>> dataset,
     std::unique_lock<std::mutex>&& lock) {
-  while (remote->write_in_progress) {
-    Logger::trace("TCP-FORWARDER", "WRITE",
-                  "Waiting for completion of previous write");
-    write_cv.wait(lock);
-  }
+  remote->write_buffer.push(std::move(dataset));
 
 #if defined(MSG_NOSIGNAL)  // POSIX
   int flag = MSG_NOSIGNAL | MSG_DONTWAIT;
@@ -200,26 +196,29 @@ std::pair<bool, std::unique_lock<std::mutex>> TCPForwarder::write(
   int flag = SO_NOSIGPIPE | MSG_DONTWAIT;
 #endif
 
-  int written = send(remote->sock, dataset->data(), dataset->size(), flag);
-  if (written < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
-    Logger::debug("TCP-FORWARDER", "WRITE",
-                  "Error occurred during send - %s:%d - error %d",
-                  remote->partner_ip.c_str(), remote->partner_port, errno);
-    shutdown(remote->sock, SHUT_RDWR);
-    return std::make_pair(true, std::move(lock));
-  } else if (written == dataset->size()) {
-    Logger::trace("TCP-FORWARDER", "WRITE", "complete : %d", written);
-  } else {
-    remote->write_in_progress = true;
-    remote->write_buffer = dataset;
-    if (written > 0) {
-      remote->write_offset = written;
-    } else {
+  if (!remote->write_buffer.empty()) {
+    int remaining_size =
+        remote->write_buffer.front()->size() - remote->write_offset;
+    int written =
+        send(remote->sock,
+             remote->write_buffer.front()->data() + remote->write_offset,
+             remaining_size, flag);
+    if (written < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
+      Logger::debug("TCP-FORWARDER", "WRITE", "write error");
+      shutdown(remote->sock, SHUT_RDWR);
+      return std::make_pair(true, std::move(lock));
+    } else if (written == remaining_size) {
+      Logger::trace("TCP-FORWARDER", "WRITE", "completed");
+      remote->write_buffer.pop();
       remote->write_offset = 0;
+    } else {
+      Logger::trace("TCP-FORWARDER", "WRITE", "progress");
+      if (written > 0) {
+        remote->write_offset += written;
+      }
     }
-    Logger::trace("TCP-FORWARDER", "WRITE", "partial : %d", written);
+    remote->last_write_contact = BoardFunctions::seconds_timestamp();
   }
-  remote->last_write_contact = BoardFunctions::seconds_timestamp();
   return std::make_pair(false, std::move(lock));
 }
 
@@ -307,7 +306,7 @@ void TCPForwarder::tcp_reader() {
     int max_val = listen_sock;
     for (const auto& remote_pair : remotes) {
       FD_SET(remote_pair.second.sock, &read_sockets);
-      if (remote_pair.second.write_in_progress) {
+      if (!remote_pair.second.write_buffer.empty()) {
         FD_SET(remote_pair.second.sock, &write_sockets);
       }
       FD_SET(remote_pair.second.sock, &error_sockets);
@@ -315,7 +314,7 @@ void TCPForwarder::tcp_reader() {
     }
 
     timeval timeout;  // We need to set a timeout to allow for new connections
-    timeout.tv_sec = 5;  // to be added by other threads
+    timeout.tv_sec = 1;  // to be added by other threads
 
     remote_lock.unlock();
     int num_ready = select(max_val + 1, &read_sockets, &write_sockets,
@@ -475,24 +474,26 @@ bool TCPForwarder::write_handler(uActor::Remote::RemoteConnection* remote) {
 #elif defined(SO_NOSIGPIPE)  // MacOS
   int flag = SO_NOSIGPIPE | MSG_DONTWAIT;
 #endif
-  if (remote->write_in_progress) {
+  while (!remote->write_buffer.empty()) {
+    int remaining_size =
+        remote->write_buffer.front()->size() - remote->write_offset;
     int written =
-        send(remote->sock, remote->write_buffer->data() + remote->write_offset,
-             remote->write_buffer->size() - remote->write_offset, flag);
+        send(remote->sock,
+             remote->write_buffer.front()->data() + remote->write_offset,
+             remaining_size, flag);
     if (written < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
       Logger::debug("TCP-FORWARDER", "WRITE-HANDLER", "write error");
       return true;
-    } else if (written == remote->write_buffer->size() - remote->write_offset) {
+    } else if (written == remaining_size) {
       Logger::trace("TCP-FORWARDER", "WRITE-HANDLER", "completed");
-      remote->write_in_progress = false;
-      remote->write_buffer = std::make_shared<std::vector<char>>();
+      remote->write_buffer.pop();
       remote->write_offset = 0;
-      write_cv.notify_one();
     } else {
       Logger::trace("TCP-FORWARDER", "WRITE-HANDLER", "progress");
       if (written > 0) {
         remote->write_offset += written;
       }
+      break;
     }
     remote->last_write_contact = BoardFunctions::seconds_timestamp();
   }

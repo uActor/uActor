@@ -12,6 +12,7 @@ extern "C" {
 #include <map>
 #include <memory>
 #include <mutex>
+#include <queue>
 #include <set>
 #include <string>
 #include <unordered_map>
@@ -110,8 +111,7 @@ class RemoteConnection {
 
   std::unique_ptr<ForwardingStrategy> forwarding_strategy;
 
-  bool write_in_progress = false;
-  std::shared_ptr<std::vector<char>> write_buffer;
+  std::queue<std::shared_ptr<std::vector<char>>> write_buffer;
   size_t write_offset = 0;
 
   void process_publication(PubSub::Publication&& p);
