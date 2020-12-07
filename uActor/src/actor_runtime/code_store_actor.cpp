@@ -54,32 +54,37 @@ void CodeStoreActor::receive_retrieve(const PubSub::Publication& publication) {
   if (publication.has_attr("actor_code_type") &&
       publication.has_attr("actor_code_version") &&
       publication.has_attr("actor_code_runtime_type")) {
-    auto code_handle = CodeStore::get_instance().retrieve(
-        CodeIdentifier(*publication.get_str_attr("actor_code_type"),
-                       *publication.get_str_attr("actor_code_version"),
-                       *publication.get_str_attr("actor_code_runtime_type")));
-    if (code_handle) {
-      uActor::Support::Logger::trace("CODE-STORE", "RETRIEVE",
-                                     "Found code package");
-      auto response =
-          PubSub::Publication(node_id(), actor_type(), instance_id());
-      response.set_attr("node_id",
-                        *publication.get_str_attr("publisher_node_id"));
-      response.set_attr("actor_type",
-                        *publication.get_str_attr("publisher_actor_type"));
-      response.set_attr("instance_id",
-                        *publication.get_str_attr("publisher_instance_id"));
-      response.set_attr("type", "fetch_actor_code_response");
-      response.set_attr("actor_code_type",
-                        *publication.get_str_attr("actor_code_type"));
-      response.set_attr("actor_code_version",
-                        *publication.get_str_attr("actor_code_version"));
-      response.set_attr("actor_code", std::move(code_handle->code));
-      publish(std::move(response));
-    } else {
-      uActor::Support::Logger::trace("CODE-STORE", "RETRIEVE",
-                                     "Code package not found");
+    auto response = PubSub::Publication(node_id(), actor_type(), instance_id());
+
+    {  // Minimize Lock Time (calling pusblish while holding a handle results in
+       // a deadlock)
+      auto code_handle = CodeStore::get_instance().retrieve(
+          CodeIdentifier(*publication.get_str_attr("actor_code_type"),
+                         *publication.get_str_attr("actor_code_version"),
+                         *publication.get_str_attr("actor_code_runtime_type")));
+      if (code_handle) {
+        response.set_attr("actor_code", code_handle->code);
+      } else {
+        return;
+      }
     }
+    uActor::Support::Logger::trace("CODE-STORE", "RETRIEVE",
+                                   "Found code package");
+    response.set_attr("node_id",
+                      *publication.get_str_attr("publisher_node_id"));
+    response.set_attr("actor_type",
+                      *publication.get_str_attr("publisher_actor_type"));
+    response.set_attr("instance_id",
+                      *publication.get_str_attr("publisher_instance_id"));
+    response.set_attr("type", "fetch_actor_code_response");
+    response.set_attr("actor_code_type",
+                      *publication.get_str_attr("actor_code_type"));
+    response.set_attr("actor_code_version",
+                      *publication.get_str_attr("actor_code_version"));
+    publish(std::move(response));
+  } else {
+    uActor::Support::Logger::trace("CODE-STORE", "RETRIEVE",
+                                   "Code package not found");
   }
 }
 
