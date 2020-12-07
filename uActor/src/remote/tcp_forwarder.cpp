@@ -404,6 +404,7 @@ void TCPForwarder::create_tcp_client(std::string_view peer_ip, uint32_t port) {
     Logger::error("TCP-FORWARDER", "CLIENT",
                   "Socket connect error - %s:%d - %d", peer_ip.data(), port,
                   errno);
+    close(sock_id);
     return;
   }
   Logger::info("TCP-FORWARDER", "CLIENT", "Socket connected - %s:%d",
