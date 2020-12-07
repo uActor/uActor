@@ -18,8 +18,6 @@
 
 namespace uActor::PubSub {
 
-
-
 void Router::publish(Publication&& publication) {
   std::shared_lock lock(mtx);
   publish_internal(std::move(publication));

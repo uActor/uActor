@@ -59,5 +59,4 @@ std::optional<Publication> PublicationFactory::build() {
   return std::nullopt;
 }
 
-
 }  // namespace uActor::PubSub
