@@ -18,39 +18,19 @@
 
 namespace uActor::PubSub {
 
-void Router::os_task(void*) {
-  Router& router = get_instance();
-  while (true) {
-    BoardFunctions::sleep(50);
-    if (router.updated.exchange(false)) {
-      Publication update{BoardFunctions::NODE_ID, "router", "1"};
-      update.set_attr("type", "local_subscription_update");
-      router.publish(std::move(update));
-    }
-  }
-}
 
-// Linear scan
-// void Router::publish(Publication&& publication) {
-//   std::unique_lock lock(mtx);
-//   for (auto& subscribtion : subscriptions) {
-//     if (subscribtion.second.filter.matches(publication)) {
-//       for (auto& receiver : subscribtion.second.receivers) {
-//         receiver.first->publish(
-//             MatchedPublication(Publication(publication),
-//             subscribtion.first));
-//       }
-//     }
-//   }
-// }
 
 void Router::publish(Publication&& publication) {
+  std::shared_lock lock(mtx);
+  publish_internal(std::move(publication));
+}
+
+void Router::publish_internal(Publication&& publication) {
   Counter c;
   std::list<std::pair<Receiver*, uint32_t>> current_receivers;
 #if CONFIG_BENCHMARK_BREAKDOWN
   testbed_start_timekeeping(2);
 #endif
-  std::unique_lock lock(mtx);
 
   if (publication.get_str_attr("publisher_node_id") ==
           BoardFunctions::NODE_ID &&
@@ -121,7 +101,7 @@ void Router::publish(Publication&& publication) {
 }
 
 std::string Router::subscriptions_for(std::string_view node_id) {
-  std::unique_lock lock(mtx);
+  std::shared_lock lock(mtx);
   std::string serialized_sub;
   bool send_node_id = false;
 
@@ -169,7 +149,7 @@ std::string Router::subscriptions_for(std::string_view node_id) {
 }
 
 uint32_t Router::find_sub_id(Filter&& filter) {
-  std::unique_lock lck(mtx);
+  std::shared_lock lck(mtx);
   if (auto it = std::find_if(
           subscriptions.begin(), subscriptions.end(),
           [&](const auto& sub) { return sub.second.filter == filter; });
@@ -198,7 +178,7 @@ uint32_t Router::add_subscription(Filter&& f, Receiver* r,
             other_sub = n.first;
           }
         }
-        publish_subscription_added(sub, "", other_sub);
+        publish_subscription_added(sub.filter, "", other_sub);
       }
     }
     return sub.subscription_id;
@@ -224,9 +204,7 @@ uint32_t Router::add_subscription(Filter&& f, Receiver* r,
                                    true);
     }
 
-    // TODO(raphaelhetzel) remove old update call
-    publish_subscription_update();
-    publish_subscription_added(sub_it->second, subscriber_node_id, "");
+    publish_subscription_added(sub_it->second.filter, subscriber_node_id, "");
     return id;
   }
 }
@@ -265,16 +243,13 @@ uint32_t Router::remove_subscription(uint32_t sub_id, Receiver* r,
         }
       }
 
-      publish_subscription_removed(sub, "", "");
+      Filter f = std::move(sub.filter);
       subscriptions.erase(sub.subscription_id);
-      // TODO(raphaelhetzel) potentially remove
-      publish_subscription_update();
+      publish_subscription_removed(f, "", "");
     } else {
       if (sub.nodes.size() == 1 && sub.nodes.begin()->first != "local") {
-        publish_subscription_removed(sub, "", sub.nodes.begin()->first);
+        publish_subscription_removed(sub.filter, "", sub.nodes.begin()->first);
       }
-      // TODO(raphaelhetzel) potentially remove
-      publish_subscription_update();
     }
   }
   return remaining;
@@ -282,13 +257,13 @@ uint32_t Router::remove_subscription(uint32_t sub_id, Receiver* r,
 
 void Router::publish_subscription_update() { updated = true; }
 
-void Router::publish_subscription_added(const Subscription& sub,
+void Router::publish_subscription_added(const Filter& filter,
                                         std::string exclude,
                                         std::string include) {
-  std::string serialized = sub.filter.serialize();
+  std::string serialized = filter.serialize();
 
   // Sub optimization
-  for (const auto& constraint : sub.filter.required) {
+  for (const auto& constraint : filter.required) {
     if (constraint.attribute() == "publisher_node_id") {
       if (std::holds_alternative<std::string>(constraint.operand()) &&
           std::get<std::string>(constraint.operand()) ==
@@ -309,7 +284,7 @@ void Router::publish_subscription_added(const Subscription& sub,
                           Filter{Constraint{"node_id", BoardFunctions::NODE_ID}}
                               .serialize());
           update.set_attr("include_node_id", node);
-          publish(std::move(update));
+          publish_internal(std::move(update));
           node_id_sent_to.insert(node);
         }
       }
@@ -326,14 +301,14 @@ void Router::publish_subscription_added(const Subscription& sub,
   if (include.length()) {
     update.set_attr("include_node_id", include);
   }
-  publish(std::move(update));
+  publish_internal(std::move(update));
 }
 
-void Router::publish_subscription_removed(const Subscription& sub,
+void Router::publish_subscription_removed(const Filter& filter,
                                           std::string exclude,
                                           std::string include) {
   // Sub optimization
-  for (const auto& constraint : sub.filter.required) {
+  for (const auto& constraint : filter.required) {
     if (constraint.attribute() == "publisher_node_id") {
       if (std::holds_alternative<std::string>(constraint.operand()) &&
           std::get<std::string>(constraint.operand()) ==
@@ -352,14 +327,14 @@ void Router::publish_subscription_removed(const Subscription& sub,
 
   Publication update{BoardFunctions::NODE_ID, "router", "1"};
   update.set_attr("type", "subscription_removed");
-  update.set_attr("serialized_subscription", sub.filter.serialize());
+  update.set_attr("serialized_subscription", filter.serialize());
   if (exclude.length()) {
     update.set_attr("exclude_node_id", exclude);
   }
   if (include.length()) {
     update.set_attr("include_node_id", include);
   }
-  publish(std::move(update));
+  publish_internal(std::move(update));
 }
 
 ReceiverHandle Router::new_subscriber() { return ReceiverHandle{this}; }

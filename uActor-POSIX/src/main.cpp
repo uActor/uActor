@@ -125,8 +125,6 @@ int main(int arg_count, char** args) {
     uActor::BoardFunctions::epoch = boot_timestamp;
   }
 
-  auto router_task = std::thread(&uActor::PubSub::Router::os_task, nullptr);
-
   int tcp_port = 1337;
   if (arguments.count("tcp-port")) {
     tcp_port = arguments["tcp-port"].as<uint16_t>();

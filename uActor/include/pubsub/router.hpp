@@ -6,6 +6,7 @@
 #include <map>
 #include <mutex>
 #include <set>
+#include <shared_mutex>
 #include <string>
 #include <string_view>
 
@@ -25,9 +26,8 @@ class Router {
     return instance;
   }
 
-  static void os_task(void*);
-
   void publish(Publication&& publication);
+  void publish_internal(Publication&& publication);
 
   ReceiverHandle new_subscriber();
 
@@ -51,7 +51,7 @@ class Router {
 
   std::atomic<bool> updated{false};
 
-  std::recursive_mutex mtx;
+  std::shared_mutex mtx;
 
   uint32_t add_subscription(
       Filter&& f, Receiver* r,
@@ -63,10 +63,10 @@ class Router {
   friend Receiver;
 
   void publish_subscription_update();
-  void publish_subscription_added(const Subscription& sub, std::string exclude,
+  void publish_subscription_added(const Filter& sub, std::string exclude,
                                   std::string include);
-  void publish_subscription_removed(const Subscription& sub,
-                                    std::string exclude, std::string include);
+  void publish_subscription_removed(const Filter& filter, std::string exclude,
+                                    std::string include);
 };
 
 }  // namespace uActor::PubSub

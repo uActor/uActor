@@ -22,7 +22,6 @@ extern "C" {
 #include "controllers/topology_manager.hpp"
 #include "io/gpio_actor.hpp"
 #include "lua.hpp"
-#include "pubsub/router.hpp"
 #include "remote/tcp_forwarder.hpp"
 #include "remote/wifi_stack.hpp"
 #include "support/testbed.h"
@@ -66,8 +65,6 @@ void main_task(void *) {
   uActor::BoardFunctions::NODE_ID = CONFIG_NODE_ID;
 #endif
 
-  xTaskCreatePinnedToCore(&uActor::PubSub::Router::os_task, "Router", 4192,
-                          nullptr, 3, nullptr, 0);
 
   uActor::ActorRuntime::ExecutorSettings executor_settings = {
       .node_id = uActor::BoardFunctions::NODE_ID, .instance_id = "1"};
