@@ -38,7 +38,7 @@ class LuaExecutor : public Executor<ManagedLuaActor, LuaExecutor> {
   static int math_index(lua_State* state);
   static int string_index(lua_State* state);
 
-  static lua_CFunction math_function_store[];
+  static lua_CFunction math_function_store[23];
   constexpr static frozen::unordered_map<frozen::string, lua_CFunction*, 23>
       math_functions = {{"abs", math_function_store},
                         {"acos", math_function_store + 1},
@@ -64,7 +64,7 @@ class LuaExecutor : public Executor<ManagedLuaActor, LuaExecutor> {
                         {"tan", math_function_store + 21},
                         {"type", math_function_store + 22}};
 
-  static lua_CFunction string_function_store[];
+  static lua_CFunction string_function_store[23];
   constexpr static frozen::unordered_map<frozen::string, lua_CFunction*, 17>
       string_functions = {
           {"byte", string_function_store},

@@ -189,8 +189,8 @@ int LuaExecutor::string_index(lua_State* state) {
   return 1;
 }
 
-lua_CFunction LuaExecutor::math_function_store[23];
-lua_CFunction LuaExecutor::string_function_store[17];
+lua_CFunction LuaExecutor::math_function_store[];
+lua_CFunction LuaExecutor::string_function_store[];
 
 lua_State* LuaExecutor::create_lua_state() {
   lua_State* lua_state = luaL_newstate();

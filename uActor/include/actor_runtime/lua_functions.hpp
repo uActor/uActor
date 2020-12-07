@@ -10,7 +10,7 @@
 namespace uActor::ActorRuntime {
 
 struct LuaFunctions {
-  static lua_CFunction base_function_store[];
+  static lua_CFunction base_function_store[22];
 
   constexpr static frozen::unordered_map<frozen::string,
                                          std::pair<bool, lua_CFunction*>, 22>
