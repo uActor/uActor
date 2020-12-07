@@ -97,21 +97,24 @@ void WifiStack::os_task(void* args) {
   auto netif = WifiStack::get_instance().init();
 
   esp_netif_ip_info_t ip_info;
-  while (true) {
-    esp_netif_get_ip_info(netif, &ip_info);
-    // TODO(raphaelhetzel) this might arrive to early
-    char buffer[16];
-    snprintf(buffer, sizeof(buffer), "%d.%d.%d.%d", IP2STR(&ip_info.ip));
-    uActor::PubSub::Publication ip_info(uActor::BoardFunctions::NODE_ID, "root",
-                                        "1");
-    ip_info.set_attr("type", "notification");
-    ip_info.set_attr("node_id", BoardFunctions::NODE_ID);
-    ip_info.set_attr("notification_text", std::string("Device IP:\n") + buffer);
-    ip_info.set_attr("notification_id", "device_ip");
-    ip_info.set_attr("notification_lifetime", 0);
-    uActor::PubSub::Router::get_instance().publish(std::move(ip_info));
+  ip_info.ip.addr = 0;
+  vTaskDelay(10000);
+  while (ip_info.ip.addr == 0) {
     vTaskDelay(5000);
+    esp_netif_get_ip_info(netif, &ip_info);
   }
+
+  char buffer[16];
+  snprintf(buffer, sizeof(buffer), "%d.%d.%d.%d", IP2STR(&ip_info.ip));
+  uActor::PubSub::Publication ip_notification(uActor::BoardFunctions::NODE_ID,
+                                              "root", "1");
+  ip_notification.set_attr("type", "notification");
+  ip_notification.set_attr("node_id", BoardFunctions::NODE_ID);
+  ip_notification.set_attr("notification_text",
+                           std::string("Device IP:\n") + buffer);
+  ip_notification.set_attr("notification_id", "device_ip");
+  ip_notification.set_attr("notification_lifetime", 0);
+  uActor::PubSub::Router::get_instance().publish(std::move(ip_notification));
 
   vTaskDelete(NULL);
 }
