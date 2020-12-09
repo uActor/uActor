@@ -1,0 +1,12 @@
+type: deployment
+name: de.tum.smart_office.deployment.co2_info
+ttl:  60000
+actor_type:  de.tum.smart_office.actor.co2_info
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "co2_info.lua"
+required_actors:
+  - "core.sensors.co2"
+  - "core.notification_center"
+# constraints:
+#   - "node_id": "C92EAC"
