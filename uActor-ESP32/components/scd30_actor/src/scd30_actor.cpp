@@ -28,6 +28,7 @@ namespace uActor::ESP32::Sensors {
         } else {
           send_exit_message();
         }
+        ready_retries++;
       } else {
         scd30_start_periodic_measurement(960);
         register_unmanaged_actor("core.sensors.temperature");
@@ -49,11 +50,12 @@ namespace uActor::ESP32::Sensors {
     float co2, temperature, relative_humidity;
     uint16_t ready = false;
     uint32_t counter = 0;
-    while(!ready && counter < 3) {
+    while(!ready && counter < 5) {
       if(scd30_get_data_ready(&ready)) {
         Support::Logger::warning("SCD30", "FETCH", "Ready error\n");
         send_failure_notification();
       }
+      counter++;
     }
     if(!ready) {
       Support::Logger::info("SCD30", "FETCH", "Sensor not ready, waiting 100ms\n");
