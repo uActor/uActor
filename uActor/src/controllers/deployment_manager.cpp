@@ -117,9 +117,9 @@ void DeploymentManager::receive_deployment(
           increment_deployed_actor_type_count(deployment.actor_type);
           start_deployment(&deployment, &ExecutorIdentifier);
         }
-        publish_code_package(deployment, std::string(actor_code));
 
         deployment.lifetime_end = end_time;
+        publish_code_package(deployment, std::string(actor_code));
       }
       if (deployment.lifetime_end > 0) {
         enqueue_lifetime_end_wakeup(&deployment);
