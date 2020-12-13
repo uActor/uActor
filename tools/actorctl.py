@@ -1,14 +1,19 @@
 #!/usr/bin/env python
 """Tool to broadcast deployments specified in yaml files."""
+import base64
 import socket
 import struct
 import argparse
 import time
 import os
 import io
+import hashlib
 
 import msgpack
 import yaml
+
+INTER_DEPLOYMENT_WAIT_TIME_MS = 5000
+MIN_DEPLOYMENT_LIFETIME = 10000
 
 def main():
     """Loads the configuration file and
@@ -17,43 +22,68 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("host")
     parser.add_argument("port", type=int)
-    parser.add_argument("configuration_file")
     parser.add_argument("-r", "--refresh", action="store_true")
+    parser.add_argument("--hash-as-version", action="store_true")
+    parser.add_argument("-f", "--file", action='append')
     arguments = parser.parse_args()
 
-    configuration_file_path = os.path.join(os.getcwd(), arguments.configuration_file)
-    if not os.path.isfile(configuration_file_path):
-        raise SystemExit("Configuration file does not exist.")
-    configuration_file = io.open(configuration_file_path, "r", encoding="utf-8")
-    raw_deployments = yaml.safe_load_all(configuration_file)
-
     deployments = []
-    min_ttl = 0
+    min_ttl_ms = 0
 
     sequence_number =  0
     epoch = int(time.time())
 
-    for raw_deployment in raw_deployments:
-        deployment = _parse_deployment(configuration_file_path, raw_deployment)
-        if deployment:
-            if min_ttl == 0 or deployment["deployment_ttl"] < min_ttl:
-                min_ttl = deployment["deployment_ttl"]
-            deployments.append(deployment)
+    raw_deployments = []
+    for configuration_file_r_path in arguments.file:
+        configuration_file_path = os.path.join(os.getcwd(), configuration_file_r_path)
+        if not os.path.isfile(configuration_file_path):
+            raise SystemExit("Configuration file does not exist.")
+        configuration_file = io.open(configuration_file_path, "r", encoding="utf-8")
+        raw_deployments = yaml.safe_load_all(configuration_file)
+
+        for raw_deployment in raw_deployments:
+            deployment = _parse_deployment(configuration_file_path, raw_deployment)
+            if deployment:
+                if deployment["deployment_ttl"] > 0 and deployment["deployment_ttl"] < MIN_DEPLOYMENT_LIFETIME:
+                    print(f"Increased deployment ttl to the minimum value of {MIN_DEPLOYMENT_LIFETIME/1000} seconds")
+                    deployment["deployment_ttl"] = MIN_DEPLOYMENT_LIFETIME
+                if min_ttl_ms == 0 or (deployment["deployment_ttl"] > 0 and deployment["deployment_ttl"] < min_ttl_ms):
+                    min_ttl_ms = deployment["deployment_ttl"]
+                if arguments.hash_as_version:
+                    deployment["deployment_actor_version"] = deployment["deployment_actor_code_hash"]
+                del deployment["deployment_actor_code_hash"]
+                deployments.append(deployment)
+
+    total_required_time = sum(
+        [(INTER_DEPLOYMENT_WAIT_TIME_MS/1000) for deployment in deployments] # if deployment["deployment_ttl"] > 0 else 0
+    )
+    assert(total_required_time < min_ttl_ms)
+
+    last_iterations = {}
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sckt:
         sckt.connect((arguments.host, arguments.port))
 
+        before = time.time()
         for deployment in deployments:
+            last_iterations[deployment["deployment_name"]] = time.time()
             _publish(sckt, deployment, epoch, sequence_number)
+            print(f"Publish: {deployment['deployment_name']}")
+            time.sleep(INTER_DEPLOYMENT_WAIT_TIME_MS/1000)
             sequence_number += 1
 
-        while min_ttl > 0 and arguments.refresh:
-            sleep_time = min_ttl/1000.0 - 2 if min_ttl > 3000 else 1
-            time.sleep(sleep_time)
-            epoch = int(time.time())
+        wait_time = max((min_ttl_ms/1000  - (time.time() - before)  - 10), 0)
+        time.sleep(wait_time)
+
+        while min_ttl_ms > 0 and arguments.refresh:
+            before = time.time()
             for deployment in deployments:
                 _publish(sckt, deployment, epoch, sequence_number)
+                print(f"Refresh: {deployment['deployment_name']} Interval: {time.time() - last_iterations[deployment['deployment_name']]}")
+                last_iterations[deployment["deployment_name"]] = time.time()
+                time.sleep(INTER_DEPLOYMENT_WAIT_TIME_MS/1000)
                 sequence_number += 1
+            time.sleep(wait_time)
 
         time.sleep(2)
 
@@ -78,6 +108,7 @@ def _parse_deployment(configuration_file_path, raw_deployment):
         raise SystemExit("Code file does not exist.")
     code = io.open(code_file, "r", encoding="utf-8").read()
 
+    code_hash = base64.b64encode(hashlib.blake2s(code.encode()).digest()).decode()
 
     deployment = {
         "type" : "deployment",
@@ -89,12 +120,12 @@ def _parse_deployment(configuration_file_path, raw_deployment):
         "deployment_actor_runtime_type": raw_deployment["actor_runtime_type"],
         "deployment_actor_version": raw_deployment["actor_version"],
         "deployment_actor_code": code,
+        "deployment_actor_code_hash": code_hash,
         "deployment_required_actors": required_actors,
         "deployment_ttl": raw_deployment["ttl"]
     }
 
-    deployment_constraints = [];
-    constraints = []
+    deployment_constraints = []
     
     if "constraints" in raw_deployment:
         for constraint in raw_deployment["constraints"]:
@@ -112,8 +143,7 @@ def _publish(sckt, publication, epoch, sequence_number):
     publication["_internal_sequence_number"] = sequence_number
     publication["_internal_epoch"] = epoch
     msg = msgpack.packb(publication)
-    sckt.send(struct.pack("!i", len(msg)))
-    sckt.send(msg)
+    sckt.send(struct.pack("!i", len(msg)) + msg)
 
 if __name__ == "__main__":
     main()
