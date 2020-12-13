@@ -2,7 +2,10 @@
 
 #include <cassert>
 #include <utility>
-
+#if CONFIG_UACTOR_OPTIMIZATIONS_DIRECT_CODE_STORE
+#include "actor_runtime/code_identifier.hpp"
+#include "actor_runtime/code_store.hpp"
+#endif
 #include "support/logger.hpp"
 
 namespace uActor::Controllers {
@@ -95,7 +98,11 @@ void DeploymentManager::receive_deployment(
       if (inserted) {
         uActor::Support::Logger::debug("DEPLOYMENT-MANAGER",
                                        "RECEIVE-DEPLOYMENT", "New Deployment");
+#if CONFIG_UACTOR_OPTIMIZATIONS_DIRECT_CODE_STORE
+        push_code_package(deployment, actor_code);
+#else
         publish_code_package(deployment, std::string(actor_code));
+#endif
         // printf("Receive deployment from: %s\n",
         //       publication.get_str_attr("publisher_node_id")->data());
         add_deployment_dependencies(&deployment);
@@ -119,7 +126,11 @@ void DeploymentManager::receive_deployment(
         }
 
         deployment.lifetime_end = end_time;
+#if CONFIG_UACTOR_OPTIMIZATIONS_DIRECT_CODE_STORE
+        push_code_package(deployment, actor_code);
+#else
         publish_code_package(deployment, std::string(actor_code));
+#endif
       }
       if (deployment.lifetime_end > 0) {
         enqueue_lifetime_end_wakeup(&deployment);
@@ -475,6 +486,15 @@ void DeploymentManager::publish_code_package(const Deployment& deployment,
                               static_cast<int32_t>(deployment.lifetime_end));
   actor_code_message.set_attr("actor_code", std::move(code));
   publish(std::move(actor_code_message));
+}
+
+void DeploymentManager::push_code_package(const Deployment& deployment,
+                                          std::string_view code) {
+  ActorRuntime::CodeStore::get_instance().store(
+      ActorRuntime::CodeIdentifier(deployment.actor_type,
+                                   deployment.actor_version,
+                                   deployment.actor_runtime_type),
+      code, deployment.lifetime_end);
 }
 
 }  // namespace uActor::Controllers

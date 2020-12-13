@@ -19,7 +19,7 @@ std::optional<CodeHandle> CodeStore::retrieve(
   }
 }
 
-void CodeStore::store(CodeIdentifier&& identifier, std::string&& code,
+void CodeStore::store(CodeIdentifier&& identifier, std::string_view code,
                       uint32_t lifetime_end) {
   std::unique_lock lck(mtx);
   auto [iterator, inserted] = _store.try_emplace(

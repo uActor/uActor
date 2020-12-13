@@ -41,7 +41,7 @@ void CodeStoreActor::receive_store(const PubSub::Publication& publication) {
         CodeIdentifier(*publication.get_str_attr("actor_code_type"),
                        *publication.get_str_attr("actor_code_version"),
                        *publication.get_str_attr("actor_code_runtime_type")),
-        std::string(*publication.get_str_attr("actor_code")),
+        *publication.get_str_attr("actor_code"),
         *publication.get_int_attr("actor_code_lifetime_end"));
   } else {
     uActor::Support::Logger::trace("CODE-STORE", "STORE",

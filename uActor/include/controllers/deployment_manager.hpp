@@ -122,6 +122,8 @@ class DeploymentManager : public ActorRuntime::NativeActor {
   void actor_type_removed(std::string_view actor_type);
 
   void publish_code_package(const Deployment& deployment, std::string&& code);
+
+  void push_code_package(const Deployment& deployment, std::string_view code);
 };
 
 }  // namespace uActor::Controllers

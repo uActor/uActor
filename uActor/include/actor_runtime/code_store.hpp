@@ -21,7 +21,7 @@ class CodeStore {
 
   std::optional<CodeHandle> retrieve(const CodeIdentifier& identifier);
 
-  void store(CodeIdentifier&& identifier, std::string&& code,
+  void store(CodeIdentifier&& identifier, std::string_view code,
              uint32_t lifetime_end);
 
   void cleanup();
