@@ -34,7 +34,7 @@ void CodeStore::cleanup() {
   uint32_t current_timestamp = BoardFunctions::timestamp();
   std::unordered_set<CodeIdentifier, CodeIdentifierHasher> to_delete;
   for (auto& [key, value_pair] : _store) {
-    if (value_pair.second > 0 && value_pair.second < current_timestamp) {
+    if (value_pair.second > 0 && value_pair.second + 5000 < current_timestamp) {
       to_delete.emplace(key);
     }
   }
