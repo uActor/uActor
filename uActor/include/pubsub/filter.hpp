@@ -32,6 +32,10 @@ class Filter {
 
   bool operator==(const Filter& other) const;
 
+  const std::list<Constraint>& required_constraints() const { return required; }
+
+  const std::list<Constraint>& optional_constraints() const { return optional; }
+
   std::string serialize() const;
 
   static std::optional<Filter> deserialize(std::string_view serialized);

@@ -98,6 +98,15 @@ menu "Benchmark Configuration"
         help
             Enable benchmark breakdown
 endmenu
+menu "uActor"
+    menu "Optimizations"
+        config UACTOR_OPTIMIZATIONS_BLE_FILTER
+            bool "Enable Actor-Side BLE packet filtering"
+            default y
+            help
+                Attempts to reduce the publication pressure
+    endmenu
+endmenu
 menu "Testbed Configuration"
     config TESTBED_NETWORK_UTILS
         bool "Testbed Network Utils"

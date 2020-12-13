@@ -266,7 +266,7 @@ void Router::publish_subscription_added(const Filter& filter,
       if (std::holds_alternative<std::string>(constraint.operand()) &&
           std::get<std::string>(constraint.operand()) ==
               BoardFunctions::NODE_ID) {
-        return;
+        include = "local";
       }
     }
     // Overapproximate node_id
@@ -311,7 +311,7 @@ void Router::publish_subscription_removed(const Filter& filter,
       if (std::holds_alternative<std::string>(constraint.operand()) &&
           std::get<std::string>(constraint.operand()) ==
               BoardFunctions::NODE_ID) {
-        return;
+        include = "local";
       }
     }
     // TODO(raphaelhetzel) Keep track of the published node ids and remove them

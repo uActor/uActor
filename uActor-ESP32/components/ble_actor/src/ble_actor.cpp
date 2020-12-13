@@ -9,6 +9,11 @@
 #include "pubsub/router.hpp"
 
 namespace uActor::ESP32::BLE {
+
+#if CONFIG_UACTOR_OPTIMIZATIONS_BLE_FILTER
+std::list<BLEActor::InternalBLEFilter> BLEActor::active_filters;
+#endif
+
 void BLEActor::os_task(void* args) {
   auto actor = BLEActor();
   while (true) {
@@ -30,6 +35,18 @@ BLEActor::BLEActor() : handle(PubSub::Router::get_instance().new_subscriber()) {
 
   PubSub::Filter ble_filter{PubSub::Constraint("type", "ble_advertisement")};
   handle.subscribe(ble_filter);
+
+#if CONFIG_UACTOR_OPTIMIZATIONS_BLE_FILTER
+  handle.subscribe(
+      PubSub::Filter{PubSub::Constraint("type", "subscription_added"),
+                     PubSub::Constraint("publisher_node_id",
+                                        std::string(BoardFunctions::NODE_ID))});
+
+  handle.subscribe(
+      PubSub::Filter{PubSub::Constraint("type", "subscription_removed"),
+                     PubSub::Constraint("publisher_node_id",
+                                        std::string(BoardFunctions::NODE_ID))});
+#endif
 
   PubSub::Publication p{BoardFunctions::NODE_ID, "core.io.ble", "1"};
   p.set_attr("type", "unmanaged_actor_update");
@@ -62,7 +79,15 @@ void BLEActor::ble_init() {
 void BLEActor::receive(PubSub::Publication&& publication) {
   if (publication.get_str_attr("type") == "ble_advertisement") {
     handle_advertisement_receive(std::move(publication));
+#if CONFIG_UACTOR_OPTIMIZATIONS_BLE_FILTER
+  } else if (publication.get_str_attr("type") == "subscription_removed") {
+    handle_subscription_added(std::move(publication));
+  } else if (publication.get_str_attr("type") == "subscription_added") {
+    handle_subscription_added(std::move(publication));
   }
+#else
+  }
+#endif
 }
 
 void BLEActor::handle_advertisement_receive(PubSub::Publication&& publication) {
@@ -77,6 +102,74 @@ void BLEActor::handle_advertisement_receive(PubSub::Publication&& publication) {
   }
   advertise(std::move(attributes));
 }
+
+#if CONFIG_UACTOR_OPTIMIZATIONS_BLE_FILTER
+void BLEActor::handle_subscription_added(PubSub::Publication&& publication) {
+  if (!publication.has_attr("serialized_subscription")) {
+    return;
+  }
+
+  auto deserialized = PubSub::Filter::deserialize(
+      *publication.get_str_attr("serialized_subscription"));
+
+  if (deserialized && filter_has_ble_type_constraint(*deserialized)) {
+    if (std::find_if(
+            active_filters.begin(), active_filters.end(),
+            [&filter = std::as_const(*deserialized)](const auto& other) {
+              return filter == other.filter();
+            }) != active_filters.end()) {
+      return;
+    }
+
+    InternalBLEFilter filter;
+    for (const auto& c : deserialized->required_constraints()) {
+      try {
+        auto id = std::stoi(std::string(c.attribute()), 0, 0);
+        if (id <= 0xFF && std::holds_alternative<std::string>(c.operand())) {
+          filter.set_field(id,
+                           base64_decode(std::get<std::string>(c.operand())),
+                           c.predicate());
+        }
+      } catch (const std::exception&) {
+      }
+    }
+    filter.filter(std::move(*deserialized));
+    active_filters.push_front(std::move(filter));
+  }
+}
+
+void BLEActor::handle_subscription_removed(PubSub::Publication&& publication) {
+  if (!publication.has_attr("serialize_subscription")) {
+    return;
+  }
+  auto deserialized = PubSub::Filter::deserialize(
+      *publication.get_str_attr("serialized_subscription"));
+
+  if (deserialized && filter_has_ble_type_constraint(*deserialized)) {
+    auto filter_it = std::find_if(
+        active_filters.begin(), active_filters.end(),
+        [&other = std::as_const(*deserialized)](const auto& filter) {
+          return filter.filter() == other;
+        });
+    if (filter_it != active_filters.end()) {
+      active_filters.erase(filter_it);
+    }
+  }
+}
+
+bool BLEActor::filter_has_ble_type_constraint(const PubSub::Filter& filter) {
+  auto is_ble_type_constraint = [](const auto& constraint) {
+    return constraint.attribute() == "type" &&
+           std::holds_alternative<std::string>(constraint.operand()) &&
+           std::get<std::string>(constraint.operand()) == "ble_discovery";
+  };
+
+  return std::find_if(filter.required_constraints().begin(),
+                      filter.required_constraints().end(),
+                      is_ble_type_constraint) !=
+         filter.required_constraints().end();
+}
+#endif
 
 void BLEActor::host_task(void* param) {
   // runs until explicitly stopped
@@ -193,6 +286,20 @@ std::optional<std::string> BLEActor::serialize_attribute(
 }
 
 void BLEActor::handle_discovery_event(ble_gap_event* event) {
+#if CONFIG_UACTOR_OPTIMIZATIONS_BLE_FILTER
+
+  bool interest = false;
+  for (const auto& filter : active_filters) {
+    if (filter.sub_matches(event->disc.data, event->disc.length_data)) {
+      interest = true;
+      break;
+    }
+  }
+  if (!interest) {
+    return;
+  }
+#endif
+
   PubSub::Publication publication(BoardFunctions::NODE_ID, "ble_observer", "1");
   publication.set_attr("type", "ble_discovery");
   publication.set_attr("rssi", event->disc.rssi);
@@ -220,29 +327,15 @@ void BLEActor::handle_discovery_event(ble_gap_event* event) {
   }
   publication.set_attr("address_type", type);
 
-  uint8_t current_attribute_size = 0;
-  uint8_t current_attribute_type = 0;
-  uint8_t* current_data_start = nullptr;
-  for (uint8_t* attribute_start = event->disc.data;
-       attribute_start < (event->disc.data + event->disc.length_data);
-       attribute_start = attribute_start + current_attribute_size + 1) {
-    current_attribute_size = *attribute_start;
-    if (current_attribute_size == 0) {
-      break;
-    }
-    current_attribute_type = *(attribute_start + 1);
-    current_data_start = attribute_start + 2;
-
-    char attr_id_string[5];
-    snprintf(attr_id_string, sizeof(attr_id_string), "0x%02X",
-             current_attribute_type);
-    publication.set_attr(
-        std::string(attr_id_string),
-        base64_encode(
-            std::string(reinterpret_cast<const char*>(current_data_start),
-                        current_attribute_size - 1),
-            false));
-  }
+  walk_ble_packet(event->disc.data, event->disc.length_data,
+                  [&publication = publication](uint8_t attribute_id,
+                                               const std::string& value) {
+                    char attr_id_string[5];
+                    snprintf(attr_id_string, sizeof(attr_id_string), "0x%02X",
+                             attribute_id);
+                    publication.set_attr(std::string(attr_id_string),
+                                         base64_encode(value, false));
+                  });
 
   PubSub::Router::get_instance().publish(std::move(publication));
 }
