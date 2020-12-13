@@ -23,6 +23,15 @@ function receive(message)
     end
   end
 
+  if(message.type == "exit") then
+    publish(
+      Publication.new(
+        "type", "notification_cancelation",
+        "node_id",node_id,
+        "notification_id", node_id.."."..actor_type.."."..instance_id..".environment_information" 
+      )
+    )
+  end
 
   for variable, configuration in pairs(VARIABLES) do
     if(message.type == "sensor_update_"..variable) then
