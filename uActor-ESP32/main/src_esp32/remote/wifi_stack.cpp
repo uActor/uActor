@@ -24,6 +24,7 @@ extern "C" {
 #include "board_functions.hpp"
 #include "pubsub/publication.hpp"
 #include "pubsub/router.hpp"
+#include "support/logger.hpp"
 
 namespace uActor::ESP32::Remote {
 
@@ -126,13 +127,15 @@ void WifiStack::event_handler(esp_event_base_t event_base, int32_t event_id,
     esp_wifi_connect();
   } else if (event_base == WIFI_EVENT &&
              event_id == WIFI_EVENT_STA_DISCONNECTED) {
-    if (retry_count < MAXIMUM_RETRIES) {
-      ESP_LOGI(TAG, "retry to connect to the AP");
-      esp_wifi_connect();
-      xEventGroupClearBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
-      retry_count++;
+    ESP_LOGI(TAG, "Retry to connect to the AP");
+#if CONFIG_WIFI_USE_EDUROAM
+    ESP_ERROR_CHECK(esp_wifi_sta_wpa2_ent_enable());
+#endif
+    auto ret = esp_wifi_connect();
+    if (ret) {
+      uActor::Support::Logger::error("WiFi", "Connect", "Error %d", ret);
     }
-    ESP_LOGI(TAG, "connect to the AP fail");
+    xEventGroupClearBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
   } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
     sntp_restart();
     ip_event_got_ip_t* event = reinterpret_cast<ip_event_got_ip_t*>(event_data);
