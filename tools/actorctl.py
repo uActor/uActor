@@ -8,6 +8,7 @@ import time
 import os
 import io
 import hashlib
+import minifier.minifier
 
 import msgpack
 import yaml
@@ -107,19 +108,22 @@ def _parse_deployment(configuration_file_path, raw_deployment):
     if not os.path.isfile(code_file):
         raise SystemExit("Code file does not exist.")
     code = io.open(code_file, "r", encoding="utf-8").read()
+    minified_code = minifier.minifier.minify(code)
 
     code_hash = base64.b64encode(hashlib.blake2s(code.encode()).digest()).decode()
 
+    print(f"Code Size: {raw_deployment['name']} Before: {len(code)} After: {len(minified_code)}")
+
     deployment = {
         "type" : "deployment",
-        "publisher_node_id": "actorctl_tmp_node",
+        "publisher_node_id": "actorctl_tmp_node_2",
         "publisher_actor_type": "core.tools.actor_ctl",
         "publisher_instance_id": "1",
         "deployment_name": raw_deployment["name"],
         "deployment_actor_type": raw_deployment["actor_type"],
         "deployment_actor_runtime_type": raw_deployment["actor_runtime_type"],
         "deployment_actor_version": raw_deployment["actor_version"],
-        "deployment_actor_code": code,
+        "deployment_actor_code": minified_code,
         "deployment_actor_code_hash": code_hash,
         "deployment_required_actors": required_actors,
         "deployment_ttl": raw_deployment["ttl"]
