@@ -1,7 +1,7 @@
 function receive(message)
   
   if(message.type == "init") then
-    sub = {type="ble_discovery"}
+    sub = {type="ble_discovery", publisher_node_id=node_id}
     -- "Gigaset G-tag" without null_termination
     name = string.char(0x47, 0x69, 0x67, 0x61, 0x73, 0x65, 0x74, 0x20, 0x47, 0x2D, 0x74, 0x61, 0x67)
     sub["0x09"] = encode_base64(name)
@@ -51,7 +51,7 @@ function receive(message)
             "peer_2", encode_base64(address),
             "duration", duration_s,
             "end_timestamp", unix_timestamp(),
-            "reported_by", node_id()
+            "reported_by", node_id
           )
           contacts[key] = nil
         end
