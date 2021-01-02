@@ -40,6 +40,7 @@ extern "C" {
 #include <vector>
 
 #include "board_functions.hpp"
+#include "controllers/telemetry_data.hpp"
 #include "support/logger.hpp"
 
 namespace uActor::Remote {
@@ -188,6 +189,7 @@ void TCPForwarder::remove_subscription(uint32_t local_id, uint32_t sub_id,
 std::pair<bool, std::unique_lock<std::mutex>> TCPForwarder::write(
     RemoteConnection* remote, std::shared_ptr<std::vector<char>> dataset,
     std::unique_lock<std::mutex>&& lock) {
+  Controllers::TelemetryData::increase("written_traffic_size", dataset->size());
   remote->write_buffer.push(std::move(dataset));
 
 #if defined(MSG_NOSIGNAL)  // POSIX

@@ -15,6 +15,7 @@
 #include <utility>
 
 #include "board_functions.hpp"
+#include "controllers/telemetry_data.hpp"
 #include "pubsub/router.hpp"
 #include "remote/forwarder_api.hpp"
 #include "remote/sequence_number_forwarding_strategy.hpp"
@@ -154,25 +155,30 @@ void RemoteConnection::process_publication(PubSub::Publication&& p) {
     if (forwarding_strategy->should_accept(p)) {
       if (p.get_str_attr("type") == "subscription_update") {
         update_subscriptions(std::move(p));
-#if CONFIG_BENCHMARK_ENABLED
-        current_traffic.sub_traffic_size += publicaton_full_size;
+#if CONFIG_UACTOR_ENABLE_TELEMETRY
+        Controllers::TelemetryData::increase("sub_traffic_size",
+                                             publicaton_full_size);
 #endif
       } else if (p.get_str_attr("type") == "subscription_added") {
         add_subscription(std::move(p));
-#if CONFIG_BENCHMARK_ENABLED
-        current_traffic.sub_traffic_size += publicaton_full_size;
+#if CONFIG_UACTOR_ENABLE_TELEMETRY
+        Controllers::TelemetryData::increase("sub_traffic_size",
+                                             publicaton_full_size);
 #endif
       } else if (p.get_str_attr("type") == "subscription_removed") {
         remove_subscription(std::move(p));
-#if CONFIG_BENCHMARK_ENABLED
-        current_traffic.sub_traffic_size += publicaton_full_size;
+#if CONFIG_UACTOR_ENABLE_TELEMETRY
+        Controllers::TelemetryData::increase("sub_traffic_size",
+                                             publicaton_full_size);
 #endif
       } else {
-#if CONFIG_BENCHMARK_ENABLED
+#if CONFIG_UACTOR_ENABLE_TELEMETRY
         if (p.get_str_attr("type") == "deployment") {
-          current_traffic.deployment_traffic_size += publicaton_full_size;
+          Controllers::TelemetryData::increase("deployment_traffic_size",
+                                               publicaton_full_size);
         } else {
-          current_traffic.regular_traffic_size += publicaton_full_size;
+          Controllers::TelemetryData::increase("regular_traffic_size",
+                                               publicaton_full_size);
         }
 #endif
         forwarding_strategy->add_incomming_routing_fields(&p);

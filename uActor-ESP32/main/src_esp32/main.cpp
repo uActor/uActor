@@ -44,9 +44,23 @@ extern "C" {
 #include "ble_actor.hpp"
 #endif
 
+#if CONFIG_UACTOR_ENABLE_TELEMETRY
+#include "controllers/telemetry_data.hpp"
+#include "controllers/telemetry_actor.hpp"
+#endif
+
 extern "C" {
 void app_main(void);
 }
+
+
+#if CONFIG_UACTOR_ENABLE_TELEMETRY
+void telemetry_fetch_hook() {
+  uActor::Controllers::TelemetryData::set("free_heap", xPortGetFreeHeapSize());
+  uActor::Controllers::TelemetryData::set(
+      "largest_block", heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
+}
+#endif
 
 void main_task(void *) {
   printf("InitialHeap: %d \n", xPortGetFreeHeapSize());
@@ -96,6 +110,13 @@ void main_task(void *) {
   uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
       uActor::ESP32::Notifications::EPaperNotificationActor>(
       "epaper_notification_actor");
+#endif
+
+#if CONFIG_UACTOR_ENABLE_TELEMETRY
+  uActor::Controllers::TelemetryActor::telemetry_fetch_hook =
+      telemetry_fetch_hook;
+  uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
+      uActor::Controllers::TelemetryActor>("telemetry_actor");
 #endif
 
   xTaskCreatePinnedToCore(&uActor::ActorRuntime::NativeExecutor::os_task,
@@ -228,6 +249,24 @@ void main_task(void *) {
   create_display.set_attr("actor_type", "native_executor");
   create_display.set_attr("instance_id", "1");
   uActor::PubSub::Router::get_instance().publish(std::move(create_display));
+#endif
+#if CONFIG_UACTOR_ENABLE_TELEMETRY
+  {
+    auto create_telemetry_actor = uActor::PubSub::Publication(
+        uActor::BoardFunctions::NODE_ID, "root", "1");
+    create_telemetry_actor.set_attr("command", "spawn_native_actor");
+    create_telemetry_actor.set_attr("spawn_code", "");
+    create_telemetry_actor.set_attr("spawn_node_id",
+                                    uActor::BoardFunctions::NODE_ID);
+    create_telemetry_actor.set_attr("spawn_actor_type", "telemetry_actor");
+    create_telemetry_actor.set_attr("spawn_actor_version", "default");
+    create_telemetry_actor.set_attr("spawn_instance_id", "1");
+    create_telemetry_actor.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
+    create_telemetry_actor.set_attr("actor_type", "native_executor");
+    create_telemetry_actor.set_attr("instance_id", "1");
+    uActor::PubSub::Router::get_instance().publish(
+        std::move(create_telemetry_actor));
+  }
 #endif
 
   vTaskDelay(50 / portTICK_PERIOD_MS);

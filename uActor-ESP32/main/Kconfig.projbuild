@@ -106,6 +106,9 @@ menu "uActor"
             help
                 Attempts to reduce the publication pressure
     endmenu
+    config CONFIG_UACTOR_ENABLE_TELEMETRY
+       bool "Collect and send telemetry updates"
+       default y
 endmenu
 menu "Testbed Configuration"
     config TESTBED_NETWORK_UTILS
