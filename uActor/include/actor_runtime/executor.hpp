@@ -114,7 +114,11 @@ class Executor : public ExecutorApi {
                              std::move(publication));
   }
 
-  std::map<uint32_t, ActorType> actors;
+ protected:
+  std::map<uint32_t, ActorType, std::less<uint32_t>,
+           Support::TrackingAllocator<std::pair<const uint32_t, ActorType>>>
+      actors{Support::TrackingAllocator<std::pair<const uint32_t, ActorType>>(
+          uActor::Support::TrackedRegions::ACTOR_RUNTIME)};
 
  private:
   std::string _node_id;
@@ -125,7 +129,12 @@ class Executor : public ExecutorApi {
   std::map<uint32_t, std::set<uint32_t>> subscription_mapping;
   std::list<uint32_t> ready_queue;
   std::list<std::pair<uint32_t, uint32_t>> timeouts;
-  std::multimap<uint32_t, PubSub::Publication> delayed_messages;
+  std::multimap<uint32_t, PubSub::Publication, std::less<uint32_t>,
+                Support::TrackingAllocator<
+                    std::pair<const uint32_t, PubSub::Publication>>>
+      delayed_messages{Support::TrackingAllocator<
+          std::pair<const uint32_t, PubSub::Publication>>(
+          uActor::Support::TrackedRegions::ACTOR_RUNTIME)};
   uint32_t executor_subscription_id;
 
   void event_loop() {

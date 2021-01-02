@@ -17,10 +17,15 @@ ManagedActor::ManagedActor(ExecutorApi* api, uint32_t unique_id,
                            std::string_view actor_version,
                            std::string_view instance_id)
     : _id(unique_id),
-      _node_id(node_id),
-      _actor_type(actor_type),
-      _actor_version(actor_version),
-      _instance_id(instance_id),
+      _node_id(node_id, Support::TrackingAllocator<char>(
+                            Support::TrackedRegions::ACTOR_RUNTIME)),
+      _actor_type(actor_type, Support::TrackingAllocator<char>(
+                                  Support::TrackedRegions::ACTOR_RUNTIME)),
+      _actor_version(actor_version,
+                     Support::TrackingAllocator<char>(
+                         Support::TrackedRegions::ACTOR_RUNTIME)),
+      _instance_id(instance_id, Support::TrackingAllocator<char>(
+                                    Support::TrackedRegions::ACTOR_RUNTIME)),
       api(api) {
   add_default_subscription();
   publish_creation_message();
@@ -33,6 +38,7 @@ ManagedActor::ReceiveResult ManagedActor::receive_next_internal() {
 
   auto next_message = std::move(message_queue.front());
   message_queue.pop_front();
+  // message_queue.shrink_to_fit();
   // Exit message is processed to
   // allow for any necessary cleanup
   bool is_exit = next_message.get_str_attr("type") == "exit";
@@ -144,8 +150,8 @@ void ManagedActor::trigger_code_fetch() {
   PubSub::Publication fetch_code(node_id(), actor_type(), instance_id());
   fetch_code.set_attr("node_id", node_id());
   fetch_code.set_attr("command", "fetch_actor_code");
-  fetch_code.set_attr("actor_code_type", _actor_type);
-  fetch_code.set_attr("actor_code_version", _actor_version);
+  fetch_code.set_attr("actor_code_type", std::string_view(_actor_type));
+  fetch_code.set_attr("actor_code_version", std::string_view(_actor_version));
   fetch_code.set_attr("actor_code_runtime_type", actor_runtime_type());
   publish(std::move(fetch_code));
 }
@@ -203,10 +209,12 @@ void ManagedActor::publish_creation_message() {
 
 void ManagedActor::add_default_subscription() {
   uint32_t sub_id = api->add_subscription(
-      _id, PubSub::Filter{
-               PubSub::Constraint(std::string("node_id"), _node_id),
-               PubSub::Constraint(std::string("actor_type"), _actor_type),
-               PubSub::Constraint(std::string("instance_id"), _instance_id)});
+      _id, PubSub::Filter{PubSub::Constraint(std::string("node_id"),
+                                             std::string(_node_id)),
+                          PubSub::Constraint(std::string("actor_type"),
+                                             std::string(_actor_type)),
+                          PubSub::Constraint(std::string("instance_id"),
+                                             std::string(_instance_id))});
   subscriptions.insert(sub_id);
 }
 

@@ -5,20 +5,37 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <utility>
 #include <variant>
 #include <vector>
+
+#include "support/allocator_config.hpp"
+#include "support/memory_manager.hpp"
 
 namespace uActor::PubSub {
 
 class Publication {
  public:
-  using variant_type = std::variant<std::string, int32_t, float>;
-  using InternalType = std::unordered_map<std::string, variant_type>;
+  template <typename U>
+  using Allocator = Support::TrackingAllocator<U>;
+
+  using AString =
+      std::basic_string<char, std::char_traits<char>, Allocator<char>>;
+
+  template <typename U>
+  constexpr static auto make_allocator =
+      Support::PublicationAllocatorConfiguration::make_allocator<U>;
+
+  using variant_type = std::variant<AString, int32_t, float>;
+  using InternalType =
+      std::unordered_map<AString, variant_type, Support::StringHash,
+                         Support::StringEqual,
+                         Allocator<std::pair<const AString, variant_type>>>;
 
   // TODO(raphaelhetzel) implement custom iterator to allow for a more efficient
   // implementation later
   using const_iterator =
-      std::unordered_map<std::string, variant_type>::const_iterator;
+      std::unordered_map<AString, variant_type>::const_iterator;
   [[nodiscard]] const_iterator begin() const { return attributes->begin(); }
   [[nodiscard]] const_iterator end() const { return attributes->end(); }
 
@@ -45,7 +62,7 @@ class Publication {
   bool operator==(const Publication& other);
 
   [[nodiscard]] bool has_attr(std::string_view name) const {
-    return attributes->find(std::string(name)) != attributes->end();
+    return attributes->find(AString(name)) != attributes->end();
   }
 
   [[nodiscard]] std::variant<std::monostate, std::string_view, int32_t, float>

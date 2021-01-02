@@ -144,46 +144,55 @@ void main_task(void *) {
   }
 
   vTaskDelay(2000 / portTICK_PERIOD_MS);
-  auto create_deployment_manager =
-      uActor::PubSub::Publication(uActor::BoardFunctions::NODE_ID, "root", "1");
-  create_deployment_manager.set_attr("command", "spawn_native_actor");
-  create_deployment_manager.set_attr("spawn_actor_version", "default");
-  create_deployment_manager.set_attr("spawn_node_id",
+  {
+    auto create_deployment_manager = uActor::PubSub::Publication(
+        uActor::BoardFunctions::NODE_ID, "root", "1");
+    create_deployment_manager.set_attr("command", "spawn_native_actor");
+    create_deployment_manager.set_attr("spawn_actor_version", "default");
+    create_deployment_manager.set_attr("spawn_node_id",
+                                       uActor::BoardFunctions::NODE_ID);
+    create_deployment_manager.set_attr("spawn_actor_type",
+                                       "deployment_manager");
+    create_deployment_manager.set_attr("spawn_instance_id", "1");
+    create_deployment_manager.set_attr("node_id",
+                                       uActor::BoardFunctions::NODE_ID);
+    create_deployment_manager.set_attr("actor_type", "native_executor");
+    create_deployment_manager.set_attr("instance_id", "1");
+    uActor::PubSub::Router::get_instance().publish(
+        std::move(create_deployment_manager));
+  }
+  {
+    auto create_topology_manager = uActor::PubSub::Publication(
+        uActor::BoardFunctions::NODE_ID, "root", "1");
+    create_topology_manager.set_attr("command", "spawn_native_actor");
+    create_topology_manager.set_attr("spawn_actor_version", "default");
+    create_topology_manager.set_attr("spawn_node_id",
                                      uActor::BoardFunctions::NODE_ID);
-  create_deployment_manager.set_attr("spawn_actor_type", "deployment_manager");
-  create_deployment_manager.set_attr("spawn_instance_id", "1");
-  create_deployment_manager.set_attr("node_id",
+    create_topology_manager.set_attr("spawn_actor_type", "topology_manager");
+    create_topology_manager.set_attr("spawn_instance_id", "1");
+    create_topology_manager.set_attr("node_id",
                                      uActor::BoardFunctions::NODE_ID);
-  create_deployment_manager.set_attr("actor_type", "native_executor");
-  create_deployment_manager.set_attr("instance_id", "1");
-  uActor::PubSub::Router::get_instance().publish(
-      std::move(create_deployment_manager));
+    create_topology_manager.set_attr("actor_type", "native_executor");
+    create_topology_manager.set_attr("instance_id", "1");
+    uActor::PubSub::Router::get_instance().publish(
+        std::move(create_topology_manager));
+  }
 
-  auto create_topology_manager =
-      uActor::PubSub::Publication(uActor::BoardFunctions::NODE_ID, "root", "1");
-  create_topology_manager.set_attr("command", "spawn_native_actor");
-  create_topology_manager.set_attr("spawn_actor_version", "default");
-  create_topology_manager.set_attr("spawn_node_id",
-                                   uActor::BoardFunctions::NODE_ID);
-  create_topology_manager.set_attr("spawn_actor_type", "topology_manager");
-  create_topology_manager.set_attr("spawn_instance_id", "1");
-  create_topology_manager.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
-  create_topology_manager.set_attr("actor_type", "native_executor");
-  create_topology_manager.set_attr("instance_id", "1");
-  uActor::PubSub::Router::get_instance().publish(
-      std::move(create_topology_manager));
-
-  auto create_code_store =
-      uActor::PubSub::Publication(uActor::BoardFunctions::NODE_ID, "root", "1");
-  create_code_store.set_attr("command", "spawn_native_actor");
-  create_code_store.set_attr("spawn_actor_version", "default");
-  create_code_store.set_attr("spawn_node_id", uActor::BoardFunctions::NODE_ID);
-  create_code_store.set_attr("spawn_actor_type", "code_store");
-  create_code_store.set_attr("spawn_instance_id", "1");
-  create_code_store.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
-  create_code_store.set_attr("actor_type", "native_executor");
-  create_code_store.set_attr("instance_id", "1");
-  uActor::PubSub::Router::get_instance().publish(std::move(create_code_store));
+  {
+    auto create_code_store = uActor::PubSub::Publication(
+        uActor::BoardFunctions::NODE_ID, "root", "1");
+    create_code_store.set_attr("command", "spawn_native_actor");
+    create_code_store.set_attr("spawn_actor_version", "default");
+    create_code_store.set_attr("spawn_node_id",
+                               uActor::BoardFunctions::NODE_ID);
+    create_code_store.set_attr("spawn_actor_type", "code_store");
+    create_code_store.set_attr("spawn_instance_id", "1");
+    create_code_store.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
+    create_code_store.set_attr("actor_type", "native_executor");
+    create_code_store.set_attr("instance_id", "1");
+    uActor::PubSub::Router::get_instance().publish(
+        std::move(create_code_store));
+  }
 
 #if CONFIG_ENABLE_BMP180
   auto create_bmp180_sensor =
@@ -203,52 +212,58 @@ void main_task(void *) {
 #endif
 
 #if CONFIG_ENABLE_BME280
-  auto create_bme280_sensor =
-      uActor::PubSub::Publication(uActor::BoardFunctions::NODE_ID, "root", "1");
-  create_bme280_sensor.set_attr("command", "spawn_native_actor");
-  create_bme280_sensor.set_attr("spawn_code", "");
-  create_bme280_sensor.set_attr("spawn_node_id",
-                                uActor::BoardFunctions::NODE_ID);
-  create_bme280_sensor.set_attr("spawn_actor_version", "default");
-  create_bme280_sensor.set_attr("spawn_actor_type", "bme280_sensor");
-  create_bme280_sensor.set_attr("spawn_instance_id", "1");
-  create_bme280_sensor.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
-  create_bme280_sensor.set_attr("actor_type", "native_executor");
-  create_bme280_sensor.set_attr("instance_id", "1");
-  uActor::PubSub::Router::get_instance().publish(
-      std::move(create_bme280_sensor));
+  {
+    auto create_bme280_sensor = uActor::PubSub::Publication(
+        uActor::BoardFunctions::NODE_ID, "root", "1");
+    create_bme280_sensor.set_attr("command", "spawn_native_actor");
+    create_bme280_sensor.set_attr("spawn_code", "");
+    create_bme280_sensor.set_attr("spawn_node_id",
+                                  uActor::BoardFunctions::NODE_ID);
+    create_bme280_sensor.set_attr("spawn_actor_version", "default");
+    create_bme280_sensor.set_attr("spawn_actor_type", "bme280_sensor");
+    create_bme280_sensor.set_attr("spawn_instance_id", "1");
+    create_bme280_sensor.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
+    create_bme280_sensor.set_attr("actor_type", "native_executor");
+    create_bme280_sensor.set_attr("instance_id", "1");
+    uActor::PubSub::Router::get_instance().publish(
+        std::move(create_bme280_sensor));
+  }
 #endif
 
 #if CONFIG_ENABLE_SCD30
-  auto create_scd30_sensor =
-      uActor::PubSub::Publication(uActor::BoardFunctions::NODE_ID, "root", "1");
-  create_scd30_sensor.set_attr("command", "spawn_native_actor");
-  create_scd30_sensor.set_attr("spawn_code", "");
-  create_scd30_sensor.set_attr("spawn_node_id",
-                               uActor::BoardFunctions::NODE_ID);
-  create_scd30_sensor.set_attr("spawn_actor_type", "scd30_sensor");
-  create_scd30_sensor.set_attr("spawn_instance_id", "1");
-  create_scd30_sensor.set_attr("spawn_actor_version", "default");
-  create_scd30_sensor.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
-  create_scd30_sensor.set_attr("actor_type", "native_executor");
-  create_scd30_sensor.set_attr("instance_id", "1");
-  uActor::PubSub::Router::get_instance().publish(
-      std::move(create_scd30_sensor));
+  {
+    auto create_scd30_sensor = uActor::PubSub::Publication(
+        uActor::BoardFunctions::NODE_ID, "root", "1");
+    create_scd30_sensor.set_attr("command", "spawn_native_actor");
+    create_scd30_sensor.set_attr("spawn_code", "");
+    create_scd30_sensor.set_attr("spawn_node_id",
+                                 uActor::BoardFunctions::NODE_ID);
+    create_scd30_sensor.set_attr("spawn_actor_type", "scd30_sensor");
+    create_scd30_sensor.set_attr("spawn_instance_id", "1");
+    create_scd30_sensor.set_attr("spawn_actor_version", "default");
+    create_scd30_sensor.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
+    create_scd30_sensor.set_attr("actor_type", "native_executor");
+    create_scd30_sensor.set_attr("instance_id", "1");
+    uActor::PubSub::Router::get_instance().publish(
+        std::move(create_scd30_sensor));
+  }
 #endif
 
 #if CONFIG_ENABLE_EPAPER_DISPLAY
-  auto create_display =
-      uActor::PubSub::Publication(uActor::BoardFunctions::NODE_ID, "root", "1");
-  create_display.set_attr("command", "spawn_native_actor");
-  create_display.set_attr("spawn_code", "");
-  create_display.set_attr("spawn_node_id", uActor::BoardFunctions::NODE_ID);
-  create_display.set_attr("spawn_actor_type", "epaper_notification_actor");
-  create_display.set_attr("spawn_actor_version", "default");
-  create_display.set_attr("spawn_instance_id", "1");
-  create_display.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
-  create_display.set_attr("actor_type", "native_executor");
-  create_display.set_attr("instance_id", "1");
-  uActor::PubSub::Router::get_instance().publish(std::move(create_display));
+  {
+    auto create_display = uActor::PubSub::Publication(
+        uActor::BoardFunctions::NODE_ID, "root", "1");
+    create_display.set_attr("command", "spawn_native_actor");
+    create_display.set_attr("spawn_code", "");
+    create_display.set_attr("spawn_node_id", uActor::BoardFunctions::NODE_ID);
+    create_display.set_attr("spawn_actor_type", "epaper_notification_actor");
+    create_display.set_attr("spawn_actor_version", "default");
+    create_display.set_attr("spawn_instance_id", "1");
+    create_display.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
+    create_display.set_attr("actor_type", "native_executor");
+    create_display.set_attr("instance_id", "1");
+    uActor::PubSub::Router::get_instance().publish(std::move(create_display));
+  }
 #endif
 #if CONFIG_UACTOR_ENABLE_TELEMETRY
   {
@@ -346,13 +361,49 @@ void main_task(void *) {
     uActor::PubSub::Router::get_instance().publish(
         std::move(add_persistent_peer));
   }
-  vTaskDelete(nullptr);
+  while (true) {
+    printf("%d\n", sizeof(uActor::PubSub::Publication));
+    printf("Space General: %d %d\n",
+           uActor::Support::MemoryManager::total_space[static_cast<size_t>(
+               uActor::Support::TrackedRegions::GENERAL)],
+           uActor::Support::MemoryManager::max_space[static_cast<size_t>(
+               uActor::Support::TrackedRegions::GENERAL)]);
+    printf("Space Runtime: %d %d\n",
+           uActor::Support::MemoryManager::total_space[static_cast<size_t>(
+               uActor::Support::TrackedRegions::ACTOR_RUNTIME)],
+           uActor::Support::MemoryManager::max_space[static_cast<size_t>(
+               uActor::Support::TrackedRegions::ACTOR_RUNTIME)]);
+    printf("Space Routing: %d %d\n",
+           uActor::Support::MemoryManager::total_space[static_cast<size_t>(
+               uActor::Support::TrackedRegions::ROUTING_STATE)],
+           uActor::Support::MemoryManager::max_space[static_cast<size_t>(
+               uActor::Support::TrackedRegions::ROUTING_STATE)]);
+    printf("Space Publications: %d %d\n",
+           uActor::Support::MemoryManager::total_space[static_cast<size_t>(
+               uActor::Support::TrackedRegions::PUBLICATIONS)],
+           uActor::Support::MemoryManager::max_space[static_cast<size_t>(
+               uActor::Support::TrackedRegions::PUBLICATIONS)]);
+    printf("Space DEBUG: %d %d\n",
+           uActor::Support::MemoryManager::total_space[static_cast<size_t>(
+               uActor::Support::TrackedRegions::DEBUG)],
+           uActor::Support::MemoryManager::max_space[static_cast<size_t>(
+               uActor::Support::TrackedRegions::DEBUG)]);
+    vTaskDelay(5000);
+  }
 
-  // while (true) {
-  //   vTaskDelay(5000 / portTICK_PERIOD_MS);
-  //   printf("Heap: %d \n", xPortGetFreeHeapSize());
-  // }
+  vTaskDelete(nullptr);
 }
+
+void heap_caps_alloc_failed_hook(size_t requested_size, uint32_t caps,
+                                 const char *function_name) {
+  printf(
+      "%s was called but failed to allocate %d bytes with 0x%X capabilities. "
+      "\n",
+      function_name, requested_size, caps);
+}
+
+esp_err_t error =
+    heap_caps_register_failed_alloc_callback(heap_caps_alloc_failed_hook);
 
 void app_main(void) {
   esp_err_t ret = nvs_flash_init();

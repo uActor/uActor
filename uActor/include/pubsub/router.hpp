@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <functional>
 #include <list>
 #include <map>
 #include <mutex>
@@ -8,6 +9,7 @@
 #include <shared_mutex>
 #include <string>
 #include <string_view>
+#include <utility>
 
 #include "constraint_index.hpp"
 #include "filter.hpp"
@@ -15,6 +17,8 @@
 #include "receiver.hpp"
 #include "receiver_handle.hpp"
 #include "subscription.hpp"
+#include "support/allocator_config.hpp"
+#include "support/memory_manager.hpp"
 
 namespace uActor::PubSub {
 
@@ -39,14 +43,37 @@ class Router {
   uint32_t number_of_subscriptions();
 
  private:
-  std::atomic<uint32_t> next_sub_id{1};
-  std::map<uint32_t, Subscription> subscriptions;
-  std::map<std::string, ConstraintIndex> constraints;
-  // Index for all subscriptions without required constraints.
-  std::set<Subscription*> no_requirements;
+  using AllocatorConfiguration = uActor::Support::RoutingAllocatorConfiguration;
 
-  std::set<std::string> node_id_sent_to;
-  std::set<std::string> peer_node_ids;
+  template <typename U>
+  using Allocator = AllocatorConfiguration::Allocator<U>;
+
+  template <typename U>
+  constexpr static auto make_allocator =
+      AllocatorConfiguration::make_allocator<U>;
+
+  using AString =
+      std::basic_string<char, std::char_traits<char>, Allocator<char>>;
+
+  using ASubscription = Subscription<Allocator, AllocatorConfiguration>;
+  using AConstraitIndex = ConstraintIndex<Allocator, AllocatorConfiguration>;
+
+  std::atomic<uint32_t> next_sub_id{1};
+  std::map<uint32_t, ASubscription, std::less<uint32_t>,
+           Allocator<std::pair<const uint32_t, ASubscription>>>
+      subscriptions{make_allocator<std::pair<const uint32_t, ASubscription>>()};
+  std::map<AString, AConstraitIndex, Support::StringCMP,
+           Allocator<std::pair<const AString, AConstraitIndex>>>
+      constraints{make_allocator<std::pair<const AString, AConstraitIndex>>()};
+
+  // Index for all subscriptions without required constraints.
+  std::set<ASubscription*, std::less<ASubscription*>, Allocator<ASubscription*>>
+      no_requirements{AllocatorConfiguration::make_allocator<ASubscription*>()};
+
+  std::set<AString, Support::StringCMP, Allocator<AString>> node_id_sent_to{
+      make_allocator<Allocator<AString>>()};
+  std::set<AString, Support::StringCMP, Allocator<AString>> peer_node_ids{
+      make_allocator<AString>()};
 
   std::atomic<bool> updated{false};
 
@@ -62,10 +89,10 @@ class Router {
   friend Receiver;
 
   void publish_subscription_update();
-  void publish_subscription_added(const Filter& filter, std::string exclude,
-                                  std::string include);
-  void publish_subscription_removed(const Filter& filter, std::string exclude,
-                                    std::string include);
+  void publish_subscription_added(const Filter& filter, AString exclude,
+                                  AString include);
+  void publish_subscription_removed(const Filter& filter, AString exclude,
+                                    AString include);
 };
 
 }  // namespace uActor::PubSub

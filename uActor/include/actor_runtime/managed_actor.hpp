@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <deque>
+#include <functional>
 #include <set>
 #include <string>
 #include <utility>
@@ -10,6 +11,7 @@
 #include "pubsub/filter.hpp"
 #include "pubsub/publication.hpp"
 #include "pubsub/router.hpp"
+#include "support/memory_manager.hpp"
 
 namespace uActor::ActorRuntime {
 
@@ -96,19 +98,28 @@ class ManagedActor {
   void deffered_block_for(PubSub::Filter&& filter, uint32_t timeout);
 
  private:
+  using tracked_string =
+      std::basic_string<char, std::char_traits<char>,
+                        uActor::Support::TrackingAllocator<char>>;
   uint32_t _id;
 
   bool waiting = false;
   PubSub::Filter pattern;
   uint32_t _timeout = UINT32_MAX;
 
-  std::string _node_id;
-  std::string _actor_type;
-  std::string _actor_version;
-  std::string _instance_id;
+  tracked_string _node_id;
+  tracked_string _actor_type;
+  tracked_string _actor_version;
+  tracked_string _instance_id;
 
-  std::deque<PubSub::Publication> message_queue;
-  std::set<uint32_t> subscriptions;
+  std::deque<PubSub::Publication,
+             uActor::Support::TrackingAllocator<PubSub::Publication>>
+      message_queue{Support::TrackingAllocator<PubSub::Publication>(
+          Support::TrackedRegions::ACTOR_RUNTIME)};
+  std::set<uint32_t, std::less<uint32_t>,
+           uActor::Support::TrackingAllocator<uint32_t>>
+      subscriptions{Support::TrackingAllocator<uint32_t>(
+          Support::TrackedRegions::ACTOR_RUNTIME)};
   ExecutorApi* api;
 
   bool _initialized = false;

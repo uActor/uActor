@@ -193,7 +193,8 @@ lua_CFunction LuaExecutor::math_function_store[];
 lua_CFunction LuaExecutor::string_function_store[];
 
 lua_State* LuaExecutor::create_lua_state() {
-  lua_State* lua_state = luaL_newstate();
+  lua_State* lua_state =
+      lua_newstate(uActor::Support::MemoryManager::allocate_lua, nullptr);
   open_lua_base_optimized(lua_state);
   open_lua_math_optimized(lua_state);
   open_lua_string_optimized(lua_state);

@@ -5,26 +5,32 @@
 
 #include "pubsub/vector_buffer.hpp"
 #include "support/logger.hpp"
+#include "support/memory_manager.hpp"
 
 namespace uActor::PubSub {
 
 Publication::Publication(std::string_view publisher_node_id,
                          std::string_view publisher_actor_type,
                          std::string_view publisher_instance_id)
-    : attributes(std::make_shared<InternalType>()), shallow_copy(false) {
-  attributes->emplace(std::string("publisher_node_id"),
-                      std::string(publisher_node_id));
-  attributes->emplace(std::string("publisher_instance_id"),
-                      std::string(publisher_instance_id));
-  attributes->emplace(std::string("publisher_actor_type"),
-                      std::string(publisher_actor_type));
+    : attributes(std::make_shared<InternalType>(
+          make_allocator<InternalType::value_type>())), shallow_copy(false) {
+  attributes->emplace(AString("publisher_node_id", make_allocator<AString>()),
+                      AString(publisher_node_id, make_allocator<AString>()));
+  attributes->emplace(
+      AString("publisher_instance_id", make_allocator<AString>()),
+      AString(publisher_instance_id, make_allocator<AString>()));
+  attributes->emplace(
+      AString("publisher_actor_type", make_allocator<AString>()),
+      AString(publisher_actor_type, make_allocator<AString>()));
 }
 
 Publication::Publication()
-    : attributes(std::make_shared<InternalType>()), shallow_copy(false) {}
+    : attributes(std::make_shared<InternalType>(
+          make_allocator<InternalType::value_type>())), shallow_copy(false) {}
 
 Publication::Publication(size_t size_hint)
-    : attributes(std::make_shared<InternalType>(size_hint)),
+    : attributes(std::make_shared<InternalType>(
+          size_hint, make_allocator<InternalType::value_type>())),
       shallow_copy(false) {}
 
 Publication::~Publication() = default;
@@ -71,14 +77,14 @@ std::shared_ptr<std::vector<char>> Publication::to_msg_pack() {
     msgpack::packer<VectorBuffer> packer(buffer);
     packer.pack_map(attributes->size());
     for (const auto& attr : *attributes) {
-      if (std::holds_alternative<std::string>(attr.second)) {
-        packer.pack(attr.first);
-        packer.pack(std::get<std::string>(attr.second));
+      if (std::holds_alternative<AString>(attr.second)) {
+        packer.pack(std::string_view(attr.first));
+        packer.pack(std::string_view(std::get<AString>(attr.second)));
       } else if (std::holds_alternative<int32_t>(attr.second)) {
-        packer.pack(attr.first);
+        packer.pack(std::string_view(attr.first));
         packer.pack(std::get<int32_t>(attr.second));
       } else if (std::holds_alternative<float>(attr.second)) {
-        packer.pack(attr.first);
+        packer.pack(std::string_view(attr.first));
         packer.pack(std::get<float>(attr.second));
       }
     }
@@ -97,10 +103,10 @@ Publication::get_attr(std::string_view name) const {
     Support::Logger::warning("PUBLICATION", "GET", "MOVED");
     return std::variant<std::monostate, std::string_view, int32_t, float>();
   }
-  auto result = attributes->find(std::string(name));
+  auto result = attributes->find(AString(name));
   if (result != attributes->end()) {
-    if (std::holds_alternative<std::string>(result->second)) {
-      return std::string_view(std::get<std::string>(result->second));
+    if (std::holds_alternative<AString>(result->second)) {
+      return std::string_view(std::get<AString>(result->second));
     } else if (std::holds_alternative<int32_t>(result->second)) {
       return std::get<int32_t>(result->second);
     } else if (std::holds_alternative<float>(result->second)) {
@@ -116,10 +122,10 @@ std::optional<const std::string_view> Publication::get_str_attr(
     Support::Logger::warning("PUBLICATION", "GET", "MOVED");
     return std::nullopt;
   }
-  auto result = attributes->find(std::string(name));
+  auto result = attributes->find(AString(name, make_allocator<AString>()));
   if (result != attributes->end()) {
-    if (std::holds_alternative<std::string>(result->second)) {
-      return std::string_view(std::get<std::string>(result->second));
+    if (std::holds_alternative<AString>(result->second)) {
+      return std::string_view(std::get<AString>(result->second));
     }
   }
   return std::nullopt;
@@ -130,7 +136,7 @@ std::optional<int32_t> Publication::get_int_attr(std::string_view name) const {
     Support::Logger::warning("PUBLICATION", "GET", "MOVED");
     return std::nullopt;
   }
-  auto result = attributes->find(std::string(name));
+  auto result = attributes->find(AString(name, make_allocator<AString>()));
   if (result != attributes->end()) {
     if (std::holds_alternative<int32_t>(result->second)) {
       return std::get<int32_t>(result->second);
@@ -144,7 +150,7 @@ std::optional<float> Publication::get_float_attr(std::string_view name) const {
     Support::Logger::warning("PUBLICATION", "GET", "MOVED");
     return std::nullopt;
   }
-  auto result = attributes->find(std::string(name));
+  auto result = attributes->find(AString(name));
   if (result != attributes->end()) {
     if (std::holds_alternative<float>(result->second)) {
       return std::get<float>(result->second);
@@ -159,10 +165,15 @@ void Publication::set_attr(std::string_view name, std::string_view value) {
     return;
   }
   if (shallow_copy) {
-    attributes = std::make_shared<InternalType>(*attributes);
+    attributes = std::make_shared<InternalType>(
+        *attributes, make_allocator<InternalType::value_type>());
     shallow_copy = false;
   }
-  attributes->insert_or_assign(std::string(name), std::string(value));
+  auto s = AString(name, make_allocator<AString>());
+  auto v = AString(value, make_allocator<AString>());
+  attributes->erase(s);
+  attributes->emplace(s, v);
+  // attributes->insert_or_assign(s, v);
 }
 
 void Publication::set_attr(std::string_view name, int32_t value) {
@@ -171,10 +182,11 @@ void Publication::set_attr(std::string_view name, int32_t value) {
     return;
   }
   if (shallow_copy) {
-    attributes = std::make_shared<InternalType>(*attributes);
+    attributes = std::make_shared<InternalType>(
+        *attributes, make_allocator<InternalType::value_type>());
     shallow_copy = false;
   }
-  attributes->insert_or_assign(std::string(name), value);
+  attributes->insert_or_assign(AString(name, make_allocator<AString>()), value);
 }
 
 void Publication::set_attr(std::string_view name, float value) {
@@ -183,10 +195,11 @@ void Publication::set_attr(std::string_view name, float value) {
     return;
   }
   if (shallow_copy) {
-    attributes = std::make_shared<InternalType>(*attributes);
+    attributes = std::make_shared<InternalType>(
+        *attributes, make_allocator<InternalType::value_type>());
     shallow_copy = false;
   }
-  attributes->insert_or_assign(std::string(name), value);
+  attributes->insert_or_assign(AString(name, make_allocator<AString>()), value);
 }
 
 void Publication::erase_attr(std::string_view name) {
@@ -195,10 +208,11 @@ void Publication::erase_attr(std::string_view name) {
     return;
   }
   if (shallow_copy) {
-    attributes = std::make_shared<InternalType>(*attributes);
+    attributes = std::make_shared<InternalType>(
+        *attributes, make_allocator<InternalType::value_type>());
     shallow_copy = false;
   }
-  attributes->erase(std::string(name));
+  attributes->erase(AString(name, make_allocator<AString>()));
 }
 
 }  //  namespace uActor::PubSub

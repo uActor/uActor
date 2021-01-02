@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <list>
 #include <optional>
 #include <string>
@@ -10,7 +11,10 @@
 
 namespace uActor::PubSub {
 
+template <template <typename> typename Allocator,
+          typename AllocatorConfiguration>
 class Subscription;
+
 class Router;
 
 class Filter {
@@ -46,7 +50,9 @@ class Filter {
  private:
   std::list<Constraint> required;
   std::list<Constraint> optional;
-  friend Subscription;
+
+  template <template <typename> typename Allocator, typename AllocatorConfig>
+  friend class Subscription;
   friend Router;
 };
 }  // namespace uActor::PubSub
