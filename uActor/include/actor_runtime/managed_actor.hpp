@@ -24,9 +24,9 @@ class ManagedActor {
 
   ManagedActor(const ManagedActor&) = delete;
 
-  ManagedActor(ExecutorApi* api, uint32_t unique_id, const char* node_id,
-               const char* actor_type, const char* actor_version,
-               const char* instance_id);
+  ManagedActor(ExecutorApi* api, uint32_t unique_id, std::string_view node_id,
+               std::string_view actor_type, std::string_view actor_version,
+               std::string_view instance_id);
 
   ~ManagedActor() {
     for (uint32_t sub_id : subscriptions) {

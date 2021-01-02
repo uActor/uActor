@@ -16,9 +16,10 @@ class ManagedNativeActor : public ManagedActor {
       ManagedNativeActor* actor_wrapper, std::string_view node_id,
       std::string_view actor_type, std::string_view instance_id)>;
 
-  ManagedNativeActor(ExecutorApi* api, uint32_t unique_id, const char* node_id,
-                     const char* actor_type, const char* actor_version,
-                     const char* instance_id);
+  ManagedNativeActor(ExecutorApi* api, uint32_t unique_id,
+                     std::string_view node_id, std::string_view actor_type,
+                     std::string_view actor_version,
+                     std::string_view instance_id);
 
   bool receive(PubSub::Publication&& p) override;
 

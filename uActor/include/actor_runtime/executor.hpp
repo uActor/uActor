@@ -54,18 +54,15 @@ class Executor : public ExecutorApi {
  protected:
   template <typename... Args>
   void add_actor_base(const PubSub::Publication& publication, Args... args) {
-    const char* node_id =
-        std::get<std::string_view>(publication.get_attr("spawn_node_id"))
-            .data();
-    const char* actor_type =
-        std::get<std::string_view>(publication.get_attr("spawn_actor_type"))
-            .data();
-    const char* actor_version =
-        std::get<std::string_view>(publication.get_attr("spawn_actor_version"))
-            .data();
-    const char* instance_id =
-        std::get<std::string_view>(publication.get_attr("spawn_instance_id"))
-            .data();
+    assert(publication.has_attr("spawn_actor_version"));
+    auto node_id =
+        std::get<std::string_view>(publication.get_attr("spawn_node_id"));
+    auto actor_type =
+        std::get<std::string_view>(publication.get_attr("spawn_actor_type"));
+    auto actor_version =
+        std::get<std::string_view>(publication.get_attr("spawn_actor_version"));
+    auto instance_id =
+        std::get<std::string_view>(publication.get_attr("spawn_instance_id"));
 
     uint32_t local_id = next_id++;
 

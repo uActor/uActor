@@ -12,8 +12,10 @@
 namespace uActor::ActorRuntime {
 
 ManagedActor::ManagedActor(ExecutorApi* api, uint32_t unique_id,
-                           const char* node_id, const char* actor_type,
-                           const char* actor_version, const char* instance_id)
+                           std::string_view node_id,
+                           std::string_view actor_type,
+                           std::string_view actor_version,
+                           std::string_view instance_id)
     : _id(unique_id),
       _node_id(node_id),
       _actor_type(actor_type),
