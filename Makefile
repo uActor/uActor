@@ -1,3 +1,5 @@
+.PHONY: default build_local build_local_debug build_esp32 lint_cpplint lint_clang-tidy_posix lint_clang-tidy_posix format test
+
 default: build_local
 
 
@@ -39,10 +41,17 @@ ESP32_CODE_FILES = $(shell find uActor-ESP32/main uActor-ESP32/components/ble_ac
 POSIX_CODE_FILES = $(shell find uActor-POSIX -name '*.*pp') 
 CODE_FILES = $(GENERIC_CODE_FILES) $(ESP32_CODE_FILES) $(POSIX_CODE_FILES)
 
-
-lint: build/esp32/release/compile_commands.json 
+lint_cpplint:
 	cpplint --recursive --root=. --filter -legal,-build/c++11,-whitespace/braces,-build/include_order $(CODE_FILES) ${POSIX_CODE_FILES}
+
+lint_clang-tidy_esp32: build/esp32/release/compile_commands.json
 	clang-tidy -p build/esp32/release/compile_commands.json ${ESP32_CODE_FILES}
+
+lint_clang-tidy_posix: build/$(shell uname)_$(shell uname -m)/debug/compile_commands.json
 	clang-tidy -p build/$(shell uname)_$(shell uname -m)/debug/compile_commands.json ${GENERIC_CODE_FILES} {}
+
+lint: lint_cpplint lint_clang-tidy_posix
+
+
 format:
 	clang-format --style=Google -i $(CODE_FILES)
