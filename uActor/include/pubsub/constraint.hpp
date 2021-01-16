@@ -5,8 +5,10 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <variant>
 
+#include "allocator_configuration.hpp"
 #include "support/memory_manager.hpp"
 
 namespace uActor::PubSub {
@@ -20,15 +22,20 @@ struct ConstraintPredicates {
 };
 
 class Constraint {
-  using tracked_string =
-      std::basic_string<char, std::char_traits<char>,
-                        uActor::Support::TrackingAllocator<char>>;
+  template <typename U>
+  using Allocator = RoutingAllocatorConfiguration::Allocator<U>;
+
+  using allocator_type = Allocator<Constraint>;
+
+  using AString =
+      std::basic_string<char, std::char_traits<char>, Allocator<char>>;
+
   template <typename T>
   struct Container {
     Container(T operand, ConstraintPredicates::Predicate operation_name)
         : operand(operand), operation_name(operation_name) {}
-    T operand;
 
+    T operand;
     ConstraintPredicates::Predicate operation_name;
 
     [[nodiscard]] bool match(T input) const {
@@ -55,59 +62,76 @@ class Constraint {
   };
 
  public:
-  // TODO(raphaelhetzel) combine once we use C++20
+  // TODO(raphaelhetzel) combine constructors once we use C++20
+
+  template <typename PAllocator = allocator_type>
   Constraint(
-      std::string attribute, std::string oper,
+      std::string attribute, std::string_view oper,
       ConstraintPredicates::Predicate op = ConstraintPredicates::Predicate::EQ,
-      bool optional = false)
-      : _attribute(tracked_string(attribute,
-                                  tracked_string::allocator_type(
-                                      Support::TrackedRegions::ROUTING_STATE))),
-        _operand(Container<tracked_string>(
-            tracked_string(oper, tracked_string::allocator_type(
-                                     Support::TrackedRegions::ROUTING_STATE)),
-            op)),
+      bool optional = false, const PAllocator& allocator = {})
+      : _attribute(attribute, allocator),
+        _operand(Container<AString>(AString(oper, allocator), op)),
         _optional(optional) {
-    //    setup(AString(attribute), AString(oper), op, optional);
+    if (_attribute.at(0) == '?') {
+      _attribute = _attribute.substr(1);
+      _optional = true;
+    }
   }
 
+  template <typename PAllocator = allocator_type>
   Constraint(
       std::string attribute, int32_t oper,
       ConstraintPredicates::Predicate op = ConstraintPredicates::Predicate::EQ,
-      bool optional = false)
-      : _attribute(tracked_string(attribute,
-                                  tracked_string::allocator_type(
-                                      Support::TrackedRegions::ROUTING_STATE))),
+      bool optional = false, const PAllocator& allocator = {})
+      : _attribute(attribute, allocator),
         _operand(Container<int32_t>(oper, op)),
         _optional(optional) {
-    //    setup(AString(attribute), oper, op, optional);
+    if (_attribute.at(0) == '?') {
+      _attribute = _attribute.substr(1);
+      _optional = true;
+    }
   }
 
+  template <typename PAllocator = allocator_type>
   Constraint(
       std::string attribute, float oper,
       ConstraintPredicates::Predicate op = ConstraintPredicates::Predicate::EQ,
-      bool optional = false)
-      : _attribute(tracked_string(attribute,
-                                  tracked_string::allocator_type(
-                                      Support::TrackedRegions::ROUTING_STATE))),
+      bool optional = false, const PAllocator& allocator = {})
+      : _attribute(attribute, allocator),
         _operand(Container<float>(oper, op)),
         _optional(optional) {
-    //    setup(AString(attribute), oper, op, optional);
+    if (_attribute.at(0) == '?') {
+      _attribute = _attribute.substr(1);
+      _optional = true;
+    }
   }
 
-  //  template <typename T>
-  //  void setup(AString attribute, T operand,
-  //             ConstraintPredicates::Predicate predicate, bool optional) {
-  //    _operand = ;
-  ////    if (attribute.at(0) == '?') {
-  ////      _attribute =  attribute.substr(1);
-  ////      _optional = true;
-  ////    }
-  ////    else {
-  ////      _attribute = attribute;
-  //      _optional = optional;
-  ////    }
-  //  }
+  template <typename PAllocator = allocator_type>
+  Constraint(Constraint&& other, PAllocator allocator)
+      : _attribute(std::move(other._attribute), allocator),
+        _optional(other._optional) {
+    if (std::holds_alternative<Container<int32_t>>(other._operand) ||
+        std::holds_alternative<Container<float>>(other._operand)) {
+      _operand = std::move(other._operand);
+    } else if (std::holds_alternative<Container<AString>>(other._operand)) {
+      auto&& o = std::get<Container<AString>>(other._operand);
+      _operand = Container<AString>(AString(std::move(o.operand), allocator),
+                                    o.operation_name);
+    }
+  }
+
+  template <typename PAllocator = allocator_type>
+  Constraint(const Constraint& other, PAllocator allocator)
+      : _attribute(other._attribute, allocator), _optional(other._optional) {
+    if (std::holds_alternative<Container<int32_t>>(other._operand) ||
+        std::holds_alternative<Container<float>>(other._operand)) {
+      _operand = other._operand;
+    } else if (std::holds_alternative<Container<AString>>(other._operand)) {
+      auto&& o = std::get<Container<AString>>(other._operand);
+      _operand =
+          Container<AString>(AString(o.operand, allocator), o.operation_name);
+    }
+  }
 
   bool operator()(std::string_view input) const;
 
@@ -128,14 +152,14 @@ class Constraint {
   static std::optional<Constraint> deserialize(std::string_view serialized,
                                                bool optional);
 
-  [[nodiscard]] std::variant<std::monostate, std::string, int32_t, float>
+  [[nodiscard]] std::variant<std::monostate, std::string_view, int32_t, float>
   operand() const;
 
   [[nodiscard]] ConstraintPredicates::Predicate predicate() const;
 
  private:
-  tracked_string _attribute;
-  std::variant<std::monostate, Container<tracked_string>, Container<int32_t>,
+  AString _attribute;
+  std::variant<std::monostate, Container<AString>, Container<int32_t>,
                Container<float>>
       _operand;
   bool _optional;

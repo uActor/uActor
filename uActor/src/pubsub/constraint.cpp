@@ -7,9 +7,8 @@
 namespace uActor::PubSub {
 
 bool Constraint::operator()(std::string_view input) const {
-  if (std::holds_alternative<Container<tracked_string>>(_operand)) {
-    return (std::get<Container<tracked_string>>(_operand))
-        .match(tracked_string(input));
+  if (std::holds_alternative<Container<AString>>(_operand)) {
+    return (std::get<Container<AString>>(_operand)).match(AString(input));
   } else {
     return false;
   }
@@ -38,9 +37,8 @@ bool Constraint::operator==(const Constraint& other) const {
 std::string Constraint::serialize() const {
   std::string serialized = std::string(_attribute);
 
-  if (std::holds_alternative<Container<tracked_string>>(_operand)) {
-    const Container<tracked_string>& cont =
-        std::get<Container<tracked_string>>(_operand);
+  if (std::holds_alternative<Container<AString>>(_operand)) {
+    const Container<AString>& cont = std::get<Container<AString>>(_operand);
     serialized += ",s,";
     serialized +=
         std::string(ConstraintPredicates::name(cont.operation_name)) + ",";
@@ -100,11 +98,11 @@ std::optional<Constraint> Constraint::deserialize(std::string_view serialized,
   }
 }
 
-std::variant<std::monostate, std::string, int32_t, float> Constraint::operand()
-    const {
-  if (std::holds_alternative<Container<tracked_string>>(_operand)) {
-    const auto& ct = std::get<Container<tracked_string>>(_operand);
-    return std::string(ct.operand);
+std::variant<std::monostate, std::string_view, int32_t, float>
+Constraint::operand() const {
+  if (std::holds_alternative<Container<AString>>(_operand)) {
+    const auto& ct = std::get<Container<AString>>(_operand);
+    return std::string_view(ct.operand);
   } else if (std::holds_alternative<Container<int32_t>>(_operand)) {
     const auto& ct = std::get<Container<std::int32_t>>(_operand);
     return ct.operand;
@@ -112,12 +110,12 @@ std::variant<std::monostate, std::string, int32_t, float> Constraint::operand()
     const auto& ct = std::get<Container<float>>(_operand);
     return ct.operand;
   }
-  return std::variant<std::monostate, std::string, int32_t, float>();
+  return std::variant<std::monostate, std::string_view, int32_t, float>();
 }
 
 ConstraintPredicates::Predicate Constraint::predicate() const {
-  if (std::holds_alternative<Container<tracked_string>>(_operand)) {
-    const auto& ct = std::get<Container<tracked_string>>(_operand);
+  if (std::holds_alternative<Container<AString>>(_operand)) {
+    const auto& ct = std::get<Container<AString>>(_operand);
     return ct.operation_name;
   } else if (std::holds_alternative<Container<int32_t>>(_operand)) {
     const auto& ct = std::get<Container<int32_t>>(_operand);

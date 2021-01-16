@@ -125,10 +125,11 @@ void BLEActor::handle_subscription_added(PubSub::Publication&& publication) {
     for (const auto& c : deserialized->required_constraints()) {
       try {
         auto id = std::stoi(std::string(c.attribute()), 0, 0);
-        if (id <= 0xFF && std::holds_alternative<std::string>(c.operand())) {
-          filter.set_field(id,
-                           base64_decode(std::get<std::string>(c.operand())),
-                           c.predicate());
+        if (id <= 0xFF &&
+            std::holds_alternative<std::string_view>(c.operand())) {
+          filter.set_field(
+              id, base64_decode(std::get<std::string_view>(c.operand())),
+              c.predicate());
         }
       } catch (const std::exception&) {
       }
@@ -160,8 +161,8 @@ void BLEActor::handle_subscription_removed(PubSub::Publication&& publication) {
 bool BLEActor::filter_has_ble_type_constraint(const PubSub::Filter& filter) {
   auto is_ble_type_constraint = [](const auto& constraint) {
     return constraint.attribute() == "type" &&
-           std::holds_alternative<std::string>(constraint.operand()) &&
-           std::get<std::string>(constraint.operand()) == "ble_discovery";
+           std::holds_alternative<std::string_view>(constraint.operand()) &&
+           std::get<std::string_view>(constraint.operand()) == "ble_discovery";
   };
 
   return std::find_if(filter.required_constraints().begin(),

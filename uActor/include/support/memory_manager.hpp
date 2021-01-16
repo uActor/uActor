@@ -109,7 +109,6 @@ struct StringHash {
   }
 };
 
-};  // namespace uActor::Support
 
 template <typename T, typename U>
 constexpr bool operator==(
@@ -125,4 +124,5 @@ constexpr bool operator!=(
   return false;
 }
 
+};  // namespace uActor::Support
 #endif  // UACTOR_INCLUDE_SUPPORT_MEMORY_MANAGER_HPP_

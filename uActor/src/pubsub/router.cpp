@@ -10,6 +10,7 @@
 #include <list>
 #include <unordered_set>
 #include <utility>
+#include <vector>
 
 #include "board_functions.hpp"
 #include "pubsub/constraint.hpp"
@@ -24,7 +25,7 @@ void Router::publish(Publication&& publication) {
 }
 
 void Router::publish_internal(Publication&& publication) {
-  Counter<Allocator, AllocatorConfiguration> c;
+  Counter<Allocator> c;
   std::list<std::pair<Receiver*, uint32_t>> current_receivers;
 #if CONFIG_BENCHMARK_BREAKDOWN
   testbed_start_timekeeping(2);
@@ -44,7 +45,14 @@ void Router::publish_internal(Publication&& publication) {
   for (const auto& [attribute, value] : publication) {
     if (auto constraint_it = constraints.find(attribute);
         constraint_it != constraints.end()) {
-      constraint_it->second.check(value, &c);
+      if (std::holds_alternative<Publication::AString>(value)) {
+        constraint_it->second.check(
+            std::string_view(std::get<Publication::AString>(value)), &c);
+      } else if (std::holds_alternative<int32_t>(value)) {
+        constraint_it->second.check(std::get<int32_t>(value), &c);
+      } else if (std::holds_alternative<float>(value)) {
+        constraint_it->second.check(std::get<float>(value), &c);
+      }
     }
   }
 #if CONFIG_BENCHMARK_BREAKDOWN
@@ -54,13 +62,12 @@ void Router::publish_internal(Publication&& publication) {
   testbed_start_timekeeping(7);
 #endif
   for (const auto& [subscription_ptr, counts] : c) {
-    auto& subscription = *subscription_ptr;
-    if (counts.required == subscription.count_required) {
-      if (counts.optional == subscription.count_optional ||
-          subscription.filter.check_optionals(publication)) {
-        for (auto& receiver : subscription.receivers) {
-          current_receivers.emplace_back(receiver.first,
-                                         subscription.subscription_id);
+    if (counts.required == subscription_ptr->count_required()) {
+      if (counts.optional == subscription_ptr->count_optional() ||
+          subscription_ptr->filter.check_optionals(publication)) {
+        for (auto& receiver : subscription_ptr->receivers) {
+          current_receivers.emplace_back(
+              receiver.first, subscription_ptr->subscription_id);
         }
       }
     }
@@ -99,6 +106,13 @@ void Router::publish_internal(Publication&& publication) {
 
 std::string Router::subscriptions_for(std::string_view node_id) {
   std::shared_lock lock(mtx);
+
+  auto peer_node_it = peer_node_ids.find(node_id);
+  if (peer_node_it == peer_node_ids.end()) {
+    return "";
+  }
+  uint32_t internal_node_id = peer_node_it->second.second;
+
   std::string serialized_sub;
   bool send_node_id = false;
 
@@ -106,20 +120,22 @@ std::string Router::subscriptions_for(std::string_view node_id) {
     auto& sub = sub_pair.second;
     bool skip = false;
     // Only subscriptions that could be fulfilled
-    if (sub.nodes.size() >= 2 || sub.nodes.find(node_id) == sub.nodes.end()) {
-      for (const auto& constraint : sub.filter.required) {
+    auto n = sub.nodes();
+    if (n.size() >= 2 || n.find(internal_node_id) == n.end()) {
+      for (const auto& constraint_ptr : sub.filter.required) {
         // Don't forward local subscriptions
-        if (constraint.attribute() == "publisher_node_id") {
-          if (std::holds_alternative<std::string>(constraint.operand()) &&
-              std::get<std::string>(constraint.operand()) ==
+        if (constraint_ptr->attribute() == "publisher_node_id") {
+          if (std::holds_alternative<std::string_view>(
+                  constraint_ptr->operand()) &&
+              std::get<std::string_view>(constraint_ptr->operand()) ==
                   BoardFunctions::NODE_ID) {
             skip = true;
           }
         }
         // Overapproximate node_id based subscriptions as they would otherwise
         // floud the routing tables
-        if (constraint.attribute() == "node_id" &&
-            std::get<std::string>(constraint.operand()) ==
+        if (constraint_ptr->attribute() == "node_id" &&
+            std::get<std::string_view>(constraint_ptr->operand()) ==
                 BoardFunctions::NODE_ID) {
           send_node_id = true;
           skip = true;
@@ -135,7 +151,7 @@ std::string Router::subscriptions_for(std::string_view node_id) {
     serialized_sub +=
         Filter{Constraint{"node_id", BoardFunctions::NODE_ID}}.serialize() +
         "&";
-    node_id_sent_to.insert(AString(node_id, make_allocator<AString>()));
+    peer_node_it->second.first = true;
   }
 
   if (!serialized_sub.empty()) {
@@ -160,54 +176,74 @@ uint32_t Router::number_of_subscriptions() { return subscriptions.size(); }
 uint32_t Router::add_subscription(Filter&& f, Receiver* r,
                                   std::string subscriber_node_id) {
   std::unique_lock lck(mtx);
-  if (auto it =
-          std::find_if(subscriptions.begin(), subscriptions.end(),
-                       [&](const auto& sub) { return sub.second.filter == f; });
+  auto [res_it, _inserted] = peer_node_ids.try_emplace(
+      AString(subscriber_node_id), false, next_node_id++);
+  uint32_t internal_node_id = res_it->second.second;
+
+  if (auto it = std::find_if(
+          subscriptions.begin(), subscriptions.end(),
+          [&](const auto& sub_pair) { return sub_pair.second.filter == f; });
       it != subscriptions.end()) {
-    Subscription<Allocator, AllocatorConfiguration>& sub = it->second;
-    bool updated = sub.add_receiver(
-        r, AString(subscriber_node_id, make_allocator<AString>()));
+    Subscription<Allocator>& sub = it->second;
+    bool updated = sub.add_receiver(r, internal_node_id);
     if (updated) {
-      if (sub.nodes.size() == 2) {
-        std::string other_sub{};
-        for (const auto& n : sub.nodes) {
-          if (n.first != AString(subscriber_node_id)) {
-            other_sub = n.first;
+      auto nodes = sub.nodes();
+      if (nodes.size() == 2) {
+        uint32_t other_sub = 0;
+        for (const auto& n : nodes) {
+          if (n != internal_node_id) {
+            other_sub = n;
           }
         }
-        publish_subscription_added(
-            sub.filter, "", AString(other_sub, make_allocator<AString>()));
+
+        auto exclude_node_id =
+            std::find_if(peer_node_ids.begin(), peer_node_ids.end(),
+                         [other_sub](const auto& node_it) {
+                           return node_it.second.second == other_sub;
+                         })
+                ->first;
+        publish_subscription_added(f, "", exclude_node_id);
       }
     }
     return sub.subscription_id;
   } else {  // new subscription
     uint32_t id = next_sub_id++;
     auto [sub_it, inserted] = subscriptions.try_emplace(
-        id, id, std::move(f),
-        AString(subscriber_node_id, make_allocator<AString>()), r);
+        id, id, r, internal_node_id);  // Filters not set yet;
+
+    std::vector<std::shared_ptr<const Constraint>,
+                Allocator<std::shared_ptr<const Constraint>>>
+        required{make_allocator<std::shared_ptr<const Constraint>>()};
+    std::vector<std::shared_ptr<const Constraint>,
+                Allocator<std::shared_ptr<const Constraint>>>
+        optional{make_allocator<std::shared_ptr<const Constraint>>()};
 
     // Index maintenance
-    if (inserted && sub_it->second.count_required == 0) {
+
+    for (auto constraint : f.required) {
+      auto [constraint_it, _inserted] = constraints.try_emplace(
+          AString(constraint.attribute(), make_allocator<AString>()));
+      auto cp = constraint_it->second.insert(std::move(constraint),
+                                             &(sub_it->second), false);
+      required.push_back(cp);
+    }
+    for (auto constraint : f.optional) {
+      auto [constraint_it, _inserted] = constraints.try_emplace(
+          AString(constraint.attribute(), make_allocator<AString>()));
+      auto cp = constraint_it->second.insert(std::move(constraint),
+                                             &(sub_it->second), true);
+      optional.push_back(cp);
+    }
+
+    // Now the subscription is usable
+    sub_it->second.set_constraints(std::move(required), std::move(optional));
+
+    if (inserted && sub_it->second.count_required() == 0) {
       no_requirements.insert(&sub_it->second);
-    }
-    for (auto constraint : sub_it->second.filter.required) {
-      auto [constraint_it, _inserted] = constraints.try_emplace(
-          AString(constraint.attribute(), make_allocator<AString>()),
-          ConstraintIndex<Allocator, AllocatorConfiguration>());
-      constraint_it->second.insert(std::move(constraint), &(sub_it->second),
-                                   false);
-    }
-    for (auto constraint : sub_it->second.filter.optional) {
-      auto [constraint_it, _inserted] = constraints.try_emplace(
-          AString(constraint.attribute(), make_allocator<AString>()),
-          ConstraintIndex<Allocator, AllocatorConfiguration>());
-      constraint_it->second.insert(std::move(constraint), &(sub_it->second),
-                                   true);
     }
 
     publish_subscription_added(
-        sub_it->second.filter,
-        AString(subscriber_node_id, make_allocator<AString>()), "");
+        f, AString(subscriber_node_id, make_allocator<AString>()), "");
     return id;
   }
 }
@@ -216,49 +252,64 @@ uint32_t Router::remove_subscription(uint32_t sub_id, Receiver* r,
                                      std::string node_id) {
   size_t remaining = 0;
   std::unique_lock lck(mtx);
+
+  uint32_t internal_node_id = 0;
+  auto res_it = peer_node_ids.find(node_id);
+  if (res_it != peer_node_ids.end()) {
+    internal_node_id = res_it->second.second;
+  }
+
   if (auto sub_it = subscriptions.find(sub_id); sub_it != subscriptions.end()) {
     auto& sub = sub_it->second;
-    auto [empty_sub, rem] = sub.remove_receiver(r, AString(node_id));
+
+    auto [empty_sub, rem] = sub.remove_receiver(r, internal_node_id);
     remaining = rem;
+
     if (empty_sub) {
       // Index maintenance
-      if (sub.count_required == 0) {
+
+      if (sub.count_required() == 0) {
         no_requirements.erase(&sub);
       }
 
-      for (const auto& constraint : sub.filter.required) {
-        if (auto constraint_it = constraints.find(constraint.attribute());
+      for (auto constraint_ptr : sub.filter.required) {
+        if (auto constraint_it = constraints.find(constraint_ptr->attribute());
             constraint_it != constraints.end()) {
-          if (constraint_it->second.remove(constraint, &sub)) {
+          if (constraint_it->second.remove(*constraint_ptr, &sub)) {
             constraints.erase(constraint_it);
           }
         }
       }
 
-      for (const auto& constraint : sub.filter.optional) {
-        if (auto constraint_it = constraints.find(constraint.attribute());
+      for (auto constraint_ptr : sub.filter.optional) {
+        if (auto constraint_it = constraints.find(constraint_ptr->attribute());
             constraint_it != constraints.end()) {
-          if (constraint_it->second.remove(constraint, &sub)) {
+          if (constraint_it->second.remove(*constraint_ptr, &sub)) {
             constraints.erase(constraint_it);
           }
         }
       }
 
-      Filter f = std::move(sub.filter);
+      auto filter = std::move(sub.filter);
+
       subscriptions.erase(sub.subscription_id);
-      publish_subscription_removed(f, "", "");
+
+      publish_subscription_removed(filter, "", "");
     } else {
-      if (sub.nodes.size() == 1 && sub.nodes.begin()->first != "local") {
+      auto n = sub.nodes();
+      if (n.size() == 1 && *n.begin() != 1) {
         publish_subscription_removed(
             sub.filter, "",
-            AString(sub.nodes.begin()->first, make_allocator<AString>()));
+            std::find_if(peer_node_ids.begin(), peer_node_ids.end(),
+                         [&n](const auto& node_it) {
+                           return node_it.second.second == *n.begin();
+                         })
+                ->first);
       }
     }
   }
   return remaining;
 }
-
-void Router::publish_subscription_update() { updated = true; }
 
 void Router::publish_subscription_added(const Filter& filter, AString exclude,
                                         AString include) {
@@ -267,27 +318,26 @@ void Router::publish_subscription_added(const Filter& filter, AString exclude,
   // Sub optimization
   for (const auto& constraint : filter.required) {
     if (constraint.attribute() == "publisher_node_id") {
-      if (std::holds_alternative<std::string>(constraint.operand()) &&
-          std::get<std::string>(constraint.operand()) ==
+      if (std::holds_alternative<std::string_view>(constraint.operand()) &&
+          std::get<std::string_view>(constraint.operand()) ==
               BoardFunctions::NODE_ID) {
         include = "local";
       }
     }
     // Overapproximate node_id
     if (constraint.attribute() == "node_id" &&
-        std::get<std::string>(constraint.operand()) ==
+        std::get<std::string_view>(constraint.operand()) ==
             BoardFunctions::NODE_ID) {
-      for (const auto& node : peer_node_ids) {
-        if (node != exclude &&
-            node_id_sent_to.find(node) == node_id_sent_to.end()) {
+      for (auto& [node_id_string, node_id_info] : peer_node_ids) {
+        if (node_id_string != exclude && !node_id_info.first) {
           Publication update{BoardFunctions::NODE_ID, "router", "1"};
           update.set_attr("type", "subscription_added");
           update.set_attr("serialized_subscription",
                           Filter{Constraint{"node_id", BoardFunctions::NODE_ID}}
                               .serialize());
-          update.set_attr("include_node_id", node);
+          update.set_attr("include_node_id", node_id_string);
           publish_internal(std::move(update));
-          node_id_sent_to.insert(node);
+          node_id_info.first = true;
         }
       }
       return;
@@ -306,21 +356,21 @@ void Router::publish_subscription_added(const Filter& filter, AString exclude,
   publish_internal(std::move(update));
 }
 
-void Router::publish_subscription_removed(const Filter& filter, AString exclude,
-                                          AString include) {
+void Router::publish_subscription_removed(const InternalFilter& filter,
+                                          AString exclude, AString include) {
   // Sub optimization
-  for (const auto& constraint : filter.required) {
-    if (constraint.attribute() == "publisher_node_id") {
-      if (std::holds_alternative<std::string>(constraint.operand()) &&
-          std::get<std::string>(constraint.operand()) ==
+  for (auto constraint_ptr : filter.required) {
+    if (constraint_ptr->attribute() == "publisher_node_id") {
+      if (std::holds_alternative<std::string_view>(constraint_ptr->operand()) &&
+          std::get<std::string_view>(constraint_ptr->operand()) ==
               BoardFunctions::NODE_ID) {
         include = "local";
       }
     }
     // TODO(raphaelhetzel) Keep track of the published node ids and remove them
     // as required
-    if (constraint.attribute() == "node_id" &&
-        std::get<std::string>(constraint.operand()) ==
+    if (constraint_ptr->attribute() == "node_id" &&
+        std::get<std::string_view>(constraint_ptr->operand()) ==
             BoardFunctions::NODE_ID) {
       return;
     }
@@ -339,12 +389,4 @@ void Router::publish_subscription_removed(const Filter& filter, AString exclude,
 }
 
 ReceiverHandle Router::new_subscriber() { return ReceiverHandle{this}; }
-
-void Router::add_peer(std::string node_id) {
-  peer_node_ids.insert(AString(node_id, make_allocator<AString>()));
-}
-void Router::remove_peer(std::string node_id) {
-  peer_node_ids.erase(AString(node_id, make_allocator<AString>()));
-  node_id_sent_to.erase(AString(node_id, make_allocator<AString>()));
-}
 }  // namespace uActor::PubSub

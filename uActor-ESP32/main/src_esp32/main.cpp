@@ -45,8 +45,8 @@ extern "C" {
 #endif
 
 #if CONFIG_UACTOR_ENABLE_TELEMETRY
-#include "controllers/telemetry_data.hpp"
 #include "controllers/telemetry_actor.hpp"
+#include "controllers/telemetry_data.hpp"
 #endif
 
 extern "C" {
@@ -59,6 +59,31 @@ void telemetry_fetch_hook() {
   uActor::Controllers::TelemetryData::set("free_heap", xPortGetFreeHeapSize());
   uActor::Controllers::TelemetryData::set(
       "largest_block", heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
+
+  uActor::Controllers::TelemetryData::set(
+      "heap_general",
+      uActor::Support::MemoryManager::total_space[static_cast<size_t>(
+          uActor::Support::TrackedRegions::GENERAL)]);
+
+  uActor::Controllers::TelemetryData::set(
+      "heap_runtime",
+      uActor::Support::MemoryManager::total_space[static_cast<size_t>(
+          uActor::Support::TrackedRegions::ACTOR_RUNTIME)]);
+
+  uActor::Controllers::TelemetryData::set(
+      "heap_routing",
+      uActor::Support::MemoryManager::total_space[static_cast<size_t>(
+          uActor::Support::TrackedRegions::ROUTING_STATE)]);
+
+  uActor::Controllers::TelemetryData::set(
+      "heap_publications",
+      uActor::Support::MemoryManager::total_space[static_cast<size_t>(
+          uActor::Support::TrackedRegions::PUBLICATIONS)]);
+
+  uActor::Controllers::TelemetryData::set(
+      "heap_debug",
+      uActor::Support::MemoryManager::total_space[static_cast<size_t>(
+          uActor::Support::TrackedRegions::DEBUG)]);
 }
 #endif
 
@@ -325,7 +350,7 @@ void main_task(void *) {
   }
 
   xTaskCreatePinnedToCore(
-      &uActor::Remote::TCPForwarder::tcp_reader_task, "TCP2", 4192,
+      &uActor::Remote::TCPForwarder::tcp_reader_task, "TCP2", 6144,
       reinterpret_cast<void *>(tcp_task_args.tcp_forwarder), 4, nullptr, 0);
 
 #if CONFIG_ENABLE_BLE_ACTOR
@@ -360,35 +385,6 @@ void main_task(void *) {
                                  std::stoi(std::string(peer_port)));
     uActor::PubSub::Router::get_instance().publish(
         std::move(add_persistent_peer));
-  }
-  while (true) {
-    printf("%d\n", sizeof(uActor::PubSub::Publication));
-    printf("Space General: %d %d\n",
-           uActor::Support::MemoryManager::total_space[static_cast<size_t>(
-               uActor::Support::TrackedRegions::GENERAL)],
-           uActor::Support::MemoryManager::max_space[static_cast<size_t>(
-               uActor::Support::TrackedRegions::GENERAL)]);
-    printf("Space Runtime: %d %d\n",
-           uActor::Support::MemoryManager::total_space[static_cast<size_t>(
-               uActor::Support::TrackedRegions::ACTOR_RUNTIME)],
-           uActor::Support::MemoryManager::max_space[static_cast<size_t>(
-               uActor::Support::TrackedRegions::ACTOR_RUNTIME)]);
-    printf("Space Routing: %d %d\n",
-           uActor::Support::MemoryManager::total_space[static_cast<size_t>(
-               uActor::Support::TrackedRegions::ROUTING_STATE)],
-           uActor::Support::MemoryManager::max_space[static_cast<size_t>(
-               uActor::Support::TrackedRegions::ROUTING_STATE)]);
-    printf("Space Publications: %d %d\n",
-           uActor::Support::MemoryManager::total_space[static_cast<size_t>(
-               uActor::Support::TrackedRegions::PUBLICATIONS)],
-           uActor::Support::MemoryManager::max_space[static_cast<size_t>(
-               uActor::Support::TrackedRegions::PUBLICATIONS)]);
-    printf("Space DEBUG: %d %d\n",
-           uActor::Support::MemoryManager::total_space[static_cast<size_t>(
-               uActor::Support::TrackedRegions::DEBUG)],
-           uActor::Support::MemoryManager::max_space[static_cast<size_t>(
-               uActor::Support::TrackedRegions::DEBUG)]);
-    vTaskDelay(5000);
   }
 
   vTaskDelete(nullptr);

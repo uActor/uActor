@@ -9,7 +9,7 @@
 #include <variant>
 #include <vector>
 
-#include "support/allocator_config.hpp"
+#include "allocator_configuration.hpp"
 #include "support/memory_manager.hpp"
 
 namespace uActor::PubSub {
@@ -17,14 +17,14 @@ namespace uActor::PubSub {
 class Publication {
  public:
   template <typename U>
-  using Allocator = Support::TrackingAllocator<U>;
+  using Allocator = PublicationAllocatorConfiguration::Allocator<U>;
 
   using AString =
       std::basic_string<char, std::char_traits<char>, Allocator<char>>;
 
   template <typename U>
   constexpr static auto make_allocator =
-      Support::PublicationAllocatorConfiguration::make_allocator<U>;
+      PublicationAllocatorConfiguration::make_allocator<U>;
 
   using variant_type = std::variant<AString, int32_t, float>;
   using InternalType =
