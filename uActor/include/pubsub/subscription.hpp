@@ -41,8 +41,6 @@ struct Subscription {
         filter(std::move(other.filter), allocator),
         receivers(std::move(other.receivers), allocator) {}
 
-  // TODO(raphaelhetzel) add assignment operators
-
   bool add_receiver(Receiver* receiver, uint32_t source_node_id) {
     auto [receiver_it, inserted_receiver] = receivers.try_emplace(receiver);
     auto [it, inserted] = receiver_it->second.emplace(source_node_id);

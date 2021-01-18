@@ -297,35 +297,6 @@ int main(int arg_count, char** args) {
     sleep(1);
   } while (true);
 #endif
-  while (true) {
-    printf("%d\n", sizeof(uActor::PubSub::Publication));
-    printf("Space General: %d %d\n",
-           uActor::Support::MemoryManager::total_space[static_cast<size_t>(
-               uActor::Support::TrackedRegions::GENERAL)],
-           uActor::Support::MemoryManager::max_space[static_cast<size_t>(
-               uActor::Support::TrackedRegions::GENERAL)]);
-    printf("Space Runtime: %d %d\n",
-           uActor::Support::MemoryManager::total_space[static_cast<size_t>(
-               uActor::Support::TrackedRegions::ACTOR_RUNTIME)],
-           uActor::Support::MemoryManager::max_space[static_cast<size_t>(
-               uActor::Support::TrackedRegions::ACTOR_RUNTIME)]);
-    printf("Space Routing: %d %d\n",
-           uActor::Support::MemoryManager::total_space[static_cast<size_t>(
-               uActor::Support::TrackedRegions::ROUTING_STATE)],
-           uActor::Support::MemoryManager::max_space[static_cast<size_t>(
-               uActor::Support::TrackedRegions::ROUTING_STATE)]);
-    printf("Space Publications: %d %d\n",
-           uActor::Support::MemoryManager::total_space[static_cast<size_t>(
-               uActor::Support::TrackedRegions::PUBLICATIONS)],
-           uActor::Support::MemoryManager::max_space[static_cast<size_t>(
-               uActor::Support::TrackedRegions::PUBLICATIONS)]);
-    printf("Space DEBUG: %d %d\n",
-           uActor::Support::MemoryManager::total_space[static_cast<size_t>(
-               uActor::Support::TrackedRegions::DEBUG)],
-           uActor::Support::MemoryManager::max_space[static_cast<size_t>(
-               uActor::Support::TrackedRegions::DEBUG)]);
-    sleep(5);
-  }
 
   tcp_task2.join();
   tcp_task.join();

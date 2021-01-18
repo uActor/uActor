@@ -31,19 +31,22 @@ class Filter {
 
   template <typename PAllocator = allocator_type>
   explicit Filter(std::initializer_list<Constraint> constraints,
-                  const PAllocator& allocator = {})
+                  const PAllocator& allocator =
+                      RoutingAllocatorConfiguration::make_allocator<Filter>())
       : required(allocator), optional(allocator) {
     for (Constraint c : constraints) {
       if (c.optional()) {
-        optional.push_back(std::move(c));
+        optional.emplace_back(std::move(c));
       } else {
-        required.push_back(std::move(c));
+        required.emplace_back(std::move(c));
       }
     }
   }
 
   template <typename PAllocator = allocator_type, typename T>
-  explicit Filter(T constraints, const PAllocator& allocator = {})
+  explicit Filter(T constraints,
+                  const PAllocator& allocator =
+                      RoutingAllocatorConfiguration::make_allocator<Filter>())
       : required(allocator), optional(allocator) {
     for (Constraint c : constraints) {
       if (c.optional()) {
@@ -55,7 +58,9 @@ class Filter {
   }
 
   template <typename PAllocator = allocator_type>
-  Filter(const Filter& other, const PAllocator& allocator = {})
+  Filter(const Filter& other,
+         const PAllocator& allocator =
+             RoutingAllocatorConfiguration::make_allocator<Filter>())
       : required(other.required, allocator),
         optional(other.optional, allocator) {}
 

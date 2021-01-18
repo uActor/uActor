@@ -6,7 +6,7 @@ menu "Wifi Configuration"
             SSID
     config WIFI_USE_EDUROAM
         bool "Use eduroam"
-        default y
+        default n
         help
             Use eduroam instead pf WPA personal.
             Uses username + password,
@@ -28,7 +28,7 @@ endmenu
 menu "Board Configuration"
     config USE_MAC_AS_NODE_ID
         bool "Use the MAC address as the node_id"
-        default n
+        default y
     config NODE_ID
         string "Unique Node ID"
         default "node_1"
@@ -105,9 +105,17 @@ menu "uActor"
             default y
             help
                 Attempts to reduce the publication pressure
+        config UACTOR_OPTIMIZATIONS_DIRECT_CODE_STORE
+            bool "Direct code store"
+            default y
+            help
+                Let the deployment manager directly interact with the CodeStore.
     endmenu
-    config CONFIG_UACTOR_ENABLE_TELEMETRY
+    config UACTOR_ENABLE_TELEMETRY
        bool "Collect and send telemetry updates"
+       default y
+    config UACTOR_ENABLE_HEAP_TRACKING
+       bool "Component-wise heap-memory tracking"
        default y
 endmenu
 menu "Testbed Configuration"

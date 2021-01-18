@@ -53,7 +53,6 @@ extern "C" {
 void app_main(void);
 }
 
-
 #if CONFIG_UACTOR_ENABLE_TELEMETRY
 void telemetry_fetch_hook() {
   uActor::Controllers::TelemetryData::set("free_heap", xPortGetFreeHeapSize());

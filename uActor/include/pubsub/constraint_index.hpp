@@ -42,24 +42,34 @@ struct ConstraintIndex {
   // using ConstraintItemPointer = std::shared_ptr<ConstraintItem>;
 
   // optimized index for some cases
-  std::vector<ConstraintItem, Allocator<ConstraintItem>> string_equal;
+  std::vector<ConstraintItem,
+              std::scoped_allocator_adaptor<Allocator<ConstraintItem>>>
+      string_equal;
 
   // Fallback to linar scan for all other types of constraints
-  std::vector<ConstraintItem, Allocator<ConstraintItem>> index;
+  std::vector<ConstraintItem,
+              std::scoped_allocator_adaptor<Allocator<ConstraintItem>>>
+      index;
 
   template <typename PAllocator = Allocator<ConstraintIndex>>
-  explicit ConstraintIndex(std::allocator_arg_t, const PAllocator& allocator)
+  explicit ConstraintIndex(
+      const PAllocator& allocator =
+          RoutingAllocatorConfiguration::make_allocator<ConstraintIndex>())
       : string_equal(allocator), index(allocator) {}
 
   template <typename PAllocator = Allocator<ConstraintIndex>>
-  ConstraintIndex(std::allocator_arg_t, const PAllocator& allocator,
-                  ConstraintIndex&& other)
+  ConstraintIndex(
+      ConstraintIndex&& other,
+      const PAllocator& allocator =
+          RoutingAllocatorConfiguration::make_allocator<ConstraintIndex>())
       : string_equal(std::move(other.string_equal), allocator),
         index(std::move(other.index), allocator) {}
 
   template <typename PAllocator = Allocator<ConstraintIndex>>
-  ConstraintIndex(std::allocator_arg_t, const PAllocator& allocator,
-                  const ConstraintIndex& other)
+  ConstraintIndex(
+      const ConstraintIndex& other,
+      const PAllocator& allocator =
+          RoutingAllocatorConfiguration::make_allocator<ConstraintIndex>())
       : string_equal(other.string_equal, allocator),
         index(other.index, allocator) {}
 
@@ -79,7 +89,9 @@ struct ConstraintIndex {
           string_operand !=
               std::get<std::string_view>(index_it->first->operand())) {
         auto it = string_equal.emplace(
-            index_it, std::make_shared<Constraint>(std::move(c)),
+            index_it,
+            std::make_shared<Constraint>(std::move(c),
+                                         string_equal.get_allocator()),
             std::initializer_list<typename subscriptions_container::value_type>(
                 {{sub_ptr, opt}}));
         return it->first;

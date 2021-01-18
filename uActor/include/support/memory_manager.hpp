@@ -25,13 +25,20 @@ struct MemoryManager {
   static int32_t max_space[static_cast<size_t>(TrackedRegions::_TAIL)];
 
   static void* allocate_lua(void* ud, void* ptr, size_t osize, size_t nsize) {
+#if CONFIG_UACTOR_ENABLE_HEAP_TRACKING
+    int32_t size_difference = static_cast<int32_t>(nsize);
+    if (ptr) {
+      size_difference -= static_cast<int32_t>(osize);
+    }
+
     total_space[static_cast<size_t>(TrackedRegions::ACTOR_RUNTIME)] +=
-        static_cast<int32_t>(nsize) - static_cast<int32_t>(osize);
+        size_difference;
     if (total_space[static_cast<size_t>(TrackedRegions::ACTOR_RUNTIME)] >
         max_space[static_cast<size_t>(TrackedRegions::ACTOR_RUNTIME)]) {
       max_space[static_cast<size_t>(TrackedRegions::ACTOR_RUNTIME)] =
           total_space[static_cast<size_t>(TrackedRegions::ACTOR_RUNTIME)];
     }
+#endif
 
     // standard lua allocator
     if (nsize == 0) {
@@ -40,46 +47,6 @@ struct MemoryManager {
     } else {
       return realloc(ptr, nsize);
     }
-  }
-};
-
-template <typename T>
-struct TrackingAllocator {
-  using value_type = T;
-  using size_type = std::size_t;
-  using difference_type = std::ptrdiff_t;
-  using propagate_on_container_move_assignment = std::true_type;
-
-  TrackedRegions region{TrackedRegions::GENERAL};
-
-  std::allocator<T> base = std::allocator<T>();
-
-  TrackingAllocator() noexcept {}
-  TrackingAllocator(const TrackingAllocator&) noexcept = default;
-  ~TrackingAllocator() = default;
-
-  explicit TrackingAllocator(TrackedRegions region) : region(region){}
-
-  template <class U>
-  TrackingAllocator(const TrackingAllocator<U>& other) noexcept
-      : region(other.region) {}
-
-  constexpr T* allocate(std::size_t n) {
-    if (region == TrackedRegions::GENERAL) {
-      printf("a");
-    }
-    MemoryManager::total_space[static_cast<size_t>(region)] += n * sizeof(T);
-    if (MemoryManager::total_space[static_cast<size_t>(region)] >
-        MemoryManager::max_space[static_cast<size_t>(region)]) {
-      MemoryManager::max_space[static_cast<size_t>(region)] =
-          MemoryManager::total_space[static_cast<size_t>(region)];
-    }
-    return base.allocate(n);
-  }
-
-  constexpr void deallocate(T* p, std::size_t n) {
-    MemoryManager::total_space[static_cast<size_t>(region)] -= n * sizeof(T);
-    base.deallocate(p, n);
   }
 };
 
@@ -109,20 +76,5 @@ struct StringHash {
   }
 };
 
-
-template <typename T, typename U>
-constexpr bool operator==(
-    const uActor::Support::TrackingAllocator<T>&,
-    const uActor::Support::TrackingAllocator<U>&) noexcept {
-  return true;
-}
-
-template <typename T, typename U>
-constexpr bool operator!=(
-    const uActor::Support::TrackingAllocator<T>&,
-    const uActor::Support::TrackingAllocator<U>&) noexcept {
-  return false;
-}
-
-};  // namespace uActor::Support
+};      // namespace uActor::Support
 #endif  // UACTOR_INCLUDE_SUPPORT_MEMORY_MANAGER_HPP_

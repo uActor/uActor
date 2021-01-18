@@ -26,12 +26,14 @@ namespace uActor::ActorRuntime {
 
 class ManagedLuaActor : public ManagedActor {
  public:
+  template <typename PAllocator = allocator_type>
   ManagedLuaActor(ExecutorApi* api, uint32_t unique_id,
                   std::string_view node_id, std::string_view actor_type,
                   std::string_view actor_version, std::string_view instance_id,
-                  lua_State* global_state)
+                  lua_State* global_state,
+                  PAllocator allocator = make_allocator<ManagedLuaActor>())
       : ManagedActor(api, unique_id, node_id, actor_type, actor_version,
-                     instance_id),
+                     instance_id, allocator),
         state(global_state) {
     lua_newtable(state);
     lua_setglobal(state,

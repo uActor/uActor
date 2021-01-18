@@ -6,6 +6,7 @@
 
 #include "actor_runtime/lua_functions.hpp"
 #include "actor_runtime/lua_publication_wrapper.hpp"
+#include "support/memory_manager.hpp"
 
 namespace uActor::ActorRuntime {
 

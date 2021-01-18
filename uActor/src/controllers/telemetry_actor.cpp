@@ -41,7 +41,6 @@ void TelemetryActor::try_publish_telemetry_datapoint(
 
   std::string data_values;
   for (const auto& [key, value] : data.data) {
-    printf("%s\n", key.c_str());
     data_values += key + ",";
     p.set_attr(key, value);
   }

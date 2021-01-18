@@ -1,19 +1,30 @@
 #ifndef UACTOR_INCLUDE_PUBSUB_ALLOCATOR_CONFIGURATION_HPP_
 #define UACTOR_INCLUDE_PUBSUB_ALLOCATOR_CONFIGURATION_HPP_
 
+#ifdef ESP_IDF
+#include <sdkconfig.h>
+#endif
+
 #include <memory>
 #include <string>
+#include <tuple>
 
-#include "support/memory_manager.hpp"
-
+#include "support/tracking_allocator.hpp"
 namespace uActor::PubSub {
 
 struct RoutingAllocatorConfiguration {
+#if CONFIG_UACTOR_ENABLE_HEAP_TRACKING
   template <typename U>
   using Allocator = Support::TrackingAllocator<U>;
 
   constexpr static auto allocator_params =
       std::tuple(Support::TrackedRegions::ROUTING_STATE);
+#else
+  template <typename U>
+  using Allocator = std::allocator<U>;
+
+  constexpr static auto allocator_params = std::tuple<>();
+#endif
 
   template <typename U>
   static Allocator<U> make_allocator() {
@@ -25,11 +36,18 @@ struct RoutingAllocatorConfiguration {
 };
 
 struct PublicationAllocatorConfiguration {
+#if CONFIG_UACTOR_ENABLE_HEAP_TRACKING
   template <typename U>
   using Allocator = Support::TrackingAllocator<U>;
 
   constexpr static auto allocator_params =
       std::tuple(Support::TrackedRegions::PUBLICATIONS);
+#else
+  template <typename U>
+  using Allocator = std::allocator<U>;
+
+  constexpr static auto allocator_params = std::tuple<>();
+#endif
 
   template <typename U>
   static Allocator<U> make_allocator() {

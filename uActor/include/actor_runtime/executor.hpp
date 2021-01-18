@@ -13,6 +13,7 @@
 #include "executor_api.hpp"
 #include "managed_actor.hpp"
 #include "pubsub/router.hpp"
+#include "runtime_allocator_configuration.hpp"
 
 namespace uActor::ActorRuntime {
 
@@ -24,32 +25,57 @@ struct ExecutorSettings {
 template <typename ActorType, typename ExecutorType>
 class Executor : public ExecutorApi {
  public:
+  template <typename U>
+  using Allocator = RuntimeAllocatorConfiguration::Allocator<U>;
+
+  // TODO(raphaelhetzel) this alias seems to cause issues (clang11 macOS
+  // segfault) template <typename U> constexpr static auto make_allocator =
+  //     RuntimeAllocatorConfiguration::make_allocator<U>;
+
+  using AString =
+      std::basic_string<char, std::char_traits<char>, Allocator<char>>;
+
   static void os_task(void* settings) {
-    auto* router = &PubSub::Router::get_instance();
+    PubSub::Router* router = &PubSub::Router::get_instance();
     const char* instance_id =
         reinterpret_cast<ExecutorSettings*>(settings)->instance_id;  // NOLINT
     const char* node_id =
         reinterpret_cast<ExecutorSettings*>(settings)->node_id;  // NOLINT
 
-    auto* executor = new ExecutorType(router, node_id, instance_id);
-    executor->event_loop();
-    delete executor;
+    ExecutorType executor{router, node_id, instance_id};
+    executor.event_loop();
 
     BoardFunctions::exit_thread();
   }
 
   Executor(PubSub::Router* router, const char* node_id, const char* actor_type,
            const char* instance_id)
-      : _node_id(node_id),
+      : router_handle(router->new_subscriber()),
+        actors(RuntimeAllocatorConfiguration::make_allocator<typename decltype(
+                   actors)::value_type>()),
+        _node_id(node_id),
         _actor_type(actor_type),
         _instance_id(instance_id),
-        router_handle(router->new_subscriber()) {
+        subscription_mapping(
+            RuntimeAllocatorConfiguration::make_allocator<typename decltype(
+                subscription_mapping)::value_type>()),
+        ready_queue(RuntimeAllocatorConfiguration::make_allocator<
+                    typename decltype(ready_queue)::value_type>()),
+        timeouts(RuntimeAllocatorConfiguration::make_allocator<
+                 typename decltype(timeouts)::value_type>()),
+        delayed_messages(RuntimeAllocatorConfiguration::make_allocator<
+                         typename decltype(delayed_messages)::value_type>()) {
     PubSub::Filter primary_filter{
         PubSub::Constraint(std::string("node_id"), node_id),
         PubSub::Constraint(std::string("actor_type"), actor_type),
         PubSub::Constraint(std::string("instance_id"), instance_id)};
     executor_subscription_id = router_handle.subscribe(primary_filter);
   }
+
+  Executor(const Executor&) = delete;
+  Executor(Executor&&) = delete;
+  Executor& operator=(const Executor&) = delete;
+  Executor& operator=(Executor&&) = delete;
 
  protected:
   template <typename... Args>
@@ -114,27 +140,31 @@ class Executor : public ExecutorApi {
                              std::move(publication));
   }
 
+ private:
+  PubSub::ReceiverHandle router_handle;
+
  protected:
   std::map<uint32_t, ActorType, std::less<uint32_t>,
-           Support::TrackingAllocator<std::pair<const uint32_t, ActorType>>>
-      actors{Support::TrackingAllocator<std::pair<const uint32_t, ActorType>>(
-          uActor::Support::TrackedRegions::ACTOR_RUNTIME)};
+           std::scoped_allocator_adaptor<
+               Allocator<std::pair<const uint32_t, ActorType>>>>
+      actors;
 
  private:
-  std::string _node_id;
-  std::string _actor_type;
-  std::string _instance_id;
-  PubSub::ReceiverHandle router_handle;
+  AString _node_id;
+  AString _actor_type;
+  AString _instance_id;
   uint32_t next_id = 1;
-  std::map<uint32_t, std::set<uint32_t>> subscription_mapping;
-  std::list<uint32_t> ready_queue;
-  std::list<std::pair<uint32_t, uint32_t>> timeouts;
+  std::map<uint32_t, std::set<uint32_t>, std::less<uint32_t>,
+           std::scoped_allocator_adaptor<
+               Allocator<std::pair<const uint32_t, std::set<uint32_t>>>>>
+      subscription_mapping;
+  std::list<uint32_t, Allocator<uint32_t>> ready_queue;
+  std::list<std::pair<uint32_t, uint32_t>,
+            Allocator<std::pair<uint32_t, uint32_t>>>
+      timeouts;
   std::multimap<uint32_t, PubSub::Publication, std::less<uint32_t>,
-                Support::TrackingAllocator<
-                    std::pair<const uint32_t, PubSub::Publication>>>
-      delayed_messages{Support::TrackingAllocator<
-          std::pair<const uint32_t, PubSub::Publication>>(
-          uActor::Support::TrackedRegions::ACTOR_RUNTIME)};
+                Allocator<std::pair<const uint32_t, PubSub::Publication>>>
+      delayed_messages;
   uint32_t executor_subscription_id;
 
   void event_loop() {

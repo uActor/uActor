@@ -11,12 +11,25 @@
 #include "pubsub/filter.hpp"
 #include "pubsub/publication.hpp"
 #include "pubsub/router.hpp"
-#include "support/memory_manager.hpp"
+#include "runtime_allocator_configuration.hpp"
+#include "support/tracking_allocator.hpp"
 
 namespace uActor::ActorRuntime {
 
 class ManagedActor {
  public:
+  template <typename U>
+  using Allocator = RuntimeAllocatorConfiguration::Allocator<U>;
+
+  using allocator_type = Allocator<ManagedActor>;
+
+  template <typename U>
+  constexpr static auto make_allocator =
+      RuntimeAllocatorConfiguration::make_allocator<U>;
+
+  using AString =
+      std::basic_string<char, std::char_traits<char>, Allocator<char>>;
+
   struct ReceiveResult {
     ReceiveResult(bool exit, uint32_t next_timeout)
         : exit(exit), next_timeout(next_timeout) {}
@@ -26,9 +39,22 @@ class ManagedActor {
 
   ManagedActor(const ManagedActor&) = delete;
 
+  template <typename PAllocator = allocator_type>
   ManagedActor(ExecutorApi* api, uint32_t unique_id, std::string_view node_id,
                std::string_view actor_type, std::string_view actor_version,
-               std::string_view instance_id);
+               std::string_view instance_id,
+               PAllocator allocator = make_allocator<ManagedActor>())
+      : _id(unique_id),
+        _node_id(node_id, allocator),
+        _actor_type(actor_type, allocator),
+        _actor_version(actor_version, allocator),
+        _instance_id(instance_id, allocator),
+        message_queue(allocator),
+        subscriptions(allocator),
+        api(api) {
+    add_default_subscription();
+    publish_creation_message();
+  }
 
   ~ManagedActor() {
     for (uint32_t sub_id : subscriptions) {
@@ -98,28 +124,19 @@ class ManagedActor {
   void deffered_block_for(PubSub::Filter&& filter, uint32_t timeout);
 
  private:
-  using tracked_string =
-      std::basic_string<char, std::char_traits<char>,
-                        uActor::Support::TrackingAllocator<char>>;
   uint32_t _id;
 
   bool waiting = false;
   PubSub::Filter pattern;
   uint32_t _timeout = UINT32_MAX;
 
-  tracked_string _node_id;
-  tracked_string _actor_type;
-  tracked_string _actor_version;
-  tracked_string _instance_id;
+  AString _node_id;
+  AString _actor_type;
+  AString _actor_version;
+  AString _instance_id;
 
-  std::deque<PubSub::Publication,
-             uActor::Support::TrackingAllocator<PubSub::Publication>>
-      message_queue{Support::TrackingAllocator<PubSub::Publication>(
-          Support::TrackedRegions::ACTOR_RUNTIME)};
-  std::set<uint32_t, std::less<uint32_t>,
-           uActor::Support::TrackingAllocator<uint32_t>>
-      subscriptions{Support::TrackingAllocator<uint32_t>(
-          Support::TrackedRegions::ACTOR_RUNTIME)};
+  std::deque<PubSub::Publication, Allocator<PubSub::Publication>> message_queue;
+  std::set<uint32_t, std::less<uint32_t>, Allocator<uint32_t>> subscriptions;
   ExecutorApi* api;
 
   bool _initialized = false;

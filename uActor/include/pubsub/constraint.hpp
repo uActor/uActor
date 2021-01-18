@@ -68,7 +68,9 @@ class Constraint {
   Constraint(
       std::string attribute, std::string_view oper,
       ConstraintPredicates::Predicate op = ConstraintPredicates::Predicate::EQ,
-      bool optional = false, const PAllocator& allocator = {})
+      bool optional = false,
+      const PAllocator& allocator =
+          RoutingAllocatorConfiguration::make_allocator<Constraint>())
       : _attribute(attribute, allocator),
         _operand(Container<AString>(AString(oper, allocator), op)),
         _optional(optional) {
@@ -82,7 +84,9 @@ class Constraint {
   Constraint(
       std::string attribute, int32_t oper,
       ConstraintPredicates::Predicate op = ConstraintPredicates::Predicate::EQ,
-      bool optional = false, const PAllocator& allocator = {})
+      bool optional = false,
+      const PAllocator& allocator =
+          RoutingAllocatorConfiguration::make_allocator<Constraint>())
       : _attribute(attribute, allocator),
         _operand(Container<int32_t>(oper, op)),
         _optional(optional) {
@@ -96,7 +100,9 @@ class Constraint {
   Constraint(
       std::string attribute, float oper,
       ConstraintPredicates::Predicate op = ConstraintPredicates::Predicate::EQ,
-      bool optional = false, const PAllocator& allocator = {})
+      bool optional = false,
+      const PAllocator& allocator =
+          RoutingAllocatorConfiguration::make_allocator<Constraint>())
       : _attribute(attribute, allocator),
         _operand(Container<float>(oper, op)),
         _optional(optional) {
@@ -107,7 +113,9 @@ class Constraint {
   }
 
   template <typename PAllocator = allocator_type>
-  Constraint(Constraint&& other, PAllocator allocator)
+  Constraint(Constraint&& other,
+             PAllocator allocator =
+                 RoutingAllocatorConfiguration::make_allocator<Constraint>())
       : _attribute(std::move(other._attribute), allocator),
         _optional(other._optional) {
     if (std::holds_alternative<Container<int32_t>>(other._operand) ||
@@ -121,7 +129,9 @@ class Constraint {
   }
 
   template <typename PAllocator = allocator_type>
-  Constraint(const Constraint& other, PAllocator allocator)
+  Constraint(const Constraint& other,
+             PAllocator allocator =
+                 RoutingAllocatorConfiguration::make_allocator<Constraint>())
       : _attribute(other._attribute, allocator), _optional(other._optional) {
     if (std::holds_alternative<Container<int32_t>>(other._operand) ||
         std::holds_alternative<Container<float>>(other._operand)) {

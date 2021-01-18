@@ -11,26 +11,6 @@
 
 namespace uActor::ActorRuntime {
 
-ManagedActor::ManagedActor(ExecutorApi* api, uint32_t unique_id,
-                           std::string_view node_id,
-                           std::string_view actor_type,
-                           std::string_view actor_version,
-                           std::string_view instance_id)
-    : _id(unique_id),
-      _node_id(node_id, Support::TrackingAllocator<char>(
-                            Support::TrackedRegions::ACTOR_RUNTIME)),
-      _actor_type(actor_type, Support::TrackingAllocator<char>(
-                                  Support::TrackedRegions::ACTOR_RUNTIME)),
-      _actor_version(actor_version,
-                     Support::TrackingAllocator<char>(
-                         Support::TrackedRegions::ACTOR_RUNTIME)),
-      _instance_id(instance_id, Support::TrackingAllocator<char>(
-                                    Support::TrackedRegions::ACTOR_RUNTIME)),
-      api(api) {
-  add_default_subscription();
-  publish_creation_message();
-}
-
 ManagedActor::ReceiveResult ManagedActor::receive_next_internal() {
   waiting = false;
   _timeout = UINT32_MAX;

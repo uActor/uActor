@@ -27,17 +27,25 @@ struct InternalFilter {
                   Allocator<std::shared_ptr<const Constraint>>>;
 
   template <typename PAllocator = Allocator<InternalFilter>>
-  explicit InternalFilter(const PAllocator& allocator = {})
+  explicit InternalFilter(
+      const PAllocator& allocator =
+          RoutingAllocatorConfiguration::make_allocator<InternalFilter>())
       : required(allocator), optional(allocator), initialized(false) {}
 
   template <typename PAllocator = Allocator<InternalFilter>>
-  InternalFilter(const InternalFilter& other, const PAllocator& allocator = {})
+  InternalFilter(
+      const InternalFilter& other,
+      const PAllocator& allocator =
+          RoutingAllocatorConfiguration::make_allocator<InternalFilter>())
       : required(other.required, allocator),
         optional(other.optional, allocator),
         initialized(other.initialized) {}
 
   template <typename PAllocator = Allocator<InternalFilter>>
-  InternalFilter(InternalFilter&& other, const PAllocator& allocator = {})
+  InternalFilter(
+      InternalFilter&& other,
+      const PAllocator& allocator =
+          RoutingAllocatorConfiguration::make_allocator<InternalFilter>())
       : required(std::move(other.required), allocator),
         optional(std::move(other.optional), allocator),
         initialized(other.initialized) {
