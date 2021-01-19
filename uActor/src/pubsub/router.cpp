@@ -107,7 +107,8 @@ void Router::publish_internal(Publication&& publication) {
 std::string Router::subscriptions_for(std::string_view node_id) {
   std::shared_lock lock(mtx);
 
-  auto peer_node_it = peer_node_ids.find(node_id);
+  auto [peer_node_it, _inserted] =
+      peer_node_ids.try_emplace(AString(node_id), false, next_node_id++);
   if (peer_node_it == peer_node_ids.end()) {
     return "";
   }
