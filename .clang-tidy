@@ -1,0 +1,19 @@
+---
+Checks: '*,
+-llvmlibc-callee-namespace,
+-llvmlibc-implementation-in-namespace,
+-llvmlibc-restrict-system-libc-headers,
+-misc-non-private-member-variables-in-classes,
+-fuchsia-overloaded-operator,
+-modernize-use-trailing-return-type,
+-cppcoreguidelines-pro-type-cstyle-cast,
+-fuchsia-default-arguments-calls,
+-cppcoreguidelines-owning-memory,
+-hicpp-use-auto,modernize-use-auto,
+-modernize-use-auto,
+-cppcoreguidelines-non-private-member-variables-in-classes,
+-fuchsia-default-arguments-declarations,
+-llvm-header-guard
+'
+WarningsAsErrors: '*'
+FormatStyle: file
