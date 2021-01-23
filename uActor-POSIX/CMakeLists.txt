@@ -4,6 +4,9 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 file(GLOB_RECURSE SOURCES src/*.cpp)
 file(GLOB_RECURSE HEADERS include/*.hpp)
 
@@ -21,7 +24,7 @@ target_include_directories(uActorBin PRIVATE ${Boost_INCLUDE_DIRS})
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../uActor ${CMAKE_CURRENT_BINARY_DIR}/uActor)
 
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
-add_compile_options(-Werror -std=c++17 -Wall -Wextra -pedantic)
+add_compile_options(-Werror -Wall -Wextra -pedantic)
 
 target_compile_options(uActor PUBLIC -DCONFIG_BENCHMARK_ENABLED=1)
 

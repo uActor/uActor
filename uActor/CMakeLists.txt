@@ -1,5 +1,12 @@
+cmake_minimum_required(VERSION 3.10)
+
 file(GLOB_RECURSE SOURCES *.cpp)
 file(GLOB_RECURSE HEADER *.hpp)
+
+if(NOT CMAKE_CXX_STANDARD OR CMAKE_CXX_STANDARD LESS 17)
+  set(CMAKE_CXX_STANDARD 17)
+  set(CMAKE_CXX_STANDARD_REQUIRED ON)
+endif()
 
 add_library(uActor STATIC ${SOURCES} ${HEADERS})
 target_include_directories(uActor PUBLIC "include")
@@ -19,4 +26,3 @@ if (NOT TARGET frozen)
   add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../vendor/frozen ${CMAKE_CURRENT_BINARY_DIR}/lib_frozen)
 endif()
 target_link_libraries(uActor frozen)
-target_compile_options(uActor PRIVATE -std=c++17)
