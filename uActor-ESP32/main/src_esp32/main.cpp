@@ -1,5 +1,3 @@
-// TODO(raphaelhetzel) Split into multiple files once the APIs are defined
-
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <nvs_flash.h>

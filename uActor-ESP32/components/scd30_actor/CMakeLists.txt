@@ -1,7 +1,7 @@
 idf_component_register(
   INCLUDE_DIRS "include"
   SRC_DIRS "src"
-  REQUIRES sensiron-scd
+  REQUIRES "sensiron-scd" "nvs_flash"
 )
 target_compile_options(${COMPONENT_LIB} PRIVATE -std=c++17)
 

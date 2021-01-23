@@ -27,9 +27,9 @@ function receive(message)
   if(message.type == "init") then
     alt_sub_ids = {}
     for variable, configuration in pairs(VARIABLES) do
-      subscribe{type="sensor_update_"..variable, publisher_node_id=node_id, sensor=configuration.sensor}
+      subscribe{type="sensor_update_"..variable, publisher_node_id=node_id, sensor=configuration.sensor, calibrated=1}
       if(configuration.alt_sensor) then
-        alt_sub_ids[variable] = subscribe{type="sensor_update_"..variable, publisher_node_id=node_id, sensor=configuration.alt_sensor}
+        alt_sub_ids[variable] = subscribe{type="sensor_update_"..variable, publisher_node_id=node_id, sensor=configuration.alt_sensor, calibrated=1}
       end
     end
 

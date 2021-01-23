@@ -25,6 +25,11 @@ BME280Actor::~BME280Actor() {
 }
 
 void BME280Actor::receive(const PubSub::Publication &publication) {
+  if (publication.get_str_attr("type") == "init") {
+    // TODO(raphaelhetzel) Implement calibration, accept pressure as is for now
+    calibrated_pressure = true;
+  }
+
   if (publication.get_str_attr("type") == "init" ||
       publication.get_str_attr("type") == "trigger_sensor_wait") {
     auto ret = bme280_init(&dev);
@@ -41,10 +46,10 @@ void BME280Actor::receive(const PubSub::Publication &publication) {
 
       /* Recommended mode of operation: Indoor navigation */
       dev.settings.osr_h = BME280_OVERSAMPLING_1X;
-      dev.settings.osr_p = BME280_OVERSAMPLING_16X;
-      dev.settings.osr_t = BME280_OVERSAMPLING_2X;
-      dev.settings.filter = BME280_FILTER_COEFF_16;
-      dev.settings.standby_time = BME280_STANDBY_TIME_62_5_MS;
+      dev.settings.osr_p = BME280_OVERSAMPLING_1X;
+      dev.settings.osr_t = BME280_OVERSAMPLING_1X;
+      dev.settings.filter = BME280_FILTER_COEFF_OFF;
+      dev.settings.standby_time = BME280_STANDBY_TIME_1000_MS;
 
       settings_sel = BME280_OSR_PRESS_SEL;
       settings_sel |= BME280_OSR_TEMP_SEL;
@@ -57,7 +62,7 @@ void BME280Actor::receive(const PubSub::Publication &publication) {
         send_exit_message();
         return;
       }
-      if (bme280_set_sensor_mode(BME280_NORMAL_MODE, &dev)) {
+      if (bme280_set_sensor_mode(BME280_FORCED_MODE, &dev)) {
         Support::Logger::warning("BME280", "INIT", "Sensor mode error\n");
         send_exit_message();
         return;
@@ -80,24 +85,34 @@ void BME280Actor::receive(const PubSub::Publication &publication) {
 
 void BME280Actor::fetch_send_updates() {
   bme280_data comp_data;
+  if (bme280_set_sensor_mode(BME280_FORCED_MODE, &dev)) {
+    Support::Logger::warning("BME280", "INIT", "Sensor mode error\n");
+    send_exit_message();
+    return;
+  }
+  BoardFunctions::sleep(bme280_cal_meas_delay(&dev.settings));
   if (bme280_get_sensor_data(BME280_ALL, &comp_data, &dev)) {
     Support::Logger::warning("BME280", "FETCH", "Ready error\n");
     send_failure_notification();
   } else {
-    send_update("temperature", "degree_celsius", comp_data.temperature);
-    send_update("pressure", "pa", comp_data.pressure);
-    send_update("relative_humidity", "percent", comp_data.humidity);
+    printf("temperature %f\n", comp_data.temperature);
+    send_update("temperature", "degree_celsius", comp_data.temperature,
+                calibrated_temperature);
+    send_update("pressure", "pa", comp_data.pressure, calibrated_pressure);
+    send_update("relative_humidity", "percent", comp_data.humidity,
+                calibrated_humidity);
   }
-  send_delayed_trigger(10000, "trigger_measurement");
+  send_delayed_trigger(20000, "trigger_measurement");
 }
 
 void BME280Actor::send_update(std::string variable, std::string unit,
-                              float value) {
+                              float value, bool calibrated) {
   PubSub::Publication sensor_update;
   sensor_update.set_attr("type", std::string("sensor_update_" + variable));
   sensor_update.set_attr("value", value);
   sensor_update.set_attr("sensor", "bme280");
   sensor_update.set_attr("unit", unit);
+  sensor_update.set_attr("calibrated", calibrated ? 1 : 0);
   publish(std::move(sensor_update));
 }
 

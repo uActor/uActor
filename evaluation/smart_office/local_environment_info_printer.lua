@@ -16,7 +16,7 @@ function receive(message)
 
     for variable, configuration in pairs(VARIABLES) do
       total_num_values = total_num_values + 1
-      subscribe{type="sensor_update_"..variable, unit=configuration.unit, publisher_node_id=node_id, sensor=configuration.sensor}
+      subscribe{type="sensor_update_"..variable, unit=configuration.unit, publisher_node_id=node_id, sensor=configuration.sensor, calibrated=1}
       if(configuration.alt_sensor) then
         alt_sensor_sub_ids[variable] = subscribe{type="sensor_update_"..variable, unit=configuration.unit, publisher_node_id=node_id, sensor=configuration.alt_sensor} 
       end
@@ -72,7 +72,7 @@ function update_notification()
     if(output_values[variable]) then
       comparison_values[variable] = output_values[variable]
       notification_text = notification_text..configuration.name_printed..":\n"
-      notification_text = notification_text..string.format("%.f", output_values[variable]).." "..configuration.unit_printed.."\n"
+      notification_text = notification_text..string.format("%.1f", output_values[variable]).." "..configuration.unit_printed.."\n"
     end
   end
 

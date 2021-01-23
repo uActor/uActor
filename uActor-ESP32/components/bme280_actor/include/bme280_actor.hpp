@@ -36,9 +36,14 @@ class BME280Actor : public ActorRuntime::NativeActor {
   int8_t rslt = BME280_OK;
   uint8_t dev_addr = BME280_I2C_ADDR_PRIM;
 
+  bool calibrated_temperature = false;
+  bool calibrated_pressure = false;
+  bool calibrated_humidity = false;
+
   void fetch_send_updates();
 
-  void send_update(std::string variable, std::string unit, float value);
+  void send_update(std::string variable, std::string unit, float value,
+                   bool calibrated);
   void send_failure_notification();
   void send_delayed_trigger(uint32_t delay, std::string type);
   void send_exit_message();

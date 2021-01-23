@@ -24,11 +24,21 @@ required_actors:
 ---
 type: deployment
 name: de.tum.smart_office.deployment.environment_logger
-ttl:  0
+ttl:  60000
 actor_type:  de.tum.smart_office.actor.environment_logger
 actor_runtime_type:  lua
 actor_version:  "0.1"
 actor_code_file:  "environment_logger.lua"
+constraints:
+  - "node_id": "smart_office_central"
+---
+type: deployment
+name: de.tum.smart_office.deployment.calibration_server
+ttl:  60000
+actor_type:  de.tum.smart_office.actor.calibration_server
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "calibration_server.lua"
 constraints:
   - "node_id": "smart_office_central"
 ---
