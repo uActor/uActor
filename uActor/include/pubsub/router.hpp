@@ -1,5 +1,4 @@
-#ifndef UACTOR_INCLUDE_PUBSUB_ROUTER_HPP_
-#define UACTOR_INCLUDE_PUBSUB_ROUTER_HPP_
+#pragma once
 
 #include <atomic>
 #include <list>
@@ -70,4 +69,4 @@ class Router {
 };
 
 }  // namespace uActor::PubSub
-#endif  //  UACTOR_INCLUDE_PUBSUB_ROUTER_HPP_
+

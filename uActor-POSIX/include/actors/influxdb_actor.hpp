@@ -1,5 +1,4 @@
-#ifndef UACTOR_POSIX_INCLUDE_ACTORS_INFLUXDB_ACTOR_HPP_
-#define UACTOR_POSIX_INCLUDE_ACTORS_INFLUXDB_ACTOR_HPP_
+#pragma once
 
 #include <InfluxDB.h>
 #include <InfluxDBFactory.h>
@@ -30,5 +29,3 @@ class InfluxDBActor : public ActorRuntime::NativeActor {
           "smart_office:smart_office_user@influxdb:8086?db=smart_office");
 };
 }  // namespace uActor::Database
-
-#endif  // UACTOR_POSIX_INCLUDE_ACTORS_INFLUXDB_ACTOR_HPP_

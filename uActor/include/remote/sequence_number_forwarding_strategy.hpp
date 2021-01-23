@@ -1,5 +1,4 @@
-#ifndef UACTOR_INCLUDE_REMOTE_SEQUENCE_NUMBER_FORWARDING_STRATEGY_HPP_
-#define UACTOR_INCLUDE_REMOTE_SEQUENCE_NUMBER_FORWARDING_STRATEGY_HPP_
+#pragma once
 
 #include <atomic>
 #include <mutex>
@@ -38,5 +37,3 @@ class SequenceNumberForwardingStrategy : public ForwardingStrategy {
 };
 
 }  // namespace uActor::Remote
-
-#endif  //  UACTOR_INCLUDE_REMOTE_SEQUENCE_NUMBER_FORWARDING_STRATEGY_HPP_

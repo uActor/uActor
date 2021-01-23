@@ -1,5 +1,4 @@
-#ifndef UACTOR_INCLUDE_SUPPORT_STRING_HELPER_HPP_
-#define UACTOR_INCLUDE_SUPPORT_STRING_HELPER_HPP_
+#pragma once
 
 #include <list>
 #include <string_view>
@@ -28,5 +27,3 @@ struct StringHelper {
 };
 
 }  // namespace uActor::Support
-
-#endif  //  UACTOR_INCLUDE_SUPPORT_STRING_HELPER_HPP_

@@ -1,5 +1,4 @@
-#ifndef UACTOR_INCLUDE_REMOTE_REMOTE_CONNECTION_HPP_
-#define UACTOR_INCLUDE_REMOTE_REMOTE_CONNECTION_HPP_
+#pragma once
 
 extern "C" {
 #include <arpa/inet.h>
@@ -125,5 +124,3 @@ class RemoteConnection {
 };
 
 }  // namespace uActor::Remote
-
-#endif  // UACTOR_INCLUDE_REMOTE_REMOTE_CONNECTION_HPP_

@@ -1,5 +1,4 @@
-#ifndef UACTOR_INCLUDE_PUBSUB_MATCHED_PUBLICATION_HPP_
-#define UACTOR_INCLUDE_PUBSUB_MATCHED_PUBLICATION_HPP_
+#pragma once
 
 #include <cstdint>
 #include <utility>
@@ -18,5 +17,3 @@ struct MatchedPublication {
 };
 
 }  // namespace uActor::PubSub
-
-#endif  //  UACTOR_INCLUDE_PUBSUB_MATCHED_PUBLICATION_HPP_

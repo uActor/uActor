@@ -1,5 +1,4 @@
-#ifndef UACTOR_INCLUDE_ACTOR_RUNTIME_CODE_STORE_ACTOR_HPP_
-#define UACTOR_INCLUDE_ACTOR_RUNTIME_CODE_STORE_ACTOR_HPP_
+#pragma once
 
 #include <algorithm>
 #include <cstdint>
@@ -34,4 +33,3 @@ class CodeStoreActor : public NativeActor {
 };
 
 }  // namespace uActor::ActorRuntime
-#endif  // UACTOR_INCLUDE_ACTOR_RUNTIME_CODE_STORE_ACTOR_HPP_

@@ -1,5 +1,4 @@
-#ifndef UACTOR_INCLUDE_ACTOR_RUNTIME_MANAGED_NATIVE_ACTOR_HPP_
-#define UACTOR_INCLUDE_ACTOR_RUNTIME_MANAGED_NATIVE_ACTOR_HPP_
+#pragma once
 
 #include <memory>
 #include <string>
@@ -47,5 +46,3 @@ class ManagedNativeActor : public ManagedActor {
 };
 
 }  //  namespace uActor::ActorRuntime
-
-#endif  //  UACTOR_INCLUDE_ACTOR_RUNTIME_MANAGED_NATIVE_ACTOR_HPP_

@@ -1,5 +1,4 @@
-#ifndef UACTOR_INCLUDE_PUBSUB_RECEIVER_HPP_
-#define UACTOR_INCLUDE_PUBSUB_RECEIVER_HPP_
+#pragma once
 
 #define RECEIVER_QUEUE_HARD_LIMIT 100
 
@@ -42,5 +41,3 @@ class Receiver {
 };
 
 }  // namespace uActor::PubSub
-
-#endif  //  UACTOR_INCLUDE_PUBSUB_RECEIVER_HPP_

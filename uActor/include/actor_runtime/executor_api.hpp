@@ -1,5 +1,4 @@
-#ifndef UACTOR_INCLUDE_ACTOR_RUNTIME_EXECUTOR_API_HPP_
-#define UACTOR_INCLUDE_ACTOR_RUNTIME_EXECUTOR_API_HPP_
+#pragma once
 
 #include <cstdint>
 
@@ -18,5 +17,3 @@ struct ExecutorApi {
 };
 
 }  //  namespace uActor::ActorRuntime
-
-#endif  // UACTOR_INCLUDE_ACTOR_RUNTIME_EXECUTOR_API_HPP_

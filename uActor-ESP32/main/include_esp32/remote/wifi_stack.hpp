@@ -1,8 +1,7 @@
 // Adapted from
 // https://github.com/espressif/esp-idf/blob/204492bd7838d3687719473a7de30876f3d1ee7e/examples/wifi/getting_started/station/main/station_example_main.c
 
-#ifndef UACTOR_ESP32_MAIN_INCLUDE_ESP32_REMOTE_WIFI_STACK_HPP_
-#define UACTOR_ESP32_MAIN_INCLUDE_ESP32_REMOTE_WIFI_STACK_HPP_
+#pragma once
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/event_groups.h>
@@ -44,5 +43,3 @@ class WifiStack {
 };
 
 }  // namespace uActor::ESP32::Remote
-
-#endif  // UACTOR_ESP32_MAIN_INCLUDE_ESP32_REMOTE_WIFI_STACK_HPP_

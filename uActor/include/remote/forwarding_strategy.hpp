@@ -1,5 +1,4 @@
-#ifndef UACTOR_INCLUDE_REMOTE_FORWARDING_STRATEGY_HPP_
-#define UACTOR_INCLUDE_REMOTE_FORWARDING_STRATEGY_HPP_
+#pragma once
 
 #include <string>
 #include <utility>
@@ -32,4 +31,3 @@ class ForwardingStrategy {
 
 }  // namespace uActor::Remote
 
-#endif  //  UACTOR_INCLUDE_REMOTE_FORWARDING_STRATEGY_HPP_

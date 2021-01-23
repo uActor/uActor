@@ -1,5 +1,4 @@
-#ifndef UACTOR_INCLUDE_ACTOR_RUNTIME_CODE_HANDLE_HPP_
-#define UACTOR_INCLUDE_ACTOR_RUNTIME_CODE_HANDLE_HPP_
+#pragma once
 
 #include <mutex>
 #include <string_view>
@@ -13,5 +12,3 @@ struct CodeHandle {
   std::string_view code;
 };
 }  // namespace uActor::ActorRuntime
-
-#endif  // UACTOR_INCLUDE_ACTOR_RUNTIME_CODE_HANDLE_HPP_

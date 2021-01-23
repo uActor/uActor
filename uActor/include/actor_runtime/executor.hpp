@@ -1,5 +1,4 @@
-#ifndef UACTOR_INCLUDE_ACTOR_RUNTIME_EXECUTOR_HPP_
-#define UACTOR_INCLUDE_ACTOR_RUNTIME_EXECUTOR_HPP_
+#pragma once
 
 #include <algorithm>
 #include <cstdint>
@@ -242,5 +241,3 @@ class Executor : public ExecutorApi {
 };
 
 }  //  namespace uActor::ActorRuntime
-
-#endif  //  UACTOR_INCLUDE_ACTOR_RUNTIME_EXECUTOR_HPP_

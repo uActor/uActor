@@ -1,5 +1,4 @@
-#ifndef UACTOR_INCLUDE_SUPPORT_LOGGER_HPP_
-#define UACTOR_INCLUDE_SUPPORT_LOGGER_HPP_
+#pragma once
 
 #define __STDC_FORMAT_MACROS
 #include <chrono>
@@ -88,5 +87,3 @@ struct Logger {
   static std::mutex mtx;
 };
 }  // namespace uActor::Support
-
-#endif  // UACTOR_INCLUDE_SUPPORT_LOGGER_HPP_

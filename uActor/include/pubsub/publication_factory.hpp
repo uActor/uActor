@@ -1,5 +1,4 @@
-#ifndef UACTOR_INCLUDE_PUBSUB_PUBLICATION_FACTORY_HPP_
-#define UACTOR_INCLUDE_PUBSUB_PUBLICATION_FACTORY_HPP_
+#pragma once
 
 #include <memory>
 
@@ -28,5 +27,3 @@ class PublicationFactory {
 };
 
 }  // namespace uActor::PubSub
-
-#endif  // UACTOR_INCLUDE_PUBSUB_PUBLICATION_FACTORY_HPP_

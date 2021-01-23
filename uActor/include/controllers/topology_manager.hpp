@@ -1,5 +1,4 @@
-#ifndef UACTOR_INCLUDE_CONTROLLERS_TOPOLOGY_MANAGER_HPP_
-#define UACTOR_INCLUDE_CONTROLLERS_TOPOLOGY_MANAGER_HPP_
+#pragma once
 
 #ifdef ESP_IDF
 #include <sdkconfig.h>
@@ -48,5 +47,3 @@ class TopologyManager : public ActorRuntime::NativeActor {
 };
 
 }  // namespace uActor::Controllers
-
-#endif  // UACTOR_INCLUDE_CONTROLLERS_TOPOLOGY_MANAGER_HPP_

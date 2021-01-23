@@ -1,5 +1,4 @@
-#ifndef UACTOR_INCLUDE_ACTOR_RUNTIME_MANAGED_LUA_ACTOR_HPP_
-#define UACTOR_INCLUDE_ACTOR_RUNTIME_MANAGED_LUA_ACTOR_HPP_
+#pragma once
 
 #ifdef ESP_IDF
 #include <sdkconfig.h>
@@ -139,5 +138,3 @@ class ManagedLuaActor : public ManagedActor {
 };
 
 }  //  namespace uActor::ActorRuntime
-
-#endif  // UACTOR_INCLUDE_ACTOR_RUNTIME_MANAGED_LUA_ACTOR_HPP_

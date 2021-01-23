@@ -1,5 +1,4 @@
-#ifndef UACTOR_INCLUDE_PUBSUB_SUBSCRIPTION_HPP_
-#define UACTOR_INCLUDE_PUBSUB_SUBSCRIPTION_HPP_
+#pragma once
 
 #include <list>
 #include <map>
@@ -30,5 +29,3 @@ struct Subscription {
 };
 
 }  // namespace uActor::PubSub
-
-#endif  //  UACTOR_INCLUDE_PUBSUB_SUBSCRIPTION_HPP_

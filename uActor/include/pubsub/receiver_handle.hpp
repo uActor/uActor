@@ -1,5 +1,4 @@
-#ifndef UACTOR_INCLUDE_PUBSUB_RECEIVER_HANDLE_HPP_
-#define UACTOR_INCLUDE_PUBSUB_RECEIVER_HANDLE_HPP_
+#pragma once
 
 #include <cstdint>
 #include <memory>
@@ -41,5 +40,3 @@ class ReceiverHandle {
   std::unique_ptr<Receiver> receiver;
 };
 }  // namespace uActor::PubSub
-
-#endif  //  UACTOR_INCLUDE_PUBSUB_RECEIVER_HANDLE_HPP_

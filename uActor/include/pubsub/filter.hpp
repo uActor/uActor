@@ -1,5 +1,4 @@
-#ifndef UACTOR_INCLUDE_PUBSUB_FILTER_HPP_
-#define UACTOR_INCLUDE_PUBSUB_FILTER_HPP_
+#pragma once
 
 #include <list>
 #include <optional>
@@ -47,5 +46,3 @@ class Filter {
   friend Router;
 };
 }  // namespace uActor::PubSub
-
-#endif  //  UACTOR_INCLUDE_PUBSUB_FILTER_HPP_

@@ -1,5 +1,4 @@
-#ifndef COMPONENTS_TESTBED_INCLUDE_TESTBED_H_
-#define COMPONENTS_TESTBED_INCLUDE_TESTBED_H_
+#pragma once
 
 #ifdef __cplusplus
 extern "C" {
@@ -42,5 +41,3 @@ void testbed_stop_timekeeping_inner(size_t variable, const char* name);
 #ifdef __cplusplus
 }
 #endif
-
-#endif  //  COMPONENTS_TESTBED_INCLUDE_TESTBED_H_

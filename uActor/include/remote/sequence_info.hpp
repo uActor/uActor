@@ -1,5 +1,4 @@
-#ifndef UACTOR_INCLUDE_REMOTE_SEQUENCE_INFO_HPP_
-#define UACTOR_INCLUDE_REMOTE_SEQUENCE_INFO_HPP_
+#pragma once
 
 #include <cstdint>
 
@@ -23,5 +22,3 @@ struct SequenceInfo {
 };
 
 }  //  namespace uActor::Remote
-
-#endif  //   UACTOR_INCLUDE_REMOTE_SEQUENCE_INFO_HPP_

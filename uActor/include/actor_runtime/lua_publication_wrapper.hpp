@@ -1,5 +1,4 @@
-#ifndef UACTOR_INCLUDE_ACTOR_RUNTIME_LUA_PUBLICATION_WRAPPER_HPP_
-#define UACTOR_INCLUDE_ACTOR_RUNTIME_LUA_PUBLICATION_WRAPPER_HPP_
+#pragma once
 
 #include <lua.hpp>
 
@@ -18,5 +17,3 @@ struct LuaPublicationWrapper {
   static int luaopen(lua_State* state);
 };
 }  // namespace uActor::ActorRuntime
-
-#endif  // UACTOR_INCLUDE_ACTOR_RUNTIME_LUA_PUBLICATION_WRAPPER_HPP_

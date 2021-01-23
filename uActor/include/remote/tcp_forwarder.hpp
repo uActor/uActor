@@ -1,5 +1,4 @@
-#ifndef UACTOR_INCLUDE_REMOTE_TCP_FORWARDER_HPP_
-#define UACTOR_INCLUDE_REMOTE_TCP_FORWARDER_HPP_
+#pragma once
 
 #include <condition_variable>
 #include <map>
@@ -93,5 +92,3 @@ class TCPForwarder : public uActor::Remote::ForwarderSubscriptionAPI {
 };
 
 }  // namespace uActor::Remote
-
-#endif  //  UACTOR_INCLUDE_REMOTE_TCP_FORWARDER_HPP_

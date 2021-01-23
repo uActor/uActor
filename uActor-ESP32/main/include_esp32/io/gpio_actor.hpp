@@ -1,5 +1,4 @@
-#ifndef UACTOR_ESP32_MAIN_INCLUDE_ESP32_IO_GPIO_ACTOR_HPP_
-#define UACTOR_ESP32_MAIN_INCLUDE_ESP32_IO_GPIO_ACTOR_HPP_
+#pragma once
 
 #include <array>
 #include <string>
@@ -208,5 +207,3 @@ class GPIOActor {
 };
 
 }  // namespace uActor::ESP32::IO
-
-#endif  // UACTOR_ESP32_MAIN_INCLUDE_ESP32_IO_GPIO_ACTOR_HPP_

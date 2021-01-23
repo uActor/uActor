@@ -1,5 +1,4 @@
-#ifndef UACTOR_INCLUDE_PUBSUB_CONSTRAINT_INDEX_HPP_
-#define UACTOR_INCLUDE_PUBSUB_CONSTRAINT_INDEX_HPP_
+#pragma once
 
 #include <list>
 #include <map>
@@ -35,5 +34,3 @@ struct ConstraintIndex {
 };
 
 }  //  namespace uActor::PubSub
-
-#endif  //   UACTOR_INCLUDE_PUBSUB_CONSTRAINT_INDEX_HPP_

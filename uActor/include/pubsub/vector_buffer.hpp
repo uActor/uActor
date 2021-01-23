@@ -1,5 +1,4 @@
-#ifndef UACTOR_INCLUDE_PUBSUB_VECTOR_BUFFER_HPP_
-#define UACTOR_INCLUDE_PUBSUB_VECTOR_BUFFER_HPP_
+#pragma once
 
 #include <memory>
 #include <utility>
@@ -22,5 +21,3 @@ class VectorBuffer {
       std::make_shared<std::vector<char>>(4);
 };
 }  // namespace uActor::PubSub
-
-#endif  // UACTOR_INCLUDE_PUBSUB_VECTOR_BUFFER_HPP_

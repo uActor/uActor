@@ -1,5 +1,4 @@
-#ifndef UACTOR_INCLUDE_CONTROLLERS_DEPLOYMENT_MANAGER_HPP_
-#define UACTOR_INCLUDE_CONTROLLERS_DEPLOYMENT_MANAGER_HPP_
+#pragma once
 
 #include <cstdint>
 #include <list>
@@ -127,5 +126,3 @@ class DeploymentManager : public ActorRuntime::NativeActor {
 };
 
 }  // namespace uActor::Controllers
-
-#endif  //  UACTOR_INCLUDE_CONTROLLERS_DEPLOYMENT_MANAGER_HPP_

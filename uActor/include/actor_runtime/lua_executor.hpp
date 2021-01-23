@@ -1,5 +1,4 @@
-#ifndef UACTOR_INCLUDE_ACTOR_RUNTIME_LUA_EXECUTOR_HPP_
-#define UACTOR_INCLUDE_ACTOR_RUNTIME_LUA_EXECUTOR_HPP_
+#pragma once
 
 #include <frozen/string.h>
 #include <frozen/unordered_map.h>
@@ -90,5 +89,3 @@ class LuaExecutor : public Executor<ManagedLuaActor, LuaExecutor> {
 };
 
 }  //  namespace uActor::ActorRuntime
-
-#endif  // UACTOR_INCLUDE_ACTOR_RUNTIME_LUA_EXECUTOR_HPP_

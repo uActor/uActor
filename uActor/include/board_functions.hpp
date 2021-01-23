@@ -1,5 +1,4 @@
-#ifndef UACTOR_INCLUDE_BOARD_FUNCTIONS_HPP_
-#define UACTOR_INCLUDE_BOARD_FUNCTIONS_HPP_
+#pragma once
 
 #include <cstdint>
 #include <list>
@@ -29,5 +28,3 @@ struct BoardFunctions {
 };
 
 }  // namespace uActor
-
-#endif  // UACTOR_INCLUDE_BOARD_FUNCTIONS_HPP_

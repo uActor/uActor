@@ -1,5 +1,4 @@
-#ifndef UACTOR_INCLUDE_ACTOR_RUNTIME_CODE_IDENTIFIER_HPP_
-#define UACTOR_INCLUDE_ACTOR_RUNTIME_CODE_IDENTIFIER_HPP_
+#pragma once
 
 #include <string>
 
@@ -27,5 +26,3 @@ struct CodeIdentifierHasher {
   }
 };
 }  // namespace uActor::ActorRuntime
-
-#endif  // UACTOR_INCLUDE_ACTOR_RUNTIME_CODE_IDENTIFIER_HPP_

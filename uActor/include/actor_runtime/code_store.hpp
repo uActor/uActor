@@ -1,5 +1,4 @@
-#ifndef UACTOR_INCLUDE_ACTOR_RUNTIME_CODE_STORE_HPP_
-#define UACTOR_INCLUDE_ACTOR_RUNTIME_CODE_STORE_HPP_
+#pragma once
 
 #include <mutex>
 #include <optional>
@@ -33,5 +32,3 @@ class CodeStore {
   std::mutex mtx;
 };
 }  // namespace uActor::ActorRuntime
-
-#endif  // UACTOR_INCLUDE_ACTOR_RUNTIME_CODE_STORE_HPP_

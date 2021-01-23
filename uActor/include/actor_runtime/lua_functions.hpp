@@ -1,5 +1,4 @@
-#ifndef UACTOR_INCLUDE_ACTOR_RUNTIME_LUA_FUNCTIONS_HPP_
-#define UACTOR_INCLUDE_ACTOR_RUNTIME_LUA_FUNCTIONS_HPP_
+#pragma once
 
 #include <frozen/string.h>
 #include <frozen/unordered_map.h>
@@ -39,5 +38,3 @@ struct LuaFunctions {
                         {"xpcall", {false, base_function_store + 21}}};
 };
 }  // namespace uActor::ActorRuntime
-
-#endif  // UACTOR_INCLUDE_ACTOR_RUNTIME_LUA_FUNCTIONS_HPP_
