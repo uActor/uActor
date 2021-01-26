@@ -13,6 +13,9 @@ struct ExecutorApi {
   virtual void remove_subscription(uint32_t local_id, uint32_t sub_id) = 0;
   virtual void delayed_publish(PubSub::Publication&& publication,
                                uint32_t delay) = 0;
+
+  virtual void enqueue_wakeup(uint32_t actor_id, uint32_t delay,
+                              std::string_view wakeup_id) = 0;
   virtual ~ExecutorApi() = default;
 };
 

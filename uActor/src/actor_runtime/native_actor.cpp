@@ -32,6 +32,10 @@ void NativeActor::unsubscribe(uint32_t subscription_id) {
 
 uint32_t NativeActor::now() { return BoardFunctions::timestamp(); }
 
+void NativeActor::enqueue_wakeup(uint32_t delay, std::string_view wakeup_id) {
+  actor_wrapper->enqueue_wakeup(delay, wakeup_id);
+}
+
 void NativeActor::deffered_block_for(PubSub::Filter&& filter,
                                      uint32_t timeout) {
   actor_wrapper->deffered_block_for(std::move(filter), timeout);

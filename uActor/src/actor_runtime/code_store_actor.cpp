@@ -20,7 +20,8 @@ CodeStoreActor::CodeStoreActor(ManagedNativeActor* actor_wrapper,
 
 void CodeStoreActor::receive(const PubSub::Publication& publication) {
   if (publication.get_str_attr("type") == "init" ||
-      publication.get_str_attr("command") == "periodic_cleanup") {
+      (publication.get_str_attr("type") == "wakeup" &&
+       publication.get_str_attr("wakeup_id") == "periodic_cleanup")) {
     cleanup();
   } else if (publication.get_str_attr("type") == "actor_code") {
     receive_store(publication);
@@ -91,12 +92,6 @@ void CodeStoreActor::receive_retrieve(const PubSub::Publication& publication) {
 void CodeStoreActor::cleanup() {
   CodeStore::get_instance().cleanup();
 
-  auto retrigger_msg =
-      PubSub::Publication(node_id(), actor_type(), instance_id());
-  retrigger_msg.set_attr("node_id", node_id());
-  retrigger_msg.set_attr("actor_type", actor_type());
-  retrigger_msg.set_attr("instance_id", instance_id());
-  retrigger_msg.set_attr("command", "periodic_cleanup");
-  delayed_publish(std::move(retrigger_msg), 30000);
+  enqueue_wakeup(30000, "periodic_cleanup");
 }
 }  // namespace uActor::ActorRuntime

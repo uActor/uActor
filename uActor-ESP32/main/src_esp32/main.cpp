@@ -217,20 +217,22 @@ void main_task(void *) {
   }
 
 #if CONFIG_ENABLE_BMP180
-  auto create_bmp180_sensor =
-      uActor::PubSub::Publication(uActor::BoardFunctions::NODE_ID, "root", "1");
-  create_bmp180_sensor.set_attr("command", "spawn_native_actor");
-  create_bmp180_sensor.set_attr("spawn_code", "");
-  create_bmp180_sensor.set_attr("spawn_node_id",
-                                uActor::BoardFunctions::NODE_ID);
-  create_bmp180_sensor.set_attr("spawn_actor_version", "default");
-  create_bmp180_sensor.set_attr("spawn_actor_type", "bmp180_sensor");
-  create_bmp180_sensor.set_attr("spawn_instance_id", "1");
-  create_bmp180_sensor.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
-  create_bmp180_sensor.set_attr("actor_type", "native_executor");
-  create_bmp180_sensor.set_attr("instance_id", "1");
-  uActor::PubSub::Router::get_instance().publish(
-      std::move(create_bmp180_sensor));
+  {
+    auto create_bmp180_sensor = uActor::PubSub::Publication(
+        uActor::BoardFunctions::NODE_ID, "root", "1");
+    create_bmp180_sensor.set_attr("command", "spawn_native_actor");
+    create_bmp180_sensor.set_attr("spawn_code", "");
+    create_bmp180_sensor.set_attr("spawn_node_id",
+                                  uActor::BoardFunctions::NODE_ID);
+    create_bmp180_sensor.set_attr("spawn_actor_version", "default");
+    create_bmp180_sensor.set_attr("spawn_actor_type", "bmp180_sensor");
+    create_bmp180_sensor.set_attr("spawn_instance_id", "1");
+    create_bmp180_sensor.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
+    create_bmp180_sensor.set_attr("actor_type", "native_executor");
+    create_bmp180_sensor.set_attr("instance_id", "1");
+    uActor::PubSub::Router::get_instance().publish(
+        std::move(create_bmp180_sensor));
+  }
 #endif
 
 #if CONFIG_ENABLE_BME280

@@ -9,7 +9,8 @@ std::function<void()> TelemetryActor::telemetry_fetch_hook = nullptr;
 void TelemetryActor::receive(const PubSub::Publication& publication) {
   if (publication.get_str_attr("type") == "init") {
     publish_trigger(60000);
-  } else if (publication.get_str_attr("type") == "publish_trigger") {
+  } else if (publication.get_str_attr("type") == "wakeup" &&
+             publication.get_str_attr("wakeup_id") == "publish_trigger") {
     if (telemetry_fetch_hook) {
       telemetry_fetch_hook();
     }
@@ -21,12 +22,7 @@ void TelemetryActor::receive(const PubSub::Publication& publication) {
 }
 
 void TelemetryActor::publish_trigger(uint32_t delay) {
-  uActor::PubSub::Publication p;
-  p.set_attr("type", "publish_trigger");
-  p.set_attr("actor_type", actor_type());
-  p.set_attr("instance_id", instance_id());
-  p.set_attr("node_id", node_id());
-  delayed_publish(std::move(p), delay);
+  enqueue_wakeup(delay, "publish_trigger");
 }
 
 void TelemetryActor::try_publish_telemetry_datapoint(

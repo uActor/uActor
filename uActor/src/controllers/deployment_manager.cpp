@@ -31,7 +31,8 @@ void DeploymentManager::receive(const PubSub::Publication& publication) {
     receive_deployment(publication);
   } else if (publication.get_str_attr("category") == "actor_lifetime") {
     receive_lifetime_event(publication);
-  } else if (publication.get_str_attr("type") == "deployment_lifetime_end") {
+  } else if (publication.get_str_attr("type") == "wakeup" &&
+             publication.get_str_attr("wakeup_id") == "lifetime_end") {
     receive_ttl_timeout(publication);
   } else if (publication.get_str_attr("type") == "label_update") {
     receive_label_update(publication);
@@ -380,14 +381,7 @@ void DeploymentManager::enqueue_lifetime_end_wakeup(Deployment* deployment) {
       !inserted) {
     end_time_it->second.push_back(deployment->name);
   }
-  PubSub::Publication timeout_message{};
-  timeout_message.set_attr("type", "deployment_lifetime_end");
-  timeout_message.set_attr("deployment_name", deployment->name);
-  timeout_message.set_attr("node_id", node_id());
-  timeout_message.set_attr("actor_type", actor_type());
-  timeout_message.set_attr("instance_id", instance_id());
-  delayed_publish(std::move(timeout_message),
-                  deployment->lifetime_end - now() + 10);
+  enqueue_wakeup(deployment->lifetime_end - now() + 10, "lifetime_end");
 }
 
 void DeploymentManager::remove_deployment(Deployment* deployment) {

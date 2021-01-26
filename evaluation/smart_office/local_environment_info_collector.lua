@@ -33,15 +33,7 @@ function receive(message)
       end
     end
 
-    delayed_publish(
-      Publication.new(
-      "node_id", node_id,
-      "actor_type", actor_type,
-      "instance_id", instance_id,
-      "type", "trigger_calculate_average"
-      ),
-      (60-current_seconds%60)*1000
-    )
+    enqueue_wakeup((60-current_seconds%60)*1000, "calculate_average")
 
   end
 
@@ -61,7 +53,7 @@ function receive(message)
     end
   end
 
-  if(message.type == "trigger_calculate_average") then
+  if(message.type == "wakeup" and message.wakeup_id == "calculate_average") then
     for minute, data in pairs(value_store) do
       if(minute < current_minute) then
         local publication = Publication.new("type", "node_environment_info", "timestamp", minute*60)
@@ -83,15 +75,7 @@ function receive(message)
       end
     end
 
-    delayed_publish(
-      Publication.new(
-      "node_id", node_id,
-      "actor_type", actor_type,
-      "instance_id", instance_id,
-      "type", "trigger_calculate_average"
-      ),
-      60000
-    )
+    enqueue_wakeup(60000, "calculate_average")
 
   end
 end

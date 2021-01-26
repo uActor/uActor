@@ -5,6 +5,7 @@
 #include <functional>
 #include <list>
 #include <map>
+#include <queue>
 #include <set>
 #include <string>
 #include <utility>
@@ -98,8 +99,8 @@ class Executor : public ExecutorApi {
         success) {
       auto result = actor_it->second.early_initialize();
       if (result.second < UINT32_MAX) {
-        timeouts.push_back(std::make_pair(
-            BoardFunctions::timestamp() + result.second, actor_it->first));
+        timeouts.emplace(BoardFunctions::timestamp() + result.second,
+                         actor_it->first, false, AString());
       }
       auto init_message =
           PubSub::Publication(_node_id, _actor_type, _instance_id);
@@ -140,6 +141,12 @@ class Executor : public ExecutorApi {
                              std::move(publication));
   }
 
+  void enqueue_wakeup(uint32_t actor_id, uint32_t delay,
+                      std::string_view wakeup_id) {
+    uint32_t new_timeout = BoardFunctions::timestamp() + delay;
+    timeouts.emplace(new_timeout, actor_id, true, AString(wakeup_id));
+  }
+
  private:
   PubSub::ReceiverHandle router_handle;
 
@@ -159,9 +166,44 @@ class Executor : public ExecutorApi {
                Allocator<std::pair<const uint32_t, std::set<uint32_t>>>>>
       subscription_mapping;
   std::list<uint32_t, Allocator<uint32_t>> ready_queue;
-  std::list<std::pair<uint32_t, uint32_t>,
-            Allocator<std::pair<uint32_t, uint32_t>>>
-      timeouts;
+
+  struct Timeout {
+    Timeout(uint32_t timeout, uint32_t actor_id, bool user_defined,
+            AString&& trigger_id)
+        : timeout(timeout),
+          actor_id(actor_id),
+          user_defined(user_defined),
+          trigger_id(std::move(trigger_id)) {}
+
+    uint32_t timeout;
+    uint32_t actor_id;
+    bool user_defined;
+    AString trigger_id;
+
+    bool operator<(const Timeout& other) const {
+      if (other.timeout != timeout) {
+        return timeout < other.timeout;
+      } else if (other.actor_id != actor_id) {
+        return actor_id < other.actor_id;
+      } else if (other.user_defined != user_defined) {
+        return user_defined < other.user_defined;
+      } else {
+        return trigger_id < other.trigger_id;
+      }
+    }
+
+    bool operator==(const Timeout& other) const {
+      return other.timeout == timeout && other.actor_id == actor_id &&
+             other.user_defined == user_defined &&
+             other.trigger_id == trigger_id;
+    }
+  };
+
+  constexpr static auto timeout_cmp = [](const auto& left, const auto& right) {
+    return left.timeout > right.timeout;
+  };
+  std::set<Timeout, std::less<Timeout>, Allocator<Timeout>> timeouts;
+
   std::multimap<uint32_t, PubSub::Publication, std::less<uint32_t>,
                 Allocator<std::pair<const uint32_t, PubSub::Publication>>>
       delayed_messages;
@@ -173,7 +215,7 @@ class Executor : public ExecutorApi {
       uint32_t wait_time = BoardFunctions::SLEEP_FOREVER;
       if (!timeouts.empty()) {
         wait_time =
-            std::max(0, static_cast<int32_t>(timeouts.begin()->first -
+            std::max(0, static_cast<int32_t>(timeouts.begin()->timeout -
                                              BoardFunctions::timestamp()));
       }
       if (!delayed_messages.empty()) {
@@ -208,14 +250,17 @@ class Executor : public ExecutorApi {
                         : PubSub::Publication(publication->publication);
                 receiver_count--;
                 if (actor->second.enqueue(std::move(to_send))) {
+                  // TODO(raphaelhetzel): Remove the linear finds
                   if (std::find(ready_queue.begin(), ready_queue.end(),
                                 receiver_id) == ready_queue.end()) {
                     ready_queue.push_back(receiver_id);
                   }
-                  auto it = std::find_if(timeouts.begin(), timeouts.end(),
-                                         [&](auto& element) {
-                                           return element.second == receiver_id;
-                                         });
+                  auto it =
+                      std::find_if(timeouts.begin(), timeouts.end(),
+                                   [receiver_id](const auto& timeout) {
+                                     return timeout.actor_id == receiver_id &&
+                                            timeout.user_defined == false;
+                                   });
                   if (it != timeouts.end()) {
                     timeouts.erase(it);
                   }
@@ -239,31 +284,39 @@ class Executor : public ExecutorApi {
       }
 
       // Enqueue from timeouts
-      if (timeouts.begin() != timeouts.end()) {
-        if (timeouts.begin()->first < BoardFunctions::timestamp()) {
+      if (!timeouts.empty()) {
+        const auto& timeout = *timeouts.begin();
+        if (timeout.timeout < BoardFunctions::timestamp()) {
           if (std::find(ready_queue.begin(), ready_queue.end(),
-                        timeouts.begin()->second) == ready_queue.end()) {
-            actors.at(timeouts.begin()->second).trigger_timeout();
-            ready_queue.push_back(timeouts.begin()->second);
+                        timeout.actor_id) == ready_queue.end()) {
+            auto actor_it = actors.find(timeout.actor_id);
+            if (actor_it != actors.end()) {
+              actor_it->second.trigger_timeout(timeout.user_defined,
+                                               timeout.trigger_id);
+            }
+            ready_queue.push_back(timeout.actor_id);
           }
-          timeouts.pop_front();
+          timeouts.erase(timeouts.begin());
         }
       }
       // Process one message
       if (!ready_queue.empty()) {
         uint32_t task = ready_queue.front();
         ready_queue.pop_front();
-        ActorType& actor = actors.at(task);
-        // testbed_start_timekeeping("execution");
-        ManagedActor::ReceiveResult result = actor.receive_next_internal();
-        // testbed_stop_timekeeping("execution");
-        if (result.exit) {
-          actors.erase(task);
-        } else if (result.next_timeout == 0) {
-          ready_queue.push_back(task);
-        } else if (result.next_timeout < UINT32_MAX) {
-          timeouts.emplace_back(
-              BoardFunctions::timestamp() + result.next_timeout, task);
+        auto actor_it = actors.find(task);
+        if (actor_it != actors.end()) {
+          // testbed_start_timekeeping("execution");
+          ManagedActor::ReceiveResult result =
+              actor_it->second.receive_next_internal();
+          // testbed_stop_timekeeping("execution");
+          if (result.exit) {
+            actors.erase(actor_it);
+          } else if (result.next_timeout == 0) {
+            ready_queue.push_back(task);
+          } else if (result.next_timeout < UINT32_MAX) {
+            timeouts.emplace(BoardFunctions::timestamp() + result.next_timeout,
+                             task, false, AString());
+          }
         }
       }
     }

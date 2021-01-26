@@ -86,6 +86,8 @@ class ManagedLuaActor : public ManagedActor {
 
   static int calculate_time_diff(lua_State* state);
 
+  static int enqueue_wakeup_wrapper(lua_State* state);
+
 #if CONFIG_BENCHMARK_ENABLED
   static int testbed_log_integer_wrapper(lua_State* state);
 
@@ -134,8 +136,8 @@ class ManagedLuaActor : public ManagedActor {
              &testbed_stop_timekeeping_inner_wrapper},
 #endif
 #endif
-        {
-          "unix_timestamp", &unix_timestamp_wrapper
+            {"unix_timestamp", &unix_timestamp_wrapper}, {
+          "enqueue_wakeup", &enqueue_wakeup_wrapper
         }
       });
 };

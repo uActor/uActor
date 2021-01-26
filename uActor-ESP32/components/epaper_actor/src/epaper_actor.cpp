@@ -22,9 +22,10 @@ void EPaperNotificationActor::receive(const PubSub::Publication& publication) {
     receive_notification_cancelation(publication);
   } else if (publication.get_str_attr("type") == "init") {
     init();
-  } else if (publication.get_str_attr("command") == "cleanup") {
+  } else if (publication.get_str_attr("type") == "wakeup" &&
+             publication.get_str_attr("wakeup_id") == "cleanup") {
     cleanup();
-    send_cleanup_trigger();
+    enqueue_wakeup(10000, "cleanup");
   } else if (publication.get_str_attr("command") == "scroll_notifications") {
     print_next();
   } else if (publication.get_str_attr("type") == "exit") {
@@ -85,7 +86,7 @@ void EPaperNotificationActor::init() {
   register_actor_type.set_attr("node_id", this->node_id().data());
   publish(std::move(register_actor_type));
 
-  send_cleanup_trigger();
+  enqueue_wakeup(10000, "cleanup");
   update(State("", std::string(node_id()), "uActor", notifications.size()),
          true);
 }
@@ -158,15 +159,6 @@ void EPaperNotificationActor::cleanup(std::optional<State> new_state_input) {
       update(std::move(new_state));
     }
   }
-}
-
-void EPaperNotificationActor::send_cleanup_trigger() {
-  PubSub::Publication retrigger(node_id(), actor_type(), instance_id());
-  retrigger.set_attr("actor_type", actor_type());
-  retrigger.set_attr("node_id", node_id());
-  retrigger.set_attr("instance_id", instance_id());
-  retrigger.set_attr("command", "cleanup");
-  delayed_publish(std::move(retrigger), 10000);
 }
 
 void EPaperNotificationActor::update(State&& new_state, bool force) {

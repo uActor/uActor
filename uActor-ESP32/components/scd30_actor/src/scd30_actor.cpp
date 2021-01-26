@@ -57,11 +57,12 @@ void SCD30Actor::receive(const PubSub::Publication& publication) {
     }
   }
   if (publication.get_str_attr("type") == "init" ||
-      publication.get_str_attr("type") == "trigger_sensor_wait") {
+      (publication.get_str_attr("type") == "wakeup" &&
+       publication.get_str_attr("wakeup_id") == "trigger_sensor_wait")) {
     if (scd30_probe() != STATUS_OK) {
       Support::Logger::warning("SCD30", "INIT", "Sensor not found\n");
       if (ready_retries < 5) {
-        send_delayed_trigger(1000, "trigger_sensor_wait");
+        enqueue_wakeup(1000, "trigger_sensor_wait");
       } else {
         send_exit_message();
       }
@@ -72,14 +73,15 @@ void SCD30Actor::receive(const PubSub::Publication& publication) {
       register_unmanaged_actor("core.sensors.relative_humidity");
       register_unmanaged_actor("core.sensors.co2");
       init_timestamp = BoardFunctions::seconds_timestamp();
-      send_delayed_trigger(20100, "trigger_measurement");
+      enqueue_wakeup(20100, "trigger_measurement");
     }
   } else if (publication.get_str_attr("type") == "exit") {
     for (auto actor_type : registered_actors) {
       deregister_managed_actor(actor_type);
     }
     registered_actors.clear();
-  } else if (publication.get_str_attr("type") == "trigger_measurement") {
+  } else if (publication.get_str_attr("type") == "wakeup" &&
+             publication.get_str_attr("wakeup_id") == "trigger_measurement") {
     fetch_send_updates();
     if (!calibrated_temp) {
       fetch_calibration_data();
@@ -123,22 +125,20 @@ void SCD30Actor::fetch_send_updates() {
   if (!ready) {
     Support::Logger::info("SCD30", "FETCH",
                           "Sensor not ready, waiting 100ms\n");
-    send_delayed_trigger(100, "trigger_measurement");
+    enqueue_wakeup(100, "trigger_measurement");
     return;
   }
   if (scd30_read_measurement(&co2, &temperature, &relative_humidity) !=
       STATUS_OK) {
     Support::Logger::warning("SCD30", "FETCH", "Read error\n");
     send_failure_notification();
-    send_delayed_trigger(20000, "trigger_measurement");
+    enqueue_wakeup(20000, "trigger_measurement");
   } else {
-    Support::Logger::info("SCD30", "FETCH", "read: %f %f %f %f\n", temperature,
-                          temperature, relative_humidity, co2);
     send_update("temperature", "degree_celsius", temperature, calibrated_temp);
     send_update("co2", "ppm", co2, calibrated_co2);
     send_update("relative_humidity", "percent", relative_humidity,
                 calibrated_temp);
-    send_delayed_trigger(20000, "trigger_measurement");
+    enqueue_wakeup(20000, "trigger_measurement");
   }
 }
 
@@ -161,14 +161,6 @@ void SCD30Actor::send_failure_notification() {
   publish(std::move(sensor_failure));
 }
 
-void SCD30Actor::send_delayed_trigger(uint32_t delay, std::string type) {
-  PubSub::Publication trigger;
-  trigger.set_attr("type", type);
-  trigger.set_attr("node_id", node_id().data());
-  trigger.set_attr("actor_type", actor_type().data());
-  trigger.set_attr("instance_id", instance_id().data());
-  delayed_publish(std::move(trigger), delay);
-}
 
 void SCD30Actor::send_exit_message() {
   PubSub::Publication exit_message;

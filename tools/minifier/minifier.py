@@ -272,7 +272,7 @@ class LuaMinifier(ParseTreeVisitor):
         "subscribe", "unsubscribe", "encode_base64", "decode_base64", "testbed_log_integer", "testbed_log_double",
         "testbed_log_string", "testbed_start_timekeeping", "testbed_stop_timekeeping", "calculate_time_diff", "connection_traffic",
         "testbed_stop_timekeeping_inner", "unix_timestamp", "assert", "collectgarbage", "error", "ipairs", "next", "pairs", "print", "select",
-        "tonumber", "tostring", "type", "math", "string", "Publication", "now"}
+        "tonumber", "tostring", "type", "math", "string", "Publication", "now", "enqueue_wakeup"}
 
         if name not in known_keys:
             if name not in self.vars_mapping:

@@ -31,13 +31,14 @@ void BME280Actor::receive(const PubSub::Publication &publication) {
   }
 
   if (publication.get_str_attr("type") == "init" ||
-      publication.get_str_attr("type") == "trigger_sensor_wait") {
+      (publication.get_str_attr("type") == "wakeup" &&
+       publication.get_str_attr("wakeup_id") == "trigger_sensor_wait")) {
     auto ret = bme280_init(&dev);
     if (ret != BME280_OK) {
       Support::Logger::warning("BME280", "INIT", "Sensor init error %d\n", ret);
       ready_retries++;
       if (ready_retries < 5) {
-        send_delayed_trigger(1000, "trigger_sensor_wait");
+        enqueue_wakeup(1000, "trigger_sensor_wait");
       } else {
         send_exit_message();
       }
@@ -71,14 +72,15 @@ void BME280Actor::receive(const PubSub::Publication &publication) {
       register_unmanaged_actor("core.sensors.temperature");
       register_unmanaged_actor("core.sensors.relative_humidity");
       register_unmanaged_actor("core.sensors.pressure");
-      send_delayed_trigger(100, "trigger_measurement");
+      enqueue_wakeup(100, "trigger_measurement");
     }
   } else if (publication.get_str_attr("type") == "exit") {
     for (auto actor_type : registered_actors) {
       deregister_managed_actor(actor_type);
     }
     registered_actors.clear();
-  } else if (publication.get_str_attr("type") == "trigger_measurement") {
+  } else if (publication.get_str_attr("type") == "wakeup" &&
+             publication.get_str_attr("wakeup_id") == "trigger_measurement") {
     fetch_send_updates();
   }
 }
@@ -95,14 +97,13 @@ void BME280Actor::fetch_send_updates() {
     Support::Logger::warning("BME280", "FETCH", "Ready error\n");
     send_failure_notification();
   } else {
-    printf("temperature %f\n", comp_data.temperature);
     send_update("temperature", "degree_celsius", comp_data.temperature,
                 calibrated_temperature);
     send_update("pressure", "pa", comp_data.pressure, calibrated_pressure);
     send_update("relative_humidity", "percent", comp_data.humidity,
                 calibrated_humidity);
   }
-  send_delayed_trigger(20000, "trigger_measurement");
+  enqueue_wakeup(20000, "trigger_measurement");
 }
 
 void BME280Actor::send_update(std::string variable, std::string unit,
@@ -121,15 +122,6 @@ void BME280Actor::send_failure_notification() {
   sensor_failure.set_attr("type", "sensor_failure");
   sensor_failure.set_attr("sensor", "bme280");
   publish(std::move(sensor_failure));
-}
-
-void BME280Actor::send_delayed_trigger(uint32_t delay, std::string type) {
-  PubSub::Publication trigger;
-  trigger.set_attr("type", type);
-  trigger.set_attr("node_id", node_id().data());
-  trigger.set_attr("actor_type", actor_type().data());
-  trigger.set_attr("instance_id", instance_id().data());
-  delayed_publish(std::move(trigger), delay);
 }
 
 void BME280Actor::send_exit_message() {

@@ -33,7 +33,9 @@ void TopologyManager::receive(const PubSub::Publication& publication) {
       p.set_attr("type", "trigger_static_peer");
       publish(std::move(p));
     }
-  } else if (publication.get_str_attr("type") == "trigger_static_peer") {
+  } else if (publication.get_str_attr("type") == "trigger_static_peer" ||
+             (publication.get_str_attr("type") == "wakeup" &&
+              publication.get_str_attr("wakeup_id") == "trigger_static_peer")) {
     publish_persistent_peers();
   } else if (publication.get_str_attr("type") == "peer_announcement") {
     receive_peer_announcement(publication);
@@ -138,12 +140,7 @@ void TopologyManager::publish_persistent_peers() {
     }
   }
 
-  auto p = PubSub::Publication();
-  p.set_attr("node_id", node_id());
-  p.set_attr("actor_type", actor_type());
-  p.set_attr("instance_id", instance_id());
-  p.set_attr("type", "trigger_static_peer");
-  delayed_publish(std::move(p), 30000);
+  enqueue_wakeup(30000, "trigger_static_peer");
 }
 
 bool TopologyManager::should_connect(const std::string& peer_id) {

@@ -4,7 +4,7 @@ function receive(message)
     subscribe({type="contact_tracing.contact"})
     subscribe({type="contact_tracing.infection_warning"})
 
-    publish_cleanup_trigger()
+    enqueue_wakeup(60000*60*12, "cleanup_trigger")
   end
 
   if(message.type == "contact_tracing.contact") then
@@ -60,7 +60,7 @@ function receive(message)
     end
   end
 
-  if(message.type == "cleanup_trigger") then
+  if(message.type == "wakeup" and message.wakeup_id == "cleanup_trigger") then
     local to_delete = {}
     local cutoff_timestamp = unix_timestamp() - 60*60*24*14 
 
@@ -74,18 +74,6 @@ function receive(message)
       end
     end
 
-    publish_cleanup_trigger()
+    enqueue_wakeup(60000*60*12, "cleanup_trigger")
   end
-end
-
-function publish_cleanup_trigger()
-  delayed_publish(
-    Publication.new(
-      "node_id", node_id,
-      "actor_type", actor_type,
-      "instance_id", instance_id,
-      "type", "cleanup_trigger"
-    ),
-    60000*60*12
-  )
 end

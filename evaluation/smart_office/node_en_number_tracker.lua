@@ -16,15 +16,7 @@ function receive(message)
     sub["0x03"] = encode_base64(string.char(0x6F, 0xFD))
     subscribe(sub)
 
-    delayed_publish(
-      Publication.new(
-      "node_id", node_id,
-      "actor_type", actor_type,
-      "instance_id", instance_id,
-      "type", "trigger_calculate_average"
-      ),
-      (60-current_seconds%60)*1000
-    )
+    enqueue_wakeup((60-current_seconds%60)*1000, "calculate_average")
   end
 
   if(message.type == "ble_discovery" and message['0x03'] == encode_base64(string.char(0x6F, 0xFD))) then
@@ -44,7 +36,7 @@ function receive(message)
     seen[current_minute][key] = true
   end
 
-  if(message.type == "trigger_calculate_average") then
+  if(message.type == "wakeup" and message.wakeup_id ==  "calculate_average") then
     for minute, data in pairs(seen) do
       if(minute < current_minute) then
 
@@ -61,15 +53,7 @@ function receive(message)
       end
     end
 
-    delayed_publish(
-      Publication.new(
-      "node_id", node_id,
-      "actor_type", actor_type,
-      "instance_id", instance_id,
-      "type", "trigger_calculate_average"
-      ),
-      60000
-    )
+    enqueue_wakeup(60000, "calculate_average")
 
   end
 end

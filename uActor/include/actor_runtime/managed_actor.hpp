@@ -90,7 +90,7 @@ class ManagedActor {
 
   bool enqueue(PubSub::Publication&& message);
 
-  void trigger_timeout();
+  void trigger_timeout(bool user_defined, std::string_view wakeup_id);
 
   [[nodiscard]] uint32_t id() const { return _id; }
 
@@ -120,6 +120,7 @@ class ManagedActor {
 
   void publish(PubSub::Publication&& p);
   void delayed_publish(PubSub::Publication&& p, uint32_t delay);
+  void enqueue_wakeup(uint32_t delay, std::string_view wakeup_id);
 
   void deffered_block_for(PubSub::Filter&& filter, uint32_t timeout);
 

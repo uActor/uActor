@@ -44,7 +44,6 @@ class SCD30Actor : public ActorRuntime::NativeActor {
   void send_update(std::string variable, std::string unit, float value,
                    bool calibrated);
   void send_failure_notification();
-  void send_delayed_trigger(uint32_t delay, std::string type);
   void send_exit_message();
   void fetch_calibration_data();
 

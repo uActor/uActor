@@ -211,6 +211,17 @@ int ManagedLuaActor::calculate_time_diff(lua_State* state) {
   return 1;
 }
 
+int ManagedLuaActor::enqueue_wakeup_wrapper(lua_State* state) {
+  ManagedLuaActor* actor = reinterpret_cast<ManagedLuaActor*>(
+      lua_touserdata(state, lua_upvalueindex(1)));
+
+  uint32_t delay = lua_tointeger(state, 1);
+  std::string_view wakeup_id = std::string_view(lua_tostring(state, 2));
+
+  actor->enqueue_wakeup(delay, wakeup_id);
+  return 0;
+}
+
 #if CONFIG_BENCHMARK_ENABLED
 
 int ManagedLuaActor::connection_traffic(lua_State* state) {

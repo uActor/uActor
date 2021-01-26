@@ -11,7 +11,7 @@ function receive(message)
 
     print(unix_timestamp())
 
-    delayed_publish(Publication.new("node_id", node_id, "actor_type", actor_type, "instance_id", instance_id, "type", "cleanup_trigger"), 5000)
+    enqueue_wakeup(5000, "cleanup_trigger")
   end
 
   if(message.type == "ble_discovery" and message["0x09"] == encode_base64(name) and message.rssi <= 70) then
@@ -30,7 +30,7 @@ function receive(message)
     seen[decoded_address] = now()
   end
 
-  if(message.type == "cleanup_trigger") then
+  if(message.type == "wakeup" and message.wakeup_id == "cleanup_trigger") then
     local keys_to_delete = {}
     for address, last_seen in pairs(seen) do
       if(now() - last_seen > 15000) then
@@ -61,7 +61,7 @@ function receive(message)
       end
     end
 
-    delayed_publish(Publication.new("node_id", node_id, "actor_type", actor_type, "instance_id", instance_id, "type", "cleanup_trigger"), 5000)
+    enqueue_wakeup(5000, "cleanup_trigger")
   end
 end
 

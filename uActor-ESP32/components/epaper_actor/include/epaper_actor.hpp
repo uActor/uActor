@@ -60,8 +60,6 @@ class EPaperNotificationActor : public ActorRuntime::NativeActor {
 
   void cleanup(std::optional<State> state_input = std::nullopt);
 
-  void send_cleanup_trigger();
-
   void update(State&& state, bool force = false);
 
  private:

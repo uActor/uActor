@@ -91,12 +91,18 @@ bool ManagedActor::enqueue(PubSub::Publication&& message) {
   }
 }
 
-void ManagedActor::trigger_timeout() {
+void ManagedActor::trigger_timeout(bool user_defined,
+                                   std::string_view wakeup_id) {
   Support::Logger::trace("MANAGED-ACTOR", "TRIGGER-TIMEOUT", "called");
   auto p = PubSub::Publication(_node_id.c_str(), _actor_type.c_str(),
                                _instance_id.c_str());
-  p.set_attr("_internal_timeout", "_timeout");
-  p.set_attr("type", "timeout");
+  if (!user_defined) {
+    p.set_attr("_internal_timeout", "_timeout");
+    p.set_attr("type", "timeout");
+  } else {
+    p.set_attr("type", "wakeup");
+    p.set_attr("wakeup_id", wakeup_id);
+  }
   message_queue.emplace_front(std::move(p));
 }
 
@@ -156,6 +162,10 @@ void ManagedActor::publish(PubSub::Publication&& p) {
 
 void ManagedActor::delayed_publish(PubSub::Publication&& p, uint32_t delay) {
   api->delayed_publish(std::move(p), delay);
+}
+
+void ManagedActor::enqueue_wakeup(uint32_t delay, std::string_view wakeup_id) {
+  api->enqueue_wakeup(_id, delay, wakeup_id);
 }
 
 void ManagedActor::deffered_block_for(PubSub::Filter&& filter,
