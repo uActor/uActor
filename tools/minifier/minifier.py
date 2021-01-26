@@ -1,6 +1,5 @@
 from antlr4 import *
 from .LuaLexer import LuaLexer
-from .LuaListener import LuaListener
 from .LuaParser import LuaParser
 
 
