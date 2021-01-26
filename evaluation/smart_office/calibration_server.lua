@@ -3,14 +3,13 @@ CALIBRATION_DATA = {
 }
 
 DEFAULT_CALIBRATION_DATA = {
-  scd30_temperature = -4.75,
-  bme280_temperature = -3.00
+  scd30_temperature = -5.0,
+  bme280_temperature = -3.0
 }
 
 function receive(message)
   
   if(message.type == "init") then
-    print("init calibration")
     subscribe({command="fetch_calibration_data"})
   end
 
