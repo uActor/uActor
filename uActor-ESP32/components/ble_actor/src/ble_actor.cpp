@@ -38,12 +38,12 @@ BLEActor::BLEActor() : handle(PubSub::Router::get_instance().new_subscriber()) {
 
 #if CONFIG_UACTOR_OPTIMIZATIONS_BLE_FILTER
   handle.subscribe(
-      PubSub::Filter{PubSub::Constraint("type", "subscription_added"),
+      PubSub::Filter{PubSub::Constraint("type", "subscriptions_added"),
                      PubSub::Constraint("publisher_node_id",
                                         std::string(BoardFunctions::NODE_ID))});
 
   handle.subscribe(
-      PubSub::Filter{PubSub::Constraint("type", "subscription_removed"),
+      PubSub::Filter{PubSub::Constraint("type", "subscriptions_removed"),
                      PubSub::Constraint("publisher_node_id",
                                         std::string(BoardFunctions::NODE_ID))});
 #endif
@@ -80,9 +80,9 @@ void BLEActor::receive(PubSub::Publication&& publication) {
   if (publication.get_str_attr("type") == "ble_advertisement") {
     handle_advertisement_receive(std::move(publication));
 #if CONFIG_UACTOR_OPTIMIZATIONS_BLE_FILTER
-  } else if (publication.get_str_attr("type") == "subscription_removed") {
+  } else if (publication.get_str_attr("type") == "subscriptions_removed") {
     handle_subscription_added(std::move(publication));
-  } else if (publication.get_str_attr("type") == "subscription_added") {
+  } else if (publication.get_str_attr("type") == "subscriptions_added") {
     handle_subscription_added(std::move(publication));
   }
 #else
@@ -105,55 +105,59 @@ void BLEActor::handle_advertisement_receive(PubSub::Publication&& publication) {
 
 #if CONFIG_UACTOR_OPTIMIZATIONS_BLE_FILTER
 void BLEActor::handle_subscription_added(PubSub::Publication&& publication) {
-  if (!publication.has_attr("serialized_subscription")) {
+  if (!publication.has_attr("serialized_subscriptions")) {
     return;
   }
 
-  auto deserialized = PubSub::Filter::deserialize(
-      *publication.get_str_attr("serialized_subscription"));
+  for (auto serialized : Support::StringHelper::string_split(
+           *publication.get_str_attr("serialized_subscriptions"), "&")) {
+    auto deserialized = PubSub::Filter::deserialize(serialized);
 
-  if (deserialized && filter_has_ble_type_constraint(*deserialized)) {
-    if (std::find_if(
-            active_filters.begin(), active_filters.end(),
-            [&filter = std::as_const(*deserialized)](const auto& other) {
-              return filter == other.filter();
-            }) != active_filters.end()) {
-      return;
-    }
-
-    InternalBLEFilter filter;
-    for (const auto& c : deserialized->required_constraints()) {
-      try {
-        auto id = std::stoi(std::string(c.attribute()), 0, 0);
-        if (id <= 0xFF &&
-            std::holds_alternative<std::string_view>(c.operand())) {
-          filter.set_field(
-              id, base64_decode(std::get<std::string_view>(c.operand())),
-              c.predicate());
-        }
-      } catch (const std::exception&) {
+    if (deserialized && filter_has_ble_type_constraint(*deserialized)) {
+      if (std::find_if(
+              active_filters.begin(), active_filters.end(),
+              [&filter = std::as_const(*deserialized)](const auto& other) {
+                return filter == other.filter();
+              }) != active_filters.end()) {
+        continue;
       }
+
+      InternalBLEFilter filter;
+      for (const auto& c : deserialized->required_constraints()) {
+        try {
+          auto id = std::stoi(std::string(c.attribute()), 0, 0);
+          if (id <= 0xFF &&
+              std::holds_alternative<std::string_view>(c.operand())) {
+            filter.set_field(
+                id, base64_decode(std::get<std::string_view>(c.operand())),
+                c.predicate());
+          }
+        } catch (const std::exception&) {
+        }
+      }
+      filter.filter(std::move(*deserialized));
+      active_filters.push_front(std::move(filter));
     }
-    filter.filter(std::move(*deserialized));
-    active_filters.push_front(std::move(filter));
   }
 }
 
 void BLEActor::handle_subscription_removed(PubSub::Publication&& publication) {
-  if (!publication.has_attr("serialize_subscription")) {
+  if (!publication.has_attr("serialize_subscriptions")) {
     return;
   }
-  auto deserialized = PubSub::Filter::deserialize(
-      *publication.get_str_attr("serialized_subscription"));
+  for (auto serialized : Support::StringHelper::string_split(
+           *publication.get_str_attr("serialized_subscriptions"), "&")) {
+    auto deserialized = PubSub::Filter::deserialize(serialized);
 
-  if (deserialized && filter_has_ble_type_constraint(*deserialized)) {
-    auto filter_it = std::find_if(
-        active_filters.begin(), active_filters.end(),
-        [&other = std::as_const(*deserialized)](const auto& filter) {
-          return filter.filter() == other;
-        });
-    if (filter_it != active_filters.end()) {
-      active_filters.erase(filter_it);
+    if (deserialized && filter_has_ble_type_constraint(*deserialized)) {
+      auto filter_it = std::find_if(
+          active_filters.begin(), active_filters.end(),
+          [&other = std::as_const(*deserialized)](const auto& filter) {
+            return filter.filter() == other;
+          });
+      if (filter_it != active_filters.end()) {
+        active_filters.erase(filter_it);
+      }
     }
   }
 }

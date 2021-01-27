@@ -104,18 +104,18 @@ void Router::publish_internal(Publication&& publication) {
 #endif
 }
 
-std::string Router::subscriptions_for(std::string_view node_id) {
+std::vector<std::string> Router::subscriptions_for(std::string_view node_id,
+                                                   uint32_t max_size) {
   std::shared_lock lock(mtx);
+  std::vector<std::string> serialized_sub{std::string()};
+  bool send_node_id = false;
 
   auto [peer_node_it, _inserted] =
       peer_node_ids.try_emplace(AString(node_id), false, next_node_id++);
   if (peer_node_it == peer_node_ids.end()) {
-    return "";
+    return serialized_sub;
   }
   uint32_t internal_node_id = peer_node_it->second.second;
-
-  std::string serialized_sub;
-  bool send_node_id = false;
 
   for (auto& sub_pair : subscriptions) {
     auto& sub = sub_pair.second;
@@ -143,21 +143,32 @@ std::string Router::subscriptions_for(std::string_view node_id) {
         }
       }
       if (!skip) {
-        serialized_sub += sub.filter.serialize() + "&";
+        auto current = sub.filter.serialize();
+        if (max_size > 0 &&
+            current.size() + serialized_sub.back().size() > max_size) {
+          serialized_sub.emplace_back();
+        }
+
+        if (!serialized_sub.back().empty()) {
+          serialized_sub.back() += "&" + std::move(current);
+        } else {
+          serialized_sub.back() = std::move(current);
+        }
       }
     }
   }
 
   if (send_node_id) {
-    serialized_sub +=
-        Filter{Constraint{"node_id", BoardFunctions::NODE_ID}}.serialize() +
-        "&";
-    peer_node_it->second.first = true;
+    if (!serialized_sub.back().empty()) {
+      serialized_sub.back() +=
+          "&" +
+          Filter{Constraint{"node_id", BoardFunctions::NODE_ID}}.serialize();
+    } else {
+      serialized_sub.back() =
+          Filter{Constraint{"node_id", BoardFunctions::NODE_ID}}.serialize();
+    }
   }
 
-  if (!serialized_sub.empty()) {
-    serialized_sub.resize(serialized_sub.size() - 1);
-  }
   return serialized_sub;
 }
 
@@ -332,8 +343,8 @@ void Router::publish_subscription_added(const Filter& filter, AString exclude,
       for (auto& [node_id_string, node_id_info] : peer_node_ids) {
         if (node_id_string != exclude && !node_id_info.first) {
           Publication update{BoardFunctions::NODE_ID, "router", "1"};
-          update.set_attr("type", "subscription_added");
-          update.set_attr("serialized_subscription",
+          update.set_attr("type", "subscriptions_added");
+          update.set_attr("serialized_subscriptions",
                           Filter{Constraint{"node_id", BoardFunctions::NODE_ID}}
                               .serialize());
           update.set_attr("include_node_id", node_id_string);
@@ -346,8 +357,8 @@ void Router::publish_subscription_added(const Filter& filter, AString exclude,
   }
 
   Publication update{BoardFunctions::NODE_ID, "router", "1"};
-  update.set_attr("type", "subscription_added");
-  update.set_attr("serialized_subscription", std::move(serialized));
+  update.set_attr("type", "subscriptions_added");
+  update.set_attr("serialized_subscriptions", std::move(serialized));
   if (exclude.length() != 0) {
     update.set_attr("exclude_node_id", exclude);
   }
@@ -378,8 +389,8 @@ void Router::publish_subscription_removed(const InternalFilter& filter,
   }
 
   Publication update{BoardFunctions::NODE_ID, "router", "1"};
-  update.set_attr("type", "subscription_removed");
-  update.set_attr("serialized_subscription", filter.serialize());
+  update.set_attr("type", "subscriptions_removed");
+  update.set_attr("serialized_subscriptions", filter.serialize());
   if (exclude.length() != 0) {
     update.set_attr("exclude_node_id", exclude);
   }

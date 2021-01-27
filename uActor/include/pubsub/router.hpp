@@ -11,6 +11,7 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 #include "allocator_configuration.hpp"
 #include "constraint_index.hpp"
@@ -35,7 +36,8 @@ class Router {
 
   ReceiverHandle new_subscriber();
 
-  std::string subscriptions_for(std::string_view node_id);
+  std::vector<std::string> subscriptions_for(std::string_view node_id,
+                                             uint32_t max_size = 0);
 
   uint32_t find_sub_id(Filter&& filter);
   uint32_t number_of_subscriptions();

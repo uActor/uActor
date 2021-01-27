@@ -116,8 +116,8 @@ class RemoteConnection {
   void process_publication(PubSub::Publication&& p);
 
   void update_subscriptions(PubSub::Publication&& p);
-  void add_subscription(PubSub::Publication&& p);
-  void remove_subscription(PubSub::Publication&& p);
+  void add_subscriptions(PubSub::Publication&& p);
+  void remove_subscriptions(PubSub::Publication&& p);
 
   friend uActor::Remote::TCPForwarder;
   friend uActor::Remote::TCPForwarder;
