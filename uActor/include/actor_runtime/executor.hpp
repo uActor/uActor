@@ -15,6 +15,7 @@
 #include "managed_actor.hpp"
 #include "pubsub/router.hpp"
 #include "runtime_allocator_configuration.hpp"
+#include "support/logger.hpp"
 
 namespace uActor::ActorRuntime {
 
@@ -212,6 +213,7 @@ class Executor : public ExecutorApi {
   void event_loop() {
     while (true) {
       // Enqueue from threads master queue
+
       uint32_t wait_time = BoardFunctions::SLEEP_FOREVER;
       if (!timeouts.empty()) {
         wait_time =
@@ -284,21 +286,23 @@ class Executor : public ExecutorApi {
       }
 
       // Enqueue from timeouts
-      if (!timeouts.empty()) {
+      auto start = BoardFunctions::timestamp();
+      while (!timeouts.empty() && timeouts.begin()->timeout < start) {
         const auto& timeout = *timeouts.begin();
-        if (timeout.timeout < BoardFunctions::timestamp()) {
-          if (std::find(ready_queue.begin(), ready_queue.end(),
-                        timeout.actor_id) == ready_queue.end()) {
-            auto actor_it = actors.find(timeout.actor_id);
-            if (actor_it != actors.end()) {
-              actor_it->second.trigger_timeout(timeout.user_defined,
-                                               timeout.trigger_id);
+        if (timeout.timeout < start) {
+          auto actor_it = actors.find(timeout.actor_id);
+          if (actor_it != actors.end()) {
+            actor_it->second.trigger_timeout(timeout.user_defined,
+                                             timeout.trigger_id);
+            if (std::find(ready_queue.begin(), ready_queue.end(),
+                          timeout.actor_id) == ready_queue.end()) {
+              ready_queue.push_back(timeout.actor_id);
             }
-            ready_queue.push_back(timeout.actor_id);
           }
           timeouts.erase(timeouts.begin());
         }
       }
+
       // Process one message
       if (!ready_queue.empty()) {
         uint32_t task = ready_queue.front();
