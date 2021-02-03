@@ -55,7 +55,7 @@ lint_clang-tidy_esp32: ${ESP32_BUILD_DIRECTORY}/release/compile_commands.json
 	clang-tidy -p ${ESP32_BUILD_DIRECTORY}/release/compile_commands.json ${ESP32_CODE_FILES}
 
 lint_clang-tidy_posix: ${LOCAL_BUILD_DIRECTORY}/debug/compile_commands.json
-	clang-tidy -p ${LOCAL_BUILD_DIRECTORY}/debug/compile_commands.json ${GENERIC_CODE_FILES} {}
+	clang-tidy -p ${LOCAL_BUILD_DIRECTORY}/debug/compile_commands.json ${GENERIC_CODE_FILES} ${POSIX_CODE_FILES}
 
 lint: lint_cpplint lint_clang-tidy_posix
 
