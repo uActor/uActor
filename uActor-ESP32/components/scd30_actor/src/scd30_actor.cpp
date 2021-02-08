@@ -3,6 +3,7 @@
 #include <nvs.h>
 #include <nvs_flash.h>
 
+#include <array>
 #include <ctime>
 #include <set>
 #include <string_view>
@@ -50,9 +51,13 @@ void SCD30Actor::receive(const PubSub::Publication& publication) {
       } else {
         Support::Logger::info("SCD30", "INIT",
                               "CO2 Sensor needs to be calibrated.\n");
-        // TODO(raphaelhetzel) this is ignored on purpose as the CO2 calibration
-        // is untested.
-        calibrated_co2 = true;
+        subscribe(PubSub::Filter{
+            PubSub::Constraint("command", "initialize_outdoor_calibration"),
+            PubSub::Constraint("sensor", "scd30_co2"),
+            PubSub::Constraint("node_id", node_id())});
+        // This is an alternative approach that automatically calibrates the
+        // sensor after 6 minutes enqueue_wakeup(360000, "calibrate_co2");
+        // update_calibration_notification("calibration\nscheduled");
       }
     }
   }
@@ -68,7 +73,7 @@ void SCD30Actor::receive(const PubSub::Publication& publication) {
       }
       ready_retries++;
     } else {
-      scd30_start_periodic_measurement(0);
+      scd30_start_periodic_measurement(955);
       register_unmanaged_actor("core.sensors.temperature");
       register_unmanaged_actor("core.sensors.relative_humidity");
       register_unmanaged_actor("core.sensors.co2");
@@ -91,10 +96,11 @@ void SCD30Actor::receive(const PubSub::Publication& publication) {
     if (!calibrated_temp) {
       fetch_calibration_data();
     }
-  } else if (publication.get_str_attr("command") == "initialize_frc" &&
-             publication.get_str_attr("sensor") == "scd30_co2") {
-    return;  // TODO(raphaelhetzel) This is disabled on purpose
-
+  } else if ((publication.get_str_attr("command") ==
+                  "initialize_outdoor_calibration" &&
+              publication.get_str_attr("sensor") == "scd30_co2") ||
+             (publication.get_str_attr("type") == "wakeup" &&
+              publication.get_str_attr("wakeup_id") == "calibrate_co2")) {
     uint16_t target_ppm = 400;
     if (publication.has_attr("target_ppm")) {
       target_ppm = *publication.get_int_attr("target_ppm");
@@ -160,7 +166,6 @@ void SCD30Actor::send_failure_notification() {
   sensor_failure.set_attr("sensor", "scd30");
   publish(std::move(sensor_failure));
 }
-
 
 void SCD30Actor::send_exit_message() {
   PubSub::Publication exit_message;
@@ -237,21 +242,28 @@ void SCD30Actor::calibrate_temperature(float server_offset) {
 
 void SCD30Actor::co2_forced_calibration(uint16_t ppm) {
   Support::Logger::info("SCD30", "CALIBRATE_CO2", " Start CO2 calibration\n");
+  update_calibration_notification("calibration\nstart");
 
   int uptime = BoardFunctions::seconds_timestamp() - init_timestamp;
 
-  if (uptime < 1800) {
+  if (uptime < 300) {
     Support::Logger::info("SCD30", "CALIBRATE_CO2",
                           " Sensor not warmed up yet (Uptime: %d)\n", uptime);
+    update_calibration_notification("calibration\nfailure:\nuptime");
     return;
   }
 
   if (scd30_probe() != STATUS_OK) {
     Support::Logger::error("SCD30", "CALIBRATE_CO2", "Sensor not found\n");
+    update_calibration_notification("calibration\nfailure:\nprobe");
+    return;
   }
+  // return;
 
   if (scd30_set_forced_recalibration(ppm) != STATUS_OK) {
     Support::Logger::error("SCD30", "CALIBRATE_CO2", "FRC failed\n");
+    update_calibration_notification("calibration\nfailure:\nfrc");
+    return;
   }
 
   calibrated_co2 = true;
@@ -259,6 +271,7 @@ void SCD30Actor::co2_forced_calibration(uint16_t ppm) {
   time_t t = 0;
   time(&t);
   write_co2_calibration_timestamp(static_cast<uint32_t>(t));
+  update_calibration_notification("calibrated");
 }
 
 std::pair<bool, uint16_t> SCD30Actor::read_temperature_calibrarion_value() {
@@ -307,8 +320,8 @@ std::pair<bool, uint32_t> SCD30Actor::read_co2_configuration_timestamp() {
     nvs_close(storage_handle);
     return std::make_pair(false, 0);
   }
-  uint16_t calibration_value = 0;
-  auto err = nvs_get_u16(storage_handle, "scd30_c_t", &calibration_value);
+  uint32_t calibration_value = 0;
+  auto err = nvs_get_u32(storage_handle, "scd30_c_t", &calibration_value);
   if (err == ESP_OK) {
     nvs_close(storage_handle);
     return std::make_pair(true, calibration_value);
@@ -336,6 +349,18 @@ void SCD30Actor::write_co2_calibration_timestamp(
     Support::Logger::error("SCD30", "NVS-CO2", "Write Error: Commit\n");
   }
   nvs_close(storage_handle);
+}
+
+void SCD30Actor::update_calibration_notification(
+    std::string_view notification_text) {
+  auto calibration_info = PubSub::Publication{};
+  calibration_info.set_attr("type", "notification");
+  calibration_info.set_attr("notification_text", notification_text);
+  calibration_info.set_attr("notification_id", "calibrated");
+  calibration_info.set_attr("notification_lifetime", 0);
+  calibration_info.set_attr("node_id", node_id());
+
+  publish(std::move(calibration_info));
 }
 
 }  // namespace uActor::ESP32::Sensors

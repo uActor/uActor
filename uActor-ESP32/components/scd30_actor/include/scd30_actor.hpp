@@ -49,6 +49,7 @@ class SCD30Actor : public ActorRuntime::NativeActor {
 
   void register_unmanaged_actor(std::string type);
   void deregister_managed_actor(std::string type);
+  void update_calibration_notification(std::string_view notification_text);
 };
 
 }  // namespace uActor::ESP32::Sensors
