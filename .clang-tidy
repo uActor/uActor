@@ -35,5 +35,5 @@ Checks: '*,
 -readability-use-anyofallof,
 -hicpp-vararg,
 '
-WarningsAsErrors: '*'
+WarningsAsErrors: ''
 FormatStyle: file
