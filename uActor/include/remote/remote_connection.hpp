@@ -76,7 +76,7 @@ class RemoteConnection {
   int sock = 0;
 
   // TCP Related
-  // TODO(raphaelhetzel) potentially move this to a seperate
+  // TODO(raphaelhetzel) potentially move this to a separate
   // wrapper once we have more types of forwarders
   std::string partner_ip;
   uint16_t partner_port;

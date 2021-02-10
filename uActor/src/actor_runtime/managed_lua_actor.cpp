@@ -61,7 +61,7 @@ bool ManagedLuaActor::receive(PubSub::Publication&& m) {
 #endif
 
   int error_code = lua_pcall(state, 1, 0, 0);
-  if (error_code) {
+  if (error_code != 0) {
     printf("LUA ERROR for actor %s.%s.%s\n", node_id(), actor_type(),
            instance_id());
     printf("ERROR: %s\n", lua_tostring(state, -1));
@@ -84,9 +84,10 @@ int ManagedLuaActor::publish_wrapper(lua_State* state) {
   ManagedLuaActor* actor = reinterpret_cast<ManagedLuaActor*>(
       lua_touserdata(state, lua_upvalueindex(1)));
 
-  if (lua_isuserdata(state, 1) &&
-      luaL_checkudata(state, 1, "uActor.Publication")) {
-    auto pub = reinterpret_cast<PubSub::Publication*>(lua_touserdata(state, 1));
+  if (lua_isuserdata(state, 1) != 0 &&
+      luaL_checkudata(state, 1, "uActor.Publication") != nullptr) {
+    auto* pub =
+        reinterpret_cast<PubSub::Publication*>(lua_touserdata(state, 1));
     actor->publish(std::move(*pub));
   } else if (lua_istable(state, -1)) {
     printf("using outdated API!\n");
@@ -101,9 +102,10 @@ int ManagedLuaActor::delayed_publish_wrapper(lua_State* state) {
 
   uint32_t delay = lua_tointeger(state, 2);
 
-  if (lua_isuserdata(state, 1) &&
-      luaL_checkudata(state, 1, "uActor.Publication")) {
-    auto pub = reinterpret_cast<PubSub::Publication*>(lua_touserdata(state, 1));
+  if (lua_isuserdata(state, 1) != 0 &&
+      luaL_checkudata(state, 1, "uActor.Publication") != nullptr) {
+    auto* pub =
+        reinterpret_cast<PubSub::Publication*>(lua_touserdata(state, 1));
     pub->set_attr(std::string_view("publisher_node_id"),
                   std::string(actor->node_id()));
     pub->set_attr(std::string_view("publisher_instance_id"),
@@ -304,7 +306,7 @@ bool ManagedLuaActor::createActorEnvironment(
   lua_setupvalue(state, -2, 1);  // 2
 
   int error_code = lua_pcall(state, 0, 0, 0);
-  if (error_code) {
+  if (error_code != 0) {
     printf("LUA LOAD ERROR for actor %s.%s.%s\n", node_id(), actor_type(),
            instance_id());
     printf("ERROR: %s\n", lua_tostring(state, -1));
@@ -335,14 +337,14 @@ int ManagedLuaActor::actor_index(lua_State* state) {
 
   std::string_view key = std::string_view(lua_tostring(state, 2));
 
-  auto closure = closures.find(frozen::string(key));
+  const auto* closure = closures.find(frozen::string(key));
   if (closure != closures.end()) {
     lua_pushvalue(state, lua_upvalueindex(1));
     lua_pushcclosure(state, closure->second, 1);
     return 1;
   }
 
-  auto function = LuaFunctions::base_functions.find(frozen::string(key));
+  const auto* function = LuaFunctions::base_functions.find(frozen::string(key));
   if (function != LuaFunctions::base_functions.end() &&
       function->second.first) {
     lua_pushcfunction(state, *(function->second.second));
@@ -402,7 +404,7 @@ PubSub::Filter ManagedLuaActor::parse_filters(lua_State* state, size_t index) {
   lua_pushvalue(state, index);
   lua_pushnil(state);
 
-  while (lua_next(state, -2)) {
+  while (lua_next(state, -2) != 0) {
     lua_pushvalue(state, -2);
     std::string key(lua_tostring(state, -1));
 
@@ -410,10 +412,10 @@ PubSub::Filter ManagedLuaActor::parse_filters(lua_State* state, size_t index) {
     if (lua_type(state, -2) == LUA_TSTRING) {
       std::string value(lua_tostring(state, -2));
       filter_list.emplace_back(std::move(key), std::move(value));
-    } else if (lua_isinteger(state, -2)) {
+    } else if (lua_isinteger(state, -2) != 0) {
       int32_t value = lua_tointeger(state, -2);
       filter_list.emplace_back(std::move(key), value);
-    } else if (lua_isnumber(state, -2)) {
+    } else if (lua_isnumber(state, -2) != 0) {
       float value = lua_tonumber(state, -2);
       filter_list.emplace_back(std::move(key), value);
     } else if (lua_type(state, -2) == LUA_TTABLE) {  //  Complex Operator
@@ -421,7 +423,7 @@ PubSub::Filter ManagedLuaActor::parse_filters(lua_State* state, size_t index) {
       PubSub::ConstraintPredicates::Predicate operation =
           PubSub::ConstraintPredicates::Predicate::EQ;
       int32_t value = lua_tointeger(state, -1);
-      if (lua_isinteger(state, -1) && value > 0 &&
+      if (lua_isinteger(state, -1) != 0 && value > 0 &&
           value <= PubSub::ConstraintPredicates::MAX_INDEX) {
         operation = static_cast<PubSub::ConstraintPredicates::Predicate>(
             lua_tointeger(state, -1));
@@ -433,16 +435,16 @@ PubSub::Filter ManagedLuaActor::parse_filters(lua_State* state, size_t index) {
       bool optional = false;
       lua_getfield(state, -2, "optional");
       if (lua_isboolean(state, -1)) {
-        optional = lua_toboolean(state, -1);
+        optional = (lua_toboolean(state, -1) != 0);
       }
       lua_pop(state, 1);
 
       lua_geti(state, -2, 2);
-      if (lua_isinteger(state, -1)) {
+      if (lua_isinteger(state, -1) != 0) {
         filter_list.emplace_back(std::move(key),
                                  static_cast<int32_t>(lua_tointeger(state, -1)),
                                  operation, optional);
-      } else if (lua_isnumber(state, -1)) {
+      } else if (lua_isnumber(state, -1) != 0) {
         filter_list.emplace_back(std::move(key),
                                  static_cast<float>(lua_tonumber(state, -1)),
                                  operation, optional);
@@ -469,17 +471,17 @@ PubSub::Publication ManagedLuaActor::parse_publication(ManagedLuaActor* actor,
   lua_pushvalue(state, index);
   lua_pushnil(state);
 
-  while (lua_next(state, -2)) {
+  while (lua_next(state, -2) != 0) {
     lua_pushvalue(state, -2);
     std::string key(lua_tostring(state, -1));
 
     if (lua_type(state, -2) == LUA_TSTRING) {
       std::string value(lua_tostring(state, -2));
       p.set_attr(std::move(key), std::move(value));
-    } else if (lua_isinteger(state, -2)) {
+    } else if (lua_isinteger(state, -2) != 0) {
       int32_t value = lua_tointeger(state, -2);
       p.set_attr(std::move(key), value);
-    } else if (lua_isnumber(state, -2)) {
+    } else if (lua_isnumber(state, -2) != 0) {
       float value = lua_tonumber(state, -2);
       p.set_attr(std::move(key), value);
     }

@@ -47,10 +47,10 @@ RemoteConnection::RemoteConnection(uint32_t local_id, int32_t socket_id,
 
 RemoteConnection::~RemoteConnection() {
   handle->remove_subscription(local_id, update_sub_id, "");
-  if (add_sub_id) {
+  if (add_sub_id != 0) {
     handle->remove_subscription(local_id, add_sub_id, "");
   }
-  if (remove_sub_id) {
+  if (remove_sub_id != 0) {
     handle->remove_subscription(local_id, remove_sub_id, "");
   }
   for (const auto& subscription_id : subscription_ids) {
@@ -68,9 +68,7 @@ RemoteConnection::~RemoteConnection() {
 }
 
 void RemoteConnection::handle_subscription_update_notification(
-    const PubSub::Publication& update_message) {
-  return;
-}
+    const PubSub::Publication& /*update_message*/) {}
 
 void RemoteConnection::send_routing_info() {
   PubSub::Publication p{BoardFunctions::NODE_ID, "remote_connection",

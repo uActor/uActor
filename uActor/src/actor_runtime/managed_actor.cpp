@@ -79,26 +79,26 @@ ManagedActor::ReceiveResult ManagedActor::receive_next_internal() {
       message_queue.push_front(std::move(message));
       return ManagedActor::ReceiveResult(false, 0);
     }
-  } else if (message_queue.size() > 0) {
+  } else if (message_queue.empty()) {
     return ManagedActor::ReceiveResult(false, 0);
   }
   return ManagedActor::ReceiveResult(false, _timeout);
 }
 
-bool ManagedActor::enqueue(PubSub::Publication&& pub) {
+bool ManagedActor::enqueue(PubSub::Publication&& message) {
   if (message_queue.size() >= ACTOR_QUEUE_SOFTLIMIT) {
     printf("Warning: Actor queue size excedes configured limit.");
   }
   if (waiting) {
-    if (pattern.matches(pub)) {
-      message_queue.push_front(std::move(pub));
+    if (pattern.matches(message)) {
+      message_queue.push_front(std::move(message));
       return true;
     } else {
-      message_queue.push_back(std::move(pub));
+      message_queue.push_back(std::move(message));
       return false;
     }
   } else {
-    message_queue.push_back(std::move(pub));
+    message_queue.push_back(std::move(message));
     return true;
   }
 }

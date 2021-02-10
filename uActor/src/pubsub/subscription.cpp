@@ -66,7 +66,7 @@ void Subscription::remove_subscription_for_node(Receiver* r,
                                                 std::string node_id) {
   if (auto node_it = nodes.find(node_id); node_it != nodes.end()) {
     node_it->second.remove(r);
-    if (node_it->second.size() == 0) {
+    if (node_it->second.empty()) {
       nodes.erase(node_it);
     }
   }

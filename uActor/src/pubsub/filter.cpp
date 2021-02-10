@@ -112,7 +112,7 @@ std::string Filter::serialize() const {
     serialized.replace(serialized.length() - 1, 1, "?");
   }
 
-  for (auto& constraint : optional) {
+  for (const auto& constraint : optional) {
     serialized += constraint.serialize() + "^";
   }
 
@@ -129,7 +129,7 @@ std::optional<Filter> Filter::deserialize(std::string_view serialized) {
     return std::move(filter);
   }
 
-  size_t optional_index = serialized.find("?");
+  size_t optional_index = serialized.find('?');
 
   std::string_view required_args = serialized.substr(0, optional_index);
 

@@ -62,11 +62,10 @@ class Router {
   friend Receiver;
 
   void publish_subscription_update();
-  void publish_subscription_added(const Filter& sub, std::string exclude,
+  void publish_subscription_added(const Filter& filter, std::string exclude,
                                   std::string include);
   void publish_subscription_removed(const Filter& filter, std::string exclude,
                                     std::string include);
 };
 
 }  // namespace uActor::PubSub
-

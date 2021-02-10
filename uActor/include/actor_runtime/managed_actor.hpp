@@ -64,20 +64,22 @@ class ManagedActor {
 
   void trigger_timeout();
 
-  uint32_t id() { return _id; }
+  [[nodiscard]] uint32_t id() const { return _id; }
 
   // Code is returned as part of a publication
   void trigger_code_fetch();
 
-  const char* node_id() const { return _node_id.c_str(); }
+  [[nodiscard]] const char* node_id() const { return _node_id.c_str(); }
 
-  const char* actor_type() const { return _actor_type.c_str(); }
+  [[nodiscard]] const char* actor_type() const { return _actor_type.c_str(); }
 
-  const char* instance_id() const { return _instance_id.c_str(); }
+  [[nodiscard]] const char* instance_id() const { return _instance_id.c_str(); }
 
-  const char* actor_version() const { return _actor_version.c_str(); }
+  [[nodiscard]] const char* actor_version() const {
+    return _actor_version.c_str();
+  }
 
-  bool initialized() const { return _initialized; }
+  [[nodiscard]] bool initialized() const { return _initialized; }
 
  protected:
   virtual bool early_internal_initialize() = 0;

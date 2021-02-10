@@ -1,5 +1,6 @@
 #include "pubsub/publication.hpp"
 
+#include <array>
 #include <msgpack.hpp>
 
 #include "pubsub/vector_buffer.hpp"
@@ -10,8 +11,7 @@ namespace uActor::PubSub {
 Publication::Publication(std::string_view publisher_node_id,
                          std::string_view publisher_actor_type,
                          std::string_view publisher_instance_id)
-    : attributes(std::make_shared<InternalType>()),
-      shallow_copy(false) {
+    : attributes(std::make_shared<InternalType>()), shallow_copy(false) {
   attributes->emplace(std::string("publisher_node_id"),
                       std::string(publisher_node_id));
   attributes->emplace(std::string("publisher_instance_id"),
@@ -21,8 +21,7 @@ Publication::Publication(std::string_view publisher_node_id,
 }
 
 Publication::Publication()
-    : attributes(std::make_shared<InternalType>()),
-      shallow_copy(false) {}
+    : attributes(std::make_shared<InternalType>()), shallow_copy(false) {}
 
 Publication::Publication(size_t size_hint)
     : attributes(std::make_shared<InternalType>(size_hint)),
@@ -32,10 +31,14 @@ Publication::~Publication() = default;
 
 Publication::Publication(const Publication& old)
     : attributes(old.attributes), shallow_copy(true) {
+  // NOLINTNEXTLINE (cppcoreguidelines-pro-type-const-cast)
   const_cast<Publication&>(old).shallow_copy = true;
 }
 
 Publication& Publication::operator=(const Publication& old) {
+  if (this == &old) {
+    return *this;
+  }
   attributes = old.attributes;
   shallow_copy = true;
   const_cast<Publication&>(old).shallow_copy = true;
@@ -43,9 +46,7 @@ Publication& Publication::operator=(const Publication& old) {
 }
 
 Publication::Publication(Publication&& old)
-    : attributes(std::move(old.attributes)),
-      shallow_copy(old.shallow_copy) {
-}
+    : attributes(std::move(old.attributes)), shallow_copy(old.shallow_copy) {}
 
 Publication& Publication::operator=(Publication&& old) {
   attributes = std::move(old.attributes);

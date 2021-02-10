@@ -48,10 +48,10 @@ class TCPForwarder : public uActor::Remote::ForwarderSubscriptionAPI {
   void receive(PubSub::MatchedPublication&& m);
 
   uint32_t add_subscription(uint32_t local_id, PubSub::Filter&& filter,
-                            std::string node_id);
+                            std::string node_id) override;
 
   void remove_subscription(uint32_t local_id, uint32_t sub_id,
-                           std::string node_id);
+                           std::string node_id) override;
 
  private:
   int forwarder_subscription_id;
@@ -66,7 +66,7 @@ class TCPForwarder : public uActor::Remote::ForwarderSubscriptionAPI {
 
   std::mutex remote_mtx;
 
-  int listen_sock;
+  int listen_sock = 0;
 
   std::pair<bool, std::unique_lock<std::mutex>> write(
       RemoteConnection* remote, std::shared_ptr<std::vector<char>> dataset,
@@ -88,7 +88,7 @@ class TCPForwarder : public uActor::Remote::ForwarderSubscriptionAPI {
                              uint16_t remote_port,
                              uActor::Remote::ConnectionRole role);
 
-  void set_socket_options(int socket_id);
+  static void set_socket_options(int socket_id);
 };
 
 }  // namespace uActor::Remote

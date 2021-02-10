@@ -26,10 +26,12 @@ class Executor : public ExecutorApi {
  public:
   static void os_task(void* settings) {
     auto* router = &PubSub::Router::get_instance();
-    const char* instance_id = ((struct ExecutorSettings*)settings)->instance_id;
-    const char* node_id = ((struct ExecutorSettings*)settings)->node_id;
+    const char* instance_id =
+        reinterpret_cast<ExecutorSettings*>(settings)->instance_id;  // NOLINT
+    const char* node_id =
+        reinterpret_cast<ExecutorSettings*>(settings)->node_id;  // NOLINT
 
-    ExecutorType* executor = new ExecutorType(router, node_id, instance_id);
+    auto* executor = new ExecutorType(router, node_id, instance_id);
     executor->event_loop();
     delete executor;
 
@@ -86,7 +88,8 @@ class Executor : public ExecutorApi {
     }
   }
 
-  uint32_t add_subscription(uint32_t local_id, PubSub::Filter&& filter) {
+  uint32_t add_subscription(uint32_t local_id,
+                            PubSub::Filter&& filter) override {
     uint32_t sub_id = router_handle.subscribe(filter);
     auto entry = subscription_mapping.find(sub_id);
     if (entry != subscription_mapping.end()) {
@@ -97,7 +100,7 @@ class Executor : public ExecutorApi {
     return sub_id;
   }
 
-  void remove_subscription(uint32_t local_id, uint32_t sub_id) {
+  void remove_subscription(uint32_t local_id, uint32_t sub_id) override {
     auto it = subscription_mapping.find(sub_id);
     if (it != subscription_mapping.end()) {
       it->second.erase(local_id);
@@ -108,12 +111,12 @@ class Executor : public ExecutorApi {
     }
   }
 
-  void delayed_publish(PubSub::Publication&& publication, uint32_t delay) {
+  void delayed_publish(PubSub::Publication&& publication,
+                       uint32_t delay) override {
     delayed_messages.emplace(BoardFunctions::timestamp() + delay,
                              std::move(publication));
   }
 
- protected:
   std::map<uint32_t, ActorType> actors;
 
  private:
@@ -132,19 +135,19 @@ class Executor : public ExecutorApi {
     while (true) {
       // Enqueue from threads master queue
       uint32_t wait_time = BoardFunctions::SLEEP_FOREVER;
-      if (timeouts.size() > 0) {
+      if (!timeouts.empty()) {
         wait_time =
             std::max(0, static_cast<int32_t>(timeouts.begin()->first -
                                              BoardFunctions::timestamp()));
       }
-      if (delayed_messages.size() > 0) {
+      if (!delayed_messages.empty()) {
         wait_time = std::min(
             wait_time,
             static_cast<uint32_t>(std::max(
                 0, static_cast<int32_t>(delayed_messages.begin()->first -
                                         BoardFunctions::timestamp()))));
       }
-      if (ready_queue.size() > 0) {
+      if (!ready_queue.empty()) {
         wait_time = 0;
       }
       auto publication = router_handle.receive(wait_time);
@@ -211,7 +214,7 @@ class Executor : public ExecutorApi {
         }
       }
       // Process one message
-      if (ready_queue.size() > 0) {
+      if (!ready_queue.empty()) {
         uint32_t task = ready_queue.front();
         ready_queue.pop_front();
         ActorType& actor = actors.at(task);
@@ -223,8 +226,8 @@ class Executor : public ExecutorApi {
         } else if (result.next_timeout == 0) {
           ready_queue.push_back(task);
         } else if (result.next_timeout < UINT32_MAX) {
-          timeouts.push_back(std::make_pair(
-              BoardFunctions::timestamp() + result.next_timeout, task));
+          timeouts.emplace_back(
+              BoardFunctions::timestamp() + result.next_timeout, task);
         }
       }
     }

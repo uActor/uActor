@@ -22,8 +22,8 @@ void ConstraintIndex::insert(Constraint c, Subscription* sub_ptr, bool opt) {
       index_it != index.end()) {
     index_it->second.try_emplace(sub_ptr, opt);
   } else {
-    index.push_back(std::make_pair(
-        std::move(c), std::map<Subscription*, bool>{{sub_ptr, opt}}));
+    index.emplace_back(
+        std::move(c), std::map<Subscription*, bool>{{sub_ptr, opt}});
   }
 }
 
@@ -52,7 +52,7 @@ bool ConstraintIndex::remove(const Constraint& c, Subscription* sub_ptr) {
       }
     }
   }
-  return index.size() == 0 && string_equal.size() == 0;
+  return index.empty() && string_equal.empty();
 }
 
 void ConstraintIndex::check(std::variant<std::string, int32_t, float> value,

@@ -89,7 +89,7 @@ boost::program_options::variables_map parse_arguments(int arg_count,
       arguments);
   boost::program_options::notify(arguments);
 
-  if (arguments.count("help")) {
+  if (arguments.count("help") != 0u) {
     std::cout << desc << "\n";
     exit(1);
   } else {
@@ -102,12 +102,12 @@ int main(int arg_count, char** args) {
 
   auto arguments = parse_arguments(arg_count, args);
 
-  if (arguments.count("node-id")) {
+  if (arguments.count("node-id") != 0u) {
     uActor::BoardFunctions::NODE_ID =
         (new std::string(arguments["node-id"].as<std::string>()))->data();
   }
 
-  if (arguments.count("server-node")) {
+  if (arguments.count("server-node") != 0u) {
     uActor::BoardFunctions::SERVER_NODES =
         arguments["server-node"].as<std::vector<std::string>>();
   }
@@ -126,22 +126,22 @@ int main(int arg_count, char** args) {
   }
 
   int tcp_port = 1337;
-  if (arguments.count("tcp-port")) {
+  if (arguments.count("tcp-port") != 0u) {
     tcp_port = arguments["tcp-port"].as<uint16_t>();
   }
 
   std::string listen_ip = "0.0.0.0";
-  if (arguments.count("tcp-listen-ip")) {
+  if (arguments.count("tcp-listen-ip") != 0u) {
     listen_ip = arguments["tcp-listen-ip"].as<std::string>();
   }
 
-  std::string external_address = "";
-  if (arguments.count("tcp-external-address")) {
+  std::string external_address {};
+  if (arguments.count("tcp-external-address") != 0u) {
     external_address = arguments["tcp-external-address"].as<std::string>();
   }
 
   uint16_t external_port = 0;
-  if (arguments.count("tcp-external-port")) {
+  if (arguments.count("tcp-external-port") != 0u) {
     external_port = arguments["tcp-external-port"].as<uint16_t>();
   }
 
@@ -151,7 +151,7 @@ int main(int arg_count, char** args) {
   auto tcp_task = std::thread(&uActor::Remote::TCPForwarder::os_task,
                               reinterpret_cast<void*>(&tcp_task_args));
 
-  while (!tcp_task_args.tcp_forwarder) {
+  while (tcp_task_args.tcp_forwarder == nullptr) {
     sleep(1);
   }
 

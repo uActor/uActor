@@ -26,7 +26,7 @@ class Constraint {
 
     ConstraintPredicates::Predicate operation_name;
 
-    bool match(T input) const {
+    [[nodiscard]] bool match(T input) const {
       switch (operation_name) {
         case ConstraintPredicates::Predicate::EQ:
           return std::equal_to<T>()(input, operand);
@@ -93,20 +93,21 @@ class Constraint {
 
   bool operator==(const Constraint& other) const;
 
-  bool optional() const { return _optional; }
+  [[nodiscard]] bool optional() const { return _optional; }
 
-  const std::string_view attribute() const {
+  [[nodiscard]] const std::string_view attribute() const {
     return std::string_view(_attribute);
   }
 
-  std::string serialize() const;
+  [[nodiscard]] std::string serialize() const;
 
   static std::optional<Constraint> deserialize(std::string_view serialized,
                                                bool optional);
 
-  std::variant<std::monostate, std::string, int32_t, float> operand() const;
+  [[nodiscard]] std::variant<std::monostate, std::string, int32_t, float>
+  operand() const;
 
-  ConstraintPredicates::Predicate predicate() const;
+  [[nodiscard]] ConstraintPredicates::Predicate predicate() const;
 
  private:
   std::string _attribute;

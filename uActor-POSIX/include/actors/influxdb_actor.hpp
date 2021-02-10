@@ -16,9 +16,9 @@ class InfluxDBActor : public ActorRuntime::NativeActor {
                 std::string_view instance_id)
       : NativeActor(actor_wrapper, node_id, actor_type, instance_id) {}
 
-  ~InfluxDBActor() {}
+  ~InfluxDBActor() = default;
 
-  void receive(const PubSub::Publication& publication);
+  void receive(const PubSub::Publication& publication) override;
 
  private:
   void receive_data_point(const PubSub::Publication& publication);

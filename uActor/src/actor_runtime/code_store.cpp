@@ -23,7 +23,7 @@ void CodeStore::store(CodeIdentifier&& identifier, std::string_view code,
                       uint32_t lifetime_end) {
   std::unique_lock lck(mtx);
   auto [iterator, inserted] = _store.try_emplace(
-      std::move(identifier), std::make_pair(std::move(code), lifetime_end));
+      std::move(identifier), std::make_pair(code, lifetime_end));
   if (!inserted) {
     iterator->second.second = std::max(lifetime_end, iterator->second.second);
   }

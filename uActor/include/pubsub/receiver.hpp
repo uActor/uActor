@@ -28,7 +28,7 @@ class Receiver {
   std::unique_ptr<Queue> queue;
   std::set<uint32_t> subscriptions;
 
-  std::optional<MatchedPublication> receive(uint32_t wait_time = 0);
+  std::optional<MatchedPublication> receive(uint32_t timeout = 0);
 
   uint32_t subscribe(Filter&& f, std::string node_id = "local");
 

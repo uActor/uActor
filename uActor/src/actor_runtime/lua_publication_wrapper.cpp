@@ -3,8 +3,8 @@
 namespace uActor::ActorRuntime {
 
 int LuaPublicationWrapper::get(lua_State* state) {
-  auto publication =
-      (PubSub::Publication*)luaL_checkudata(state, 1, "uActor.Publication");
+  auto* publication = static_cast<PubSub::Publication*>(
+      luaL_checkudata(state, 1, "uActor.Publication"));
   auto key = std::string_view(luaL_checkstring(state, 2));
   if (!publication->has_attr(key)) {
     lua_pushnil(state);
@@ -24,8 +24,8 @@ int LuaPublicationWrapper::get(lua_State* state) {
 }
 
 int LuaPublicationWrapper::gc(lua_State* state) {
-  auto publication =
-      (PubSub::Publication*)luaL_checkudata(state, 1, "uActor.Publication");
+  auto* publication = static_cast<PubSub::Publication*>(
+      luaL_checkudata(state, 1, "uActor.Publication"));
   publication->~Publication();
   return 0;
 }
@@ -37,16 +37,16 @@ int LuaPublicationWrapper::initialize(lua_State* state) {
 
   PubSub::Publication p(lua_gettop(state) / 2);
 
-  while (lua_gettop(state)) {
+  while (lua_gettop(state) != 0) {
     std::string_view key = std::string_view(luaL_checkstring(state, -2));
 
     if (lua_type(state, -1) == LUA_TSTRING) {
       std::string value(lua_tostring(state, -1));
       p.set_attr(key, std::move(value));
-    } else if (lua_isinteger(state, -1)) {
+    } else if (lua_isinteger(state, -1) != 0) {
       int32_t value = lua_tointeger(state, -1);
       p.set_attr(key, value);
-    } else if (lua_isnumber(state, -1)) {
+    } else if (lua_isnumber(state, -1) != 0) {
       float value = lua_tonumber(state, -1);
       p.set_attr(key, value);
     }
@@ -63,8 +63,8 @@ int LuaPublicationWrapper::initialize(lua_State* state) {
 }
 
 int LuaPublicationWrapper::set(lua_State* state) {
-  auto p =
-      (PubSub::Publication*)luaL_checkudata(state, 1, "uActor.Publication");
+  auto* p = static_cast<PubSub::Publication*>(
+      luaL_checkudata(state, 1, "uActor.Publication"));
   std::string_view key = std::string_view(luaL_checkstring(state, 2));
 
   if (lua_type(state, 3) == LUA_TSTRING) {
@@ -73,10 +73,10 @@ int LuaPublicationWrapper::set(lua_State* state) {
     lua_pop(state, 1);
     std::string value(lua_tolstring(state, 3, &size), size);
     p->set_attr(key, std::move(value));
-  } else if (lua_isinteger(state, 3)) {
+  } else if (lua_isinteger(state, 3) != 0) {
     int32_t value = lua_tointeger(state, 3);
     p->set_attr(key, value);
-  } else if (lua_isnumber(state, 3)) {
+  } else if (lua_isnumber(state, 3) != 0) {
     float value = lua_tonumber(state, 3);
     p->set_attr(key, value);
   } else if (lua_isnil(state, 3)) {
@@ -87,12 +87,14 @@ int LuaPublicationWrapper::set(lua_State* state) {
 
 int LuaPublicationWrapper::luaopen(lua_State* state) {
   luaL_newmetatable(state, "uActor.Publication");
-  const luaL_Reg meta_methods[] = {
-      {"__index", &get}, {"__gc", &gc}, {"__newindex", &set}, {NULL, NULL}};
+  const luaL_Reg meta_methods[] = {{"__index", &get},
+                                   {"__gc", &gc},
+                                   {"__newindex", &set},
+                                   {nullptr, nullptr}};
   luaL_setfuncs(state, meta_methods, 0);
   lua_pop(state, 1);
 
-  const luaL_Reg api[] = {{"new", &initialize}, {NULL, NULL}};
+  const luaL_Reg api[] = {{"new", &initialize}, {nullptr, nullptr}};
   luaL_newlib(state, api);
   return 1;
 }

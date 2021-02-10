@@ -19,8 +19,8 @@ class Publication {
   // implementation later
   using const_iterator =
       std::unordered_map<std::string, variant_type>::const_iterator;
-  const_iterator begin() const { return attributes->begin(); }
-  const_iterator end() const { return attributes->end(); }
+  [[nodiscard]] const_iterator begin() const { return attributes->begin(); }
+  [[nodiscard]] const_iterator end() const { return attributes->end(); }
 
   Publication(std::string_view publisher_node_id,
               std::string_view publisher_actor_type,
@@ -44,17 +44,19 @@ class Publication {
 
   bool operator==(const Publication& other);
 
-  bool has_attr(std::string_view name) const {
+  [[nodiscard]] bool has_attr(std::string_view name) const {
     return attributes->find(std::string(name)) != attributes->end();
   }
 
-  std::variant<std::monostate, std::string_view, int32_t, float> get_attr(
-      std::string_view name) const;
+  [[nodiscard]] std::variant<std::monostate, std::string_view, int32_t, float>
+  get_attr(std::string_view name) const;
 
-  std::optional<const std::string_view> get_str_attr(
+  [[nodiscard]] std::optional<const std::string_view> get_str_attr(
       std::string_view name) const;
-  std::optional<int32_t> get_int_attr(std::string_view name) const;
-  std::optional<float> get_float_attr(std::string_view name) const;
+  [[nodiscard]] std::optional<int32_t> get_int_attr(
+      std::string_view name) const;
+  [[nodiscard]] std::optional<float> get_float_attr(
+      std::string_view name) const;
 
   void set_attr(std::string_view name, std::string_view value);
 
@@ -71,7 +73,8 @@ class Publication {
   bool shallow_copy;
 
  public:
-  uint32_t size;
+  // todo (raphaelhetzel) really required? It is never used
+  uint32_t size = 0;
 };
 
 }  //  namespace uActor::PubSub

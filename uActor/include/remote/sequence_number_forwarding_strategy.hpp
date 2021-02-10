@@ -16,16 +16,16 @@ namespace uActor::Remote {
 class SequenceNumberForwardingStrategy : public ForwardingStrategy {
  public:
   // Incomming
-  bool should_accept(const PubSub::Publication& p);
-  void add_incomming_routing_fields(PubSub::Publication* p);
+  bool should_accept(const PubSub::Publication& p) override;
+  void add_incomming_routing_fields(PubSub::Publication* p) override;
 
   // Outgoing
-  bool should_forward(const PubSub::Publication& p);
+  bool should_forward(const PubSub::Publication& p) override;
   // TODO(raphaelhetzel) move the addition of the sequence information to this
   // class
-  void add_outgoing_routing_fields(PubSub::Publication* p) {}
+  void add_outgoing_routing_fields(PubSub::Publication* p) override {}
 
-  ~SequenceNumberForwardingStrategy() {}
+  ~SequenceNumberForwardingStrategy() = default;
 
   static std::atomic<uint32_t> sequence_number;
 

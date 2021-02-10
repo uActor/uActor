@@ -15,7 +15,7 @@ class Router;
 
 class Filter {
  public:
-  explicit Filter(std::initializer_list<Constraint> constraints);
+  Filter(std::initializer_list<Constraint> constraints);
 
   explicit Filter(std::list<Constraint>&& constraints);
 
@@ -23,19 +23,23 @@ class Filter {
 
   void clear();
 
-  bool matches(const Publication& publication) const;
+  [[nodiscard]] bool matches(const Publication& publication) const;
 
-  bool check_required(const Publication& publication) const;
+  [[nodiscard]] bool check_required(const Publication& publication) const;
 
-  bool check_optionals(const Publication& publication) const;
+  [[nodiscard]] bool check_optionals(const Publication& publication) const;
 
-  bool operator==(const Filter& other) const;
+  [[nodiscard]] bool operator==(const Filter& other) const;
 
-  const std::list<Constraint>& required_constraints() const { return required; }
+  [[nodiscard]] const std::list<Constraint>& required_constraints() const {
+    return required;
+  }
 
-  const std::list<Constraint>& optional_constraints() const { return optional; }
+  [[nodiscard]] const std::list<Constraint>& optional_constraints() const {
+    return optional;
+  }
 
-  std::string serialize() const;
+  [[nodiscard]] std::string serialize() const;
 
   static std::optional<Filter> deserialize(std::string_view serialized);
 

@@ -172,12 +172,12 @@ void DeploymentManager::receive_lifetime_event(
 }
 
 void DeploymentManager::receive_ttl_timeout(
-    const PubSub::Publication& publication) {
+    const PubSub::Publication& /*publication*/) {
   uActor::Support::Logger::trace("DEPLOYMENT-MANAGER", "RECEIVE-TTL-TIMEOUT",
                                  "TTL-TIMEOUT");
   while (ttl_end_times.begin() != ttl_end_times.end() &&
          ttl_end_times.begin()->first < now()) {
-    for (auto deployment_id : ttl_end_times.begin()->second) {
+    for (const auto& deployment_id : ttl_end_times.begin()->second) {
       if (auto deployment_it = deployments.find(deployment_id);
           deployment_it != deployments.end()) {
         Deployment& deployment = deployment_it->second;
@@ -209,7 +209,7 @@ void DeploymentManager::receive_label_update(const PubSub::Publication& pub) {
 
   std::list<PubSub::Constraint> constraints{
       PubSub::Constraint{"type", "deployment"}};
-  for (const auto label : labels) {
+  for (const auto& label : labels) {
     constraints.emplace_back(label.first, label.second,
                              PubSub::ConstraintPredicates::Predicate::EQ, true);
   }
@@ -289,6 +289,7 @@ void DeploymentManager::receive_executor_update(
         executors.try_emplace(std::string(*actor_runtime_type),
                               std::list<ExecutorIdentifier>{std::move(rt)});
     if (!inserted) {
+      // NOLINTNEXTLINE (bugprone-use-after-move,hicpp-invalid-access-moved)
       executor_it->second.push_back(std::move(rt));
     }
   } else if (pub.get_str_attr("command") == "deregister") {
@@ -299,7 +300,7 @@ void DeploymentManager::receive_executor_update(
       auto rt_it = std::find(executor_it->second.begin(),
                              executor_it->second.end(), comparison);
       executor_it->second.erase(rt_it);
-      if (executor_it->second.size() == 0) {
+      if (executor_it->second.empty()) {
         executors.erase(executor_it);
       }
     }
@@ -399,13 +400,13 @@ void DeploymentManager::remove_deployment(Deployment* deployment) {
     deployment->lifetime_subscription_id = 0;
   }
 
-  for (auto actor_type : deployment->required_actors) {
+  for (const auto& actor_type : deployment->required_actors) {
     if (const auto requirements_it = dependencies.find(std::move(actor_type));
         requirements_it != dependencies.end()) {
       if (auto deployment_it = requirements_it->second.find(deployment);
           deployment_it != requirements_it->second.end()) {
         requirements_it->second.erase(deployment_it);
-        if (requirements_it->second.size() == 0) {
+        if (requirements_it->second.empty()) {
           dependencies.erase(requirements_it);
         }
       }
@@ -452,7 +453,7 @@ void DeploymentManager::decrement_deployed_actor_type_count(
 void DeploymentManager::actor_type_added(std::string_view actor_type) {
   if (const auto it = dependencies.find(std::string(actor_type));
       it != dependencies.end()) {
-    for (auto deployment : it->second) {
+    for (const auto& deployment : it->second) {
       if (requirements_check(deployment)) {
         if (const auto executor_it =
                 executors.find(deployment->actor_runtime_type);
@@ -467,7 +468,7 @@ void DeploymentManager::actor_type_added(std::string_view actor_type) {
 void DeploymentManager::actor_type_removed(std::string_view actor_type) {
   if (const auto it = dependencies.find(std::string(actor_type));
       it != dependencies.end()) {
-    for (auto deployment : it->second) {
+    for (const auto& deployment : it->second) {
       deactivate_deployment(deployment);
     }
   }

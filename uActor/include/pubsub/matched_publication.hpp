@@ -11,9 +11,9 @@ struct MatchedPublication {
   MatchedPublication(Publication&& p, uint32_t subscription_id)
       : publication(std::move(p)), subscription_id(subscription_id) {}
 
-  MatchedPublication() : publication(), subscription_id(0) {}
-  Publication publication;
-  uint32_t subscription_id;
+  MatchedPublication() = default;
+  Publication publication{};
+  uint32_t subscription_id{0};
 };
 
 }  // namespace uActor::PubSub

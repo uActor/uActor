@@ -17,17 +17,18 @@ class ForwardingStrategy {
   virtual bool should_forward(const PubSub::Publication& p) = 0;
   virtual void add_outgoing_routing_fields(PubSub::Publication* p) = 0;
 
-  virtual ~ForwardingStrategy() {}
+  virtual ~ForwardingStrategy() = default;
 
   void partner_node_id(std::string node_id) {
     _partner_node_id = std::move(node_id);
   }
 
-  const std::string& partner_node_id() const { return _partner_node_id; }
+  [[nodiscard]] const std::string& partner_node_id() const {
+    return _partner_node_id;
+  }
 
  private:
   std::string _partner_node_id;
 };
 
 }  // namespace uActor::Remote
-

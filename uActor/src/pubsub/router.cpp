@@ -59,20 +59,19 @@ void Router::publish_internal(Publication&& publication) {
       if (counts.optional == subscription.count_optional ||
           subscription.filter.check_optionals(publication)) {
         for (auto& receiver : subscription.receivers) {
-          current_receivers.push_back(
-              std::make_pair(receiver.first, subscription.subscription_id));
+          current_receivers.emplace_back(receiver.first,
+                                         subscription.subscription_id);
         }
       }
     }
   }
 
   // Check remaining subscriptions that might still match
-  for (auto sub : no_requirements) {
+  for (const auto& sub : no_requirements) {
     if (c.find(sub) == c.end()) {
       if (sub->filter.check_optionals(publication)) {
         for (auto& receiver : sub->receivers) {
-          current_receivers.push_back(
-              std::make_pair(receiver.first, sub->subscription_id));
+          current_receivers.emplace_back(receiver.first, sub->subscription_id);
         }
       }
     }
@@ -109,7 +108,7 @@ std::string Router::subscriptions_for(std::string_view node_id) {
     // Only subscriptions that could be fulfilled
     if (sub.nodes.size() >= 2 ||
         sub.nodes.find(std::string(node_id)) == sub.nodes.end()) {
-      for (auto constraint : sub.filter.required) {
+      for (const auto& constraint : sub.filter.required) {
         // Don't forward local subscriptions
         if (constraint.attribute() == "publisher_node_id") {
           if (std::holds_alternative<std::string>(constraint.operand()) &&
@@ -140,7 +139,7 @@ std::string Router::subscriptions_for(std::string_view node_id) {
     node_id_sent_to.insert(std::string(node_id));
   }
 
-  if (serialized_sub.size() > 0) {
+  if (!serialized_sub.empty()) {
     serialized_sub.resize(serialized_sub.size() - 1);
   }
   return serialized_sub;
@@ -170,7 +169,7 @@ uint32_t Router::add_subscription(Filter&& f, Receiver* r,
     bool updated = sub.add_receiver(r, subscriber_node_id);
     if (updated) {
       if (sub.nodes.size() == 2) {
-        std::string other_sub = "";
+        std::string other_sub{};
         for (const auto& n : sub.nodes) {
           if (n.first != subscriber_node_id) {
             other_sub = n.first;
@@ -221,7 +220,7 @@ uint32_t Router::remove_subscription(uint32_t sub_id, Receiver* r,
         no_requirements.erase(&sub);
       }
 
-      for (auto constraint : sub.filter.required) {
+      for (const auto& constraint : sub.filter.required) {
         if (auto constraint_it =
                 constraints.find(std::string(constraint.attribute()));
             constraint_it != constraints.end()) {
@@ -231,7 +230,7 @@ uint32_t Router::remove_subscription(uint32_t sub_id, Receiver* r,
         }
       }
 
-      for (auto constraint : sub.filter.optional) {
+      for (const auto& constraint : sub.filter.optional) {
         if (auto constraint_it =
                 constraints.find(std::string(constraint.attribute()));
             constraint_it != constraints.end()) {
@@ -293,10 +292,10 @@ void Router::publish_subscription_added(const Filter& filter,
   Publication update{BoardFunctions::NODE_ID, "router", "1"};
   update.set_attr("type", "subscription_added");
   update.set_attr("serialized_subscription", std::move(serialized));
-  if (exclude.length()) {
+  if (exclude.length() != 0) {
     update.set_attr("exclude_node_id", exclude);
   }
-  if (include.length()) {
+  if (include.length() != 0) {
     update.set_attr("include_node_id", include);
   }
   publish_internal(std::move(update));
@@ -326,10 +325,10 @@ void Router::publish_subscription_removed(const Filter& filter,
   Publication update{BoardFunctions::NODE_ID, "router", "1"};
   update.set_attr("type", "subscription_removed");
   update.set_attr("serialized_subscription", filter.serialize());
-  if (exclude.length()) {
+  if (exclude.length() != 0) {
     update.set_attr("exclude_node_id", exclude);
   }
-  if (include.length()) {
+  if (include.length() != 0) {
     update.set_attr("include_node_id", include);
   }
   publish_internal(std::move(update));

@@ -18,7 +18,7 @@ class PublicationFactory {
 
   ~PublicationFactory();
 
-  void write(const char* input, size_t size);
+  void write(const char* data, size_t size);
 
   std::optional<Publication> build();
 

@@ -16,7 +16,7 @@ class LuaExecutor : public Executor<ManagedLuaActor, LuaExecutor> {
   LuaExecutor(uActor::PubSub::Router* router, const char* node_id,
               const char* id);
 
-  ~LuaExecutor();
+  ~LuaExecutor() override;
 
  private:
   lua_State* state;

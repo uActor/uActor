@@ -97,10 +97,10 @@ bool SequenceNumberForwardingStrategy::should_forward(
           outgoing_sequence_infos.find(std::string(*publisher_node_id));
       if (sequence_info_it == outgoing_sequence_infos.end()) {
         outgoing_sequence_infos.try_emplace(std::string(*publisher_node_id),
-                                            std::move(new_sequence_info));
+                                            new_sequence_info);
       } else if (sequence_info_it->second.is_older_than(*sequence_number,
                                                         *epoch_number)) {
-        sequence_info_it->second = std::move(new_sequence_info);
+        sequence_info_it->second = new_sequence_info;
       } else {
         return false;
       }

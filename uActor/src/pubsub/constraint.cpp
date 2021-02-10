@@ -1,6 +1,7 @@
 
 #include "pubsub/constraint.hpp"
 
+#include <cstddef>
 #include <utility>
 
 namespace uActor::PubSub {
@@ -64,17 +65,17 @@ std::string Constraint::serialize() const {
 std::optional<Constraint> Constraint::deserialize(std::string_view serialized,
                                                   bool optional) {
   size_t start_index = 0;
-  size_t index = serialized.find_first_of(",", start_index);
+  size_t index = serialized.find_first_of(',', start_index);
   std::string attribute_name =
       std::string(serialized.substr(start_index, index - start_index));
 
   start_index = index + 1;
-  index = serialized.find_first_of(",", start_index);
+  index = serialized.find_first_of(',', start_index);
   std::string_view type_string =
       serialized.substr(start_index, index - start_index);
 
   start_index = index + 1;
-  index = serialized.find_first_of(",", start_index);
+  index = serialized.find_first_of(',', start_index);
   std::string_view operation_name =
       serialized.substr(start_index, index - start_index);
   auto predicate = ConstraintPredicates::from_string(operation_name);
@@ -83,7 +84,7 @@ std::optional<Constraint> Constraint::deserialize(std::string_view serialized,
   }
 
   start_index = index + 1;
-  index = serialized.find_first_of(",", index + 1);
+  index = serialized.find_first_of(',', index + 1);
   std::string_view operator_string =
       serialized.substr(start_index, index - start_index);
 
@@ -102,13 +103,13 @@ std::optional<Constraint> Constraint::deserialize(std::string_view serialized,
 std::variant<std::monostate, std::string, int32_t, float> Constraint::operand()
     const {
   if (std::holds_alternative<Container<std::string>>(_operand)) {
-    auto& ct = std::get<Container<std::string>>(_operand);
+    const auto& ct = std::get<Container<std::string>>(_operand);
     return ct.operand;
   } else if (std::holds_alternative<Container<int32_t>>(_operand)) {
-    auto& ct = std::get<Container<std::int32_t>>(_operand);
+    const auto& ct = std::get<Container<std::int32_t>>(_operand);
     return ct.operand;
   } else if (std::holds_alternative<Container<float>>(_operand)) {
-    auto& ct = std::get<Container<float>>(_operand);
+    const auto& ct = std::get<Container<float>>(_operand);
     return ct.operand;
   }
   return std::variant<std::monostate, std::string, int32_t, float>();
@@ -116,13 +117,13 @@ std::variant<std::monostate, std::string, int32_t, float> Constraint::operand()
 
 ConstraintPredicates::Predicate Constraint::predicate() const {
   if (std::holds_alternative<Container<std::string>>(_operand)) {
-    auto& ct = std::get<Container<std::string>>(_operand);
+    const auto& ct = std::get<Container<std::string>>(_operand);
     return ct.operation_name;
   } else if (std::holds_alternative<Container<int32_t>>(_operand)) {
-    auto& ct = std::get<Container<int32_t>>(_operand);
+    const auto& ct = std::get<Container<int32_t>>(_operand);
     return ct.operation_name;
   } else if (std::holds_alternative<Container<float>>(_operand)) {
-    auto& ct = std::get<Container<float>>(_operand);
+    const auto& ct = std::get<Container<float>>(_operand);
     return ct.operation_name;
   }
   printf("warning: requested predicate of undefined constraint\n");
@@ -143,8 +144,9 @@ const char* ConstraintPredicates::name(uint32_t tag) {
       return "GE";
     case 6:
       return "LE";
+    default:
+      return nullptr;
   }
-  return nullptr;
 }
 
 std::optional<ConstraintPredicates::Predicate>

@@ -174,7 +174,7 @@ uint32_t TCPForwarder::add_subscription(uint32_t local_id,
 }
 
 void TCPForwarder::remove_subscription(uint32_t local_id, uint32_t sub_id,
-                                       std::string node_id) {
+                                       std::string /*node_id*/) {
   auto it = subscription_mapping.find(sub_id);
   if (it != subscription_mapping.end()) {
     it->second.erase(local_id);
@@ -197,7 +197,7 @@ std::pair<bool, std::unique_lock<std::mutex>> TCPForwarder::write(
 #endif
 
   if (!remote->write_buffer.empty()) {
-    int remaining_size =
+    size_t remaining_size =
         remote->write_buffer.front()->size() - remote->write_offset;
     int written =
         send(remote->sock,
@@ -230,6 +230,7 @@ void TCPForwarder::tcp_reader() {
   int addr_family = AF_INET;
   int ip_protocol = IPPROTO_IP;
 
+  // NOLINTNEXTLINE (cppcoreguidelines-pro-type-member-init, hicpp-member-init)
   sockaddr_in dest_addr;
   dest_addr.sin_addr.s_addr = inet_addr(_address_arguments.listen_ip.c_str());
   dest_addr.sin_family = AF_INET;
@@ -248,7 +249,8 @@ void TCPForwarder::tcp_reader() {
   setsockopt(listen_sock, SOL_SOCKET, SO_REUSEPORT, static_cast<void*>(&reuse),
              sizeof(reuse));
 
-  int err = bind(listen_sock, (struct sockaddr*)&dest_addr, sizeof(dest_addr));
+  int err = bind(listen_sock, reinterpret_cast<sockaddr*>(&dest_addr),
+                 sizeof(dest_addr));
   if (err != 0) {
     Logger::error("TCP-FORWARDER", "SERVER",
                   "Socket unable to bind - error %d\n", errno);
@@ -265,7 +267,7 @@ void TCPForwarder::tcp_reader() {
         _address_arguments.external_address_hint.length() > 0
             ? _address_arguments.external_address_hint
             : _address_arguments.listen_ip;
-    uint16_t external_port = _address_arguments.external_port_hint
+    uint16_t external_port = _address_arguments.external_port_hint > 0
                                  ? _address_arguments.external_port_hint
                                  : _address_arguments.port;
     Logger::info("TCP-FORWARDER", "SERVER",
@@ -295,7 +297,7 @@ void TCPForwarder::tcp_reader() {
     listen_sock = 0;
   }
 
-  while (1) {
+  while (true) {
     std::unique_lock remote_lock(remote_mtx);
     FD_ZERO(&read_sockets);
     FD_ZERO(&write_sockets);
@@ -313,7 +315,7 @@ void TCPForwarder::tcp_reader() {
       max_val = std::max(max_val, remote_pair.second.sock);
     }
 
-    timeval timeout;  // We need to set a timeout to allow for new connections
+    timeval timeout{};  // We need to set a timeout to allow for new connections
     timeout.tv_sec = 1;  // to be added by other threads
 
     remote_lock.unlock();
@@ -339,7 +341,7 @@ void TCPForwarder::tcp_reader() {
             if (data_handler(&remote)) {
               Logger::info(
                   "TCP-FORWARDER", "EVENT-LOOP",
-                  "Read error/ zero lenght message. Closing connection - %s:%d",
+                  "Read error/ zero length message. Closing connection - %s:%d",
                   remote.partner_ip.data(), remote.partner_port);
               shutdown(remote.sock, SHUT_RDWR);
               close(remote.sock);
@@ -387,6 +389,7 @@ void TCPForwarder::create_tcp_client(std::string_view peer_ip, uint32_t port) {
   int addr_family = AF_INET;
   int ip_protocol = IPPROTO_IP;
 
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init, hicpp-member-init)
   sockaddr_in dest_addr;
   dest_addr.sin_addr.s_addr = inet_addr(peer_ip.data());
   dest_addr.sin_family = AF_INET;
@@ -416,7 +419,7 @@ void TCPForwarder::create_tcp_client(std::string_view peer_ip, uint32_t port) {
 
 void TCPForwarder::listen_handler() {
   int sock_id = 0;
-
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init, hicpp-member-init)
   struct sockaddr_in6 source_addr;
   uint addr_len = sizeof(source_addr);
   sock_id =
@@ -434,7 +437,7 @@ void TCPForwarder::listen_handler() {
   char addr_string[INET6_ADDRSTRLEN];
   uint16_t remote_port = 0;
   if (source_addr.sin6_family == PF_INET) {
-    auto addr = reinterpret_cast<sockaddr_in*>(&source_addr);
+    auto* addr = reinterpret_cast<sockaddr_in*>(&source_addr);
     inet_ntop(addr->sin_family, &addr->sin_addr, addr_string, INET_ADDRSTRLEN);
     remote_port = ntohs(addr->sin_port);
   } else if (source_addr.sin6_family == PF_INET6) {
@@ -475,7 +478,7 @@ bool TCPForwarder::write_handler(uActor::Remote::RemoteConnection* remote) {
   int flag = SO_NOSIGPIPE | MSG_DONTWAIT;
 #endif
   while (!remote->write_buffer.empty()) {
-    int remaining_size =
+    size_t remaining_size =
         remote->write_buffer.front()->size() - remote->write_offset;
     int written =
         send(remote->sock,

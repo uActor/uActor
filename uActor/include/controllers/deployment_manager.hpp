@@ -20,12 +20,12 @@ class DeploymentManager : public ActorRuntime::NativeActor {
                     std::string_view node_id, std::string_view actor_type,
                     std::string_view instance_id);
 
-  void receive(const PubSub::Publication& publication);
+  void receive(const PubSub::Publication& publication) override;
 
  private:
   struct Deployment {
     Deployment(std::string_view name, std::string_view actor_type,
-               std::string_view actor_version, std::string_view actor_code,
+               std::string_view actor_version, std::string_view /*actor_code*/,
                std::string_view actor_runtime_type,
                std::string_view raw_required_actors, uint32_t lifetime_end)
         : name(name),
@@ -61,7 +61,7 @@ class DeploymentManager : public ActorRuntime::NativeActor {
     std::string actor_type;
     std::string instance_id;
 
-    bool operator==(const ExecutorIdentifier& other) {
+    bool operator==(const ExecutorIdentifier& other) const {
       return other.node_id == node_id && other.actor_type == actor_type &&
              instance_id == instance_id;
     }

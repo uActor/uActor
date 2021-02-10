@@ -28,7 +28,7 @@ class TestBed {
     return instance;
   }
 
-  TestBed() : sequence_number(0) {
+  TestBed() {
 #if CONFIG_TESTBED_NESTED_TIMEKEEPING
     times.reserve(10);
 #endif
@@ -93,7 +93,7 @@ class TestBed {
   }
 
  private:
-  uint64_t sequence_number;
+  uint64_t sequence_number = 0;
   std::array<std::chrono::time_point<std::chrono::high_resolution_clock>, 10>
       timekeeping;
 #if CONFIG_TESTBED_NESTED_TIMEKEEPING

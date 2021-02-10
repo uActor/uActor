@@ -25,7 +25,9 @@ class ManagedNativeActor : public ManagedActor {
   std::string actor_runtime_type() override { return std::string("native"); }
 
   bool early_internal_initialize() override { return true; }
-  bool late_internal_initialize(std::string&& _code) override { return true; }
+  bool late_internal_initialize(std::string&& /*_code*/) override {
+    return true;
+  }
   bool hibernate_internal() override { return false; };
   bool wakeup_internal() override { return true; };
 

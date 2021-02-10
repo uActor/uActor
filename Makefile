@@ -49,7 +49,7 @@ test:
 	./uActor_test
 
 lint_cpplint:
-	cpplint --recursive --root=. --filter -legal,-build/c++11,-whitespace/braces,-build/include_order $(CODE_FILES) ${POSIX_CODE_FILES}
+	cpplint --recursive --root=. --filter -legal,-build/c++11,-whitespace/braces,-build/include_order,-readability/nolint $(CODE_FILES) ${POSIX_CODE_FILES}
 
 lint_clang-tidy_esp32: ${ESP32_BUILD_DIRECTORY}/release/compile_commands.json
 	clang-tidy -p ${ESP32_BUILD_DIRECTORY}/release/compile_commands.json ${ESP32_CODE_FILES}

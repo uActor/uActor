@@ -36,6 +36,7 @@ std::optional<Publication> PublicationFactory::build() {
       return std::nullopt;
     }
     Publication p{};
+    // NOLINTNEXTLINE (cppcoreguidelines-pro-type-union-access)
     for (const auto& value_pair : oh.via.map) {
       if (value_pair.val.type == msgpack::type::object_type::STR) {
         p.set_attr(value_pair.key.as<std::string>(),
