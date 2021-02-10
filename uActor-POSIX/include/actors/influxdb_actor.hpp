@@ -22,10 +22,5 @@ class InfluxDBActor : public ActorRuntime::NativeActor {
 
  private:
   void receive_data_point(const PubSub::Publication& publication);
-
-  std::unique_ptr<influxdb::InfluxDB> connection =
-      influxdb::InfluxDBFactory::Get(
-          "http://"
-          "smart_office:smart_office_user@influxdb:8086?db=smart_office");
 };
 }  // namespace uActor::Database

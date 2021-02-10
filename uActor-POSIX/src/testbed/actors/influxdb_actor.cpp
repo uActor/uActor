@@ -1,8 +1,12 @@
 #include "actors/influxdb_actor.hpp"
 
+#include <InfluxDBException.h>
+
 #include <memory>
 #include <string>
 #include <utility>
+
+#include "support/logger.hpp"
 
 namespace uActor::Database {
 
@@ -52,7 +56,15 @@ void InfluxDBActor::receive_data_point(const PubSub::Publication& publication) {
           std::chrono::seconds(*publication.get_int_attr("timestamp"))));
     }
 
-    connection->write(std::move(p));
+    try {
+      std::unique_ptr<influxdb::InfluxDB> connection =
+          influxdb::InfluxDBFactory::Get(
+              "http://"
+              "smart_office:smart_office_user@influxdb:8086?db=smart_office");
+      connection->write(std::move(p));
+    } catch (const ::influxdb::InfluxDBException&) {
+      Support::Logger::error("INFLUXDB", "WRITE_DATAPOINT", "Connection error");
+    }
   }
 }
 }  // namespace uActor::Database
