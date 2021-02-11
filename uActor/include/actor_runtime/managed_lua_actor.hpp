@@ -130,7 +130,6 @@ class ManagedLuaActor : public ManagedActor {
             {"testbed_start_timekeeping", &testbed_start_timekeeping_wrapper},
             {"testbed_stop_timekeeping", &testbed_stop_timekeeping_wrapper},
             {"calculate_time_diff", &calculate_time_diff},
-            {"connection_traffic", &connection_traffic},
 #if CONFIG_TESTBED_NESTED_TIMEKEEPING
             {"testbed_stop_timekeeping_inner",
              &testbed_stop_timekeeping_inner_wrapper},

@@ -16,11 +16,18 @@ namespace uActor::Controllers {
 
 class DeploymentManager : public ActorRuntime::NativeActor {
  public:
+  static uint32_t _active_deployments;
+  static uint32_t _inactive_deployments;
+
   DeploymentManager(ActorRuntime::ManagedNativeActor* actor_wrapper,
                     std::string_view node_id, std::string_view actor_type,
                     std::string_view instance_id);
 
   void receive(const PubSub::Publication& publication) override;
+
+  static uint32_t active_deployments() { return _active_deployments; }
+
+  static uint32_t inactive_deployments() { return _inactive_deployments; }
 
  private:
   struct Deployment {

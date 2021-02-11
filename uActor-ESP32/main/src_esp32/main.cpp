@@ -81,6 +81,18 @@ void telemetry_fetch_hook() {
       "heap_debug",
       uActor::Support::MemoryManager::total_space[static_cast<size_t>(
           uActor::Support::TrackedRegions::DEBUG)]);
+
+  uActor::Controllers::TelemetryData::set(
+      "active_deployments",
+      uActor::Controllers::DeploymentManager::active_deployments());
+
+  uActor::Controllers::TelemetryData::set(
+      "inactive_deployments",
+      uActor::Controllers::DeploymentManager::inactive_deployments());
+
+  uActor::Controllers::TelemetryData::set(
+      "number_of_subscriptions",
+      uActor::PubSub::Router::get_instance().number_of_subscriptions());
 }
 #endif
 
@@ -200,6 +212,23 @@ void main_task(void *) {
         std::move(create_topology_manager));
   }
 
+#if CONFIG_ENABLE_EPAPER_DISPLAY
+  {
+    auto create_display = uActor::PubSub::Publication(
+        uActor::BoardFunctions::NODE_ID, "root", "1");
+    create_display.set_attr("command", "spawn_native_actor");
+    create_display.set_attr("spawn_code", "");
+    create_display.set_attr("spawn_node_id", uActor::BoardFunctions::NODE_ID);
+    create_display.set_attr("spawn_actor_type", "epaper_notification_actor");
+    create_display.set_attr("spawn_actor_version", "default");
+    create_display.set_attr("spawn_instance_id", "1");
+    create_display.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
+    create_display.set_attr("actor_type", "native_executor");
+    create_display.set_attr("instance_id", "1");
+    uActor::PubSub::Router::get_instance().publish(std::move(create_display));
+  }
+#endif
+
   {
     auto create_code_store = uActor::PubSub::Publication(
         uActor::BoardFunctions::NODE_ID, "root", "1");
@@ -273,22 +302,6 @@ void main_task(void *) {
   }
 #endif
 
-#if CONFIG_ENABLE_EPAPER_DISPLAY
-  {
-    auto create_display = uActor::PubSub::Publication(
-        uActor::BoardFunctions::NODE_ID, "root", "1");
-    create_display.set_attr("command", "spawn_native_actor");
-    create_display.set_attr("spawn_code", "");
-    create_display.set_attr("spawn_node_id", uActor::BoardFunctions::NODE_ID);
-    create_display.set_attr("spawn_actor_type", "epaper_notification_actor");
-    create_display.set_attr("spawn_actor_version", "default");
-    create_display.set_attr("spawn_instance_id", "1");
-    create_display.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
-    create_display.set_attr("actor_type", "native_executor");
-    create_display.set_attr("instance_id", "1");
-    uActor::PubSub::Router::get_instance().publish(std::move(create_display));
-  }
-#endif
 #if CONFIG_UACTOR_ENABLE_TELEMETRY
   {
     auto create_telemetry_actor = uActor::PubSub::Publication(

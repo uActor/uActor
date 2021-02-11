@@ -3,12 +3,17 @@
 namespace uActor::Controllers {
 
 std::shared_mutex TelemetryData::mtx;
+
 TelemetryData TelemetryData::instance;
+#if CONFIG_UACTOR_ENABLE_SECONDS_TELEMETRY
+TelemetryData TelemetryData::seconds_instance;
+#endif
+
 std::function<void()> TelemetryActor::telemetry_fetch_hook = nullptr;
 
 void TelemetryActor::receive(const PubSub::Publication& publication) {
   if (publication.get_str_attr("type") == "init") {
-    publish_trigger(60000);
+    enqueue_wakeup(60000, "publish_trigger");
   } else if (publication.get_str_attr("type") == "wakeup" &&
              publication.get_str_attr("wakeup_id") == "publish_trigger") {
     if (telemetry_fetch_hook) {
@@ -17,12 +22,8 @@ void TelemetryActor::receive(const PubSub::Publication& publication) {
 
     TelemetryData d = TelemetryData::replace_instance();
     try_publish_telemetry_datapoint(d);
-    publish_trigger(60000);
+    enqueue_wakeup(60000, "publish_trigger");
   }
-}
-
-void TelemetryActor::publish_trigger(uint32_t delay) {
-  enqueue_wakeup(delay, "publish_trigger");
 }
 
 void TelemetryActor::try_publish_telemetry_datapoint(

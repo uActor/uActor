@@ -224,18 +224,6 @@ int ManagedLuaActor::enqueue_wakeup_wrapper(lua_State* state) {
 
 #if CONFIG_BENCHMARK_ENABLED
 
-int ManagedLuaActor::connection_traffic(lua_State* state) {
-  lua_pushinteger(
-      state, Remote::RemoteConnection::current_traffic.num_accepted_messages);
-  lua_pushinteger(
-      state, Remote::RemoteConnection::current_traffic.size_accepted_messages);
-  lua_pushinteger(
-      state, Remote::RemoteConnection::current_traffic.num_duplicate_messages);
-  lua_pushinteger(
-      state, Remote::RemoteConnection::current_traffic.size_duplicate_messages);
-  return 4;
-}
-
 int ManagedLuaActor::testbed_log_integer_wrapper(lua_State* state) {
   const char* variable = lua_tostring(state, 1);
   uint32_t value = lua_tointeger(state, 2);

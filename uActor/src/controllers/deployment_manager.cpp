@@ -10,6 +10,9 @@
 
 namespace uActor::Controllers {
 
+uint32_t DeploymentManager::_active_deployments = 0;
+uint32_t DeploymentManager::_inactive_deployments = 0;
+
 DeploymentManager::DeploymentManager(
     ActorRuntime::ManagedNativeActor* actor_wrapper, std::string_view node_id,
     std::string_view actor_type, std::string_view instance_id)
@@ -47,7 +50,7 @@ void DeploymentManager::receive(const PubSub::Publication& publication) {
 
 void DeploymentManager::receive_deployment(
     const PubSub::Publication& publication) {
-  uActor::Support::Logger::debug("DEPLOYMENT-MANAGER", "RECEIVE-DEPLOYMENT",
+  uActor::Support::Logger::error("DEPLOYMENT-MANAGER", "RECEIVE-DEPLOYMENT",
                                  "Deployment Message");
   if (auto executor_it = executors.find(std::string(
           *publication.get_str_attr("deployment_actor_runtime_type")));
@@ -109,6 +112,9 @@ void DeploymentManager::receive_deployment(
         add_deployment_dependencies(&deployment);
         if (requirements_check(&deployment)) {
           activate_deployment(&deployment, &ExecutorIdentifier);
+          _active_deployments++;
+        } else {
+          _inactive_deployments++;
         }
       } else {
         uActor::Support::Logger::debug(
@@ -164,6 +170,9 @@ void DeploymentManager::receive_lifetime_event(
                              (deployment.restarts + 1) * 1000);
           }
         } else {
+          if (deployment.active) {
+            _active_deployments--;
+          }
           deactivate_deployment(&deployment);
           remove_deployment(&deployment);
         }
@@ -186,6 +195,7 @@ void DeploymentManager::receive_ttl_timeout(
         if (ttl_end_times.begin()->first == deployment.lifetime_end) {
           bool was_active = deployment.active;
           deactivate_deployment(&deployment);
+          _active_deployments--;
           if (!was_active) {
             remove_deployment(&deployment);
           }
@@ -453,6 +463,8 @@ void DeploymentManager::actor_type_added(std::string_view actor_type) {
                 executors.find(deployment->actor_runtime_type);
             executor_it != executors.end()) {
           activate_deployment(deployment, &executor_it->second.front());
+          _inactive_deployments--;
+          _active_deployments++;
         }
       }
     }
@@ -464,6 +476,8 @@ void DeploymentManager::actor_type_removed(std::string_view actor_type) {
       it != dependencies.end()) {
     for (const auto& deployment : it->second) {
       deactivate_deployment(deployment);
+      _active_deployments--;
+      _inactive_deployments++;
     }
   }
 }

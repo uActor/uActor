@@ -24,7 +24,6 @@ class TelemetryActor : public ActorRuntime::NativeActor {
   void receive(const PubSub::Publication& publication);
 
  private:
-  void publish_trigger(uint32_t delay);
   void try_publish_telemetry_datapoint(const TelemetryData& data);
 };
 

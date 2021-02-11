@@ -171,26 +171,25 @@ void RemoteConnection::process_publication(PubSub::Publication&& p) {
         if (p.get_str_attr("type") == "deployment") {
           Controllers::TelemetryData::increase("deployment_traffic_size",
                                                publicaton_full_size);
+          Controllers::TelemetryData::increase("deployment_traffic_number", 1);
         } else {
           Controllers::TelemetryData::increase("regular_traffic_size",
                                                publicaton_full_size);
+          Controllers::TelemetryData::increase("regular_traffic_number", 1);
         }
 #endif
         forwarding_strategy->add_incomming_routing_fields(&p);
         PubSub::Router::get_instance().publish(std::move(p));
       }
-#if CONFIG_BENCHMARK_ENABLED
-      current_traffic.num_accepted_messages++;
-      current_traffic.size_accepted_messages += publicaton_full_size;
-#endif
     } else {
       Support::Logger::debug("REMOTE-CONNECTION", "RECEIVE",
                              "Message Dropped from %s, forwarded-by: %s",
                              publisher_node_id.c_str(),
                              partner_node_id.c_str());
-#if CONFIG_BENCHMARK_ENABLED
-      current_traffic.num_duplicate_messages++;
-      current_traffic.size_duplicate_messages += publicaton_full_size;
+#if CONFIG_UACTOR_ENABLE_TELEMETRY
+      Controllers::TelemetryData::increase("dropped_traffic_size",
+                                           publicaton_full_size);
+      Controllers::TelemetryData::increase("dropped_traffic_number", 1);
 #endif
     }
   }
@@ -284,9 +283,5 @@ void RemoteConnection::update_subscriptions(PubSub::Publication&& p) {
     // PubSub::Filter{}, std::string_view(partner_node_id)));
   }
 }
-
-#if CONFIG_BENCHMARK_ENABLED
-ConnectionTraffic RemoteConnection::current_traffic;
-#endif
 
 }  // namespace uActor::Remote
