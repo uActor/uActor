@@ -6,6 +6,7 @@
 
 namespace uActor::Support {
 
-std::mutex Logger::mtx;  //NOLINT (cppcoreguidelines-avoid-non-const-global-variables) 
+std::mutex
+    Logger::mtx;  // NOLINT (cppcoreguidelines-avoid-non-const-global-variables)
 
 }  // namespace uActor::Support

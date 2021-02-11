@@ -13,7 +13,8 @@ Publication::Publication(std::string_view publisher_node_id,
                          std::string_view publisher_actor_type,
                          std::string_view publisher_instance_id)
     : attributes(std::make_shared<InternalType>(
-          make_allocator<InternalType::value_type>())), shallow_copy(false) {
+          make_allocator<InternalType::value_type>())),
+      shallow_copy(false) {
   attributes->emplace(AString("publisher_node_id", make_allocator<AString>()),
                       AString(publisher_node_id, make_allocator<AString>()));
   attributes->emplace(
@@ -26,7 +27,8 @@ Publication::Publication(std::string_view publisher_node_id,
 
 Publication::Publication()
     : attributes(std::make_shared<InternalType>(
-          make_allocator<InternalType::value_type>())), shallow_copy(false) {}
+          make_allocator<InternalType::value_type>())),
+      shallow_copy(false) {}
 
 Publication::Publication(size_t size_hint)
     : attributes(std::make_shared<InternalType>(

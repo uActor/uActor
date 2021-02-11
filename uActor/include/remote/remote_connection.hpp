@@ -26,7 +26,6 @@ namespace uActor::Remote {
 
 class TCPForwarder;
 
-
 enum struct ConnectionRole : uint8_t { SERVER = 0, CLIENT = 1 };
 
 class RemoteConnection {

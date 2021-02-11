@@ -87,14 +87,14 @@ class Filter {
 
   [[nodiscard]] bool operator==(const Filter& other) const;
 
-  [[nodiscard]] const std::vector<Constraint,
-                    std::scoped_allocator_adaptor<Allocator<Constraint>>>&
+  [[nodiscard]] const std::vector<
+      Constraint, std::scoped_allocator_adaptor<Allocator<Constraint>>>&
   required_constraints() const {
     return required;
   }
 
-  [[nodiscard]] const std::vector<Constraint,
-                    std::scoped_allocator_adaptor<Allocator<Constraint>>>&
+  [[nodiscard]] const std::vector<
+      Constraint, std::scoped_allocator_adaptor<Allocator<Constraint>>>&
   optional_constraints() const {
     return optional;
   }

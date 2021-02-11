@@ -11,6 +11,7 @@
 #include "constraint.hpp"
 #include "publication.hpp"
 #include "support/memory_manager.hpp"
+#include "filter.hpp"
 
 namespace uActor::PubSub {
 
@@ -20,7 +21,7 @@ struct InternalFilter {
   template <typename U>
   using Allocator = RoutingAllocatorConfiguration::Allocator<U>;
 
-  using allocator_type = Allocator<Filter>;
+  using allocator_type = Allocator<InternalFilter>;
 
   using InternalConstraintList =
       std::vector<std::shared_ptr<const Constraint>,

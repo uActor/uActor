@@ -16,7 +16,7 @@ struct SequenceInfo {
   uint32_t last_timestamp;
 
   [[nodiscard]] bool is_older_than(uint32_t other_sequence_number,
-                     uint32_t other_epoch) const {
+                                   uint32_t other_epoch) const {
     return other_epoch > epoch ||
            (other_epoch == epoch && other_sequence_number > sequence_number);
   }

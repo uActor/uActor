@@ -66,8 +66,8 @@ void Router::publish_internal(Publication&& publication) {
       if (counts.optional == subscription_ptr->count_optional() ||
           subscription_ptr->filter.check_optionals(publication)) {
         for (auto& receiver : subscription_ptr->receivers) {
-          current_receivers.emplace_back(
-              receiver.first, subscription_ptr->subscription_id);
+          current_receivers.emplace_back(receiver.first,
+                                         subscription_ptr->subscription_id);
         }
       }
     }
