@@ -67,7 +67,7 @@ ManagedActor::ReceiveResult ManagedActor::receive_next_internal() {
       message_queue.push_front(std::move(message));
       return ManagedActor::ReceiveResult(false, 0);
     }
-  } else if (message_queue.empty()) {
+  } else if (!message_queue.empty()) {
     return ManagedActor::ReceiveResult(false, 0);
   }
   return ManagedActor::ReceiveResult(false, _timeout);
