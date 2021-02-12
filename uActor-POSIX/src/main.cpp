@@ -1,7 +1,10 @@
 #include <unistd.h>
 
 #include <boost/program_options.hpp>
+#include <csignal>
 #include <ctime>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <thread>
 #include <utility>
@@ -17,6 +20,12 @@
 #include "controllers/topology_manager.hpp"
 #include "remote/remote_connection.hpp"
 #include "remote/tcp_forwarder.hpp"
+
+#if CONFIG_UACTOR_ENABLE_TELEMETRY
+#include "controllers/telemetry_actor.hpp"
+#include "controllers/telemetry_data.hpp"
+#endif
+
 #if CONFIG_BENCHMARK_ENABLED
 #include "support/testbed.h"
 #endif
@@ -26,6 +35,51 @@
  *  set the epoch number
  */
 #define MAGIC_EPOCH_OFFSET 1590969600
+
+#if CONFIG_UACTOR_ENABLE_TELEMETRY
+void telemetry_fetch_hook() {
+  uActor::Controllers::TelemetryData::set(
+      "heap_general",
+      uActor::Support::MemoryManager::total_space[static_cast<size_t>(
+          uActor::Support::TrackedRegions::GENERAL)]);
+
+  uActor::Controllers::TelemetryData::set(
+      "heap_runtime",
+      uActor::Support::MemoryManager::total_space[static_cast<size_t>(
+          uActor::Support::TrackedRegions::ACTOR_RUNTIME)]);
+
+  uActor::Controllers::TelemetryData::set(
+      "heap_routing",
+      uActor::Support::MemoryManager::total_space[static_cast<size_t>(
+          uActor::Support::TrackedRegions::ROUTING_STATE)]);
+
+  uActor::Controllers::TelemetryData::set(
+      "heap_publications",
+      uActor::Support::MemoryManager::total_space[static_cast<size_t>(
+          uActor::Support::TrackedRegions::PUBLICATIONS)]);
+
+  uActor::Controllers::TelemetryData::set(
+      "heap_debug",
+      uActor::Support::MemoryManager::total_space[static_cast<size_t>(
+          uActor::Support::TrackedRegions::DEBUG)]);
+
+  uActor::Controllers::TelemetryData::set(
+      "active_deployments",
+      uActor::Controllers::DeploymentManager::active_deployments());
+
+  uActor::Controllers::TelemetryData::set(
+      "inactive_deployments",
+      uActor::Controllers::DeploymentManager::inactive_deployments());
+
+  uActor::Controllers::TelemetryData::set(
+      "current_queue_size_diff",
+      uActor::PubSub::Receiver::size_diff.exchange(0));
+
+  uActor::Controllers::TelemetryData::set(
+      "number_of_subscriptions",
+      uActor::PubSub::Router::get_instance().number_of_subscriptions());
+}
+#endif
 
 std::thread start_lua_executor() {
   uActor::ActorRuntime::ExecutorSettings* params =
@@ -80,6 +134,12 @@ boost::program_options::variables_map parse_arguments(int arg_count,
   (
     "tcp-external-port", boost::program_options::value<uint16_t>(),
     "Provide a hint on the external port this node can be reached at."
+  #if CONFIG_UACTOR_ENABLE_SECONDS_TELEMETRY
+  )
+  (
+    "telemetry-file", boost::program_options::value<std::string>(),
+    "Log seconds-accuracy telemetry to this file."
+  #endif
   ); // NOLINT
   // clang-format on
 
@@ -96,6 +156,10 @@ boost::program_options::variables_map parse_arguments(int arg_count,
     return std::move(arguments);
   }
 }
+
+#if CONFIG_UACTOR_ENABLE_SECONDS_TELEMETRY
+std::ofstream telemetry_file;
+#endif
 
 int main(int arg_count, char** args) {
   std::cout << "starting uActor" << std::endl;
@@ -135,7 +199,7 @@ int main(int arg_count, char** args) {
     listen_ip = arguments["tcp-listen-ip"].as<std::string>();
   }
 
-  std::string external_address {};
+  std::string external_address{};
   if (arguments.count("tcp-external-address") != 0u) {
     external_address = arguments["tcp-external-address"].as<std::string>();
   }
@@ -167,6 +231,12 @@ int main(int arg_count, char** args) {
   uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
       uActor::Database::InfluxDBActor>("influxdb_connector");
   auto nativeexecutor = start_native_executor();
+#if CONFIG_UACTOR_ENABLE_TELEMETRY
+  uActor::Controllers::TelemetryActor::telemetry_fetch_hook =
+      telemetry_fetch_hook;
+  uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
+      uActor::Controllers::TelemetryActor>("telemetry_actor");
+#endif
 
   sleep(2);
 
@@ -225,6 +295,25 @@ int main(int arg_count, char** args) {
   uActor::PubSub::Router::get_instance().publish(
       std::move(create_influxdb_actor));
 
+#if CONFIG_UACTOR_ENABLE_TELEMETRY
+  {
+    auto create_telemetry_actor = uActor::PubSub::Publication(
+        uActor::BoardFunctions::NODE_ID, "root", "1");
+    create_telemetry_actor.set_attr("command", "spawn_native_actor");
+    create_telemetry_actor.set_attr("spawn_code", "");
+    create_telemetry_actor.set_attr("spawn_node_id",
+                                    uActor::BoardFunctions::NODE_ID);
+    create_telemetry_actor.set_attr("spawn_actor_type", "telemetry_actor");
+    create_telemetry_actor.set_attr("spawn_actor_version", "default");
+    create_telemetry_actor.set_attr("spawn_instance_id", "1");
+    create_telemetry_actor.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
+    create_telemetry_actor.set_attr("actor_type", "native_executor");
+    create_telemetry_actor.set_attr("instance_id", "1");
+    uActor::PubSub::Router::get_instance().publish(
+        std::move(create_telemetry_actor));
+  }
+#endif
+
   sleep(2);
 
   {
@@ -261,41 +350,41 @@ int main(int arg_count, char** args) {
 
   auto lua_executor = start_lua_executor();
 
-#if CONFIG_BENCHMARK_ENABLED2
-  sleep(2);
-  testbed_log_rt_integer("_ready", boot_timestamp);
+#if CONFIG_UACTOR_ENABLE_SECONDS_TELEMETRY
+  if (arguments.count("telemetry-file")) {
+    sleep(2);
+    testbed_log_rt_integer("_ready", boot_timestamp);
 
-  do {
-    testbed_log_integer("current_message_information_timestamp",
-                        uActor::BoardFunctions::seconds_timestamp());
-    testbed_log_integer("current_accepted_message_count",
-                        uActor::Remote::RemoteConnection::current_traffic
-                            .num_accepted_messages.exchange(0));
-    testbed_log_integer("current_accepted_message_size",
-                        uActor::Remote::RemoteConnection::current_traffic
-                            .size_accepted_messages.exchange(0));
-    testbed_log_integer("current_rejected_message_count",
-                        uActor::Remote::RemoteConnection::current_traffic
-                            .num_duplicate_messages.exchange(0));
-    testbed_log_integer("current_rejected_message_size",
-                        uActor::Remote::RemoteConnection::current_traffic
-                            .size_duplicate_messages.exchange(0));
-    testbed_log_integer("current_sub_message_size",
-                        uActor::Remote::RemoteConnection::current_traffic
-                            .sub_traffic_size.exchange(0));
-    testbed_log_integer("current_deployment_message_size",
-                        uActor::Remote::RemoteConnection::current_traffic
-                            .deployment_traffic_size.exchange(0));
-    testbed_log_integer("current_regular_message_size",
-                        uActor::Remote::RemoteConnection::current_traffic
-                            .regular_traffic_size.exchange(0));
-    testbed_log_integer("current_queue_size_diff",
-                        uActor::PubSub::Receiver::size_diff.exchange(0));
-    testbed_log_integer(
-        "number_of_subscriptions",
-        uActor::PubSub::Router::get_instance().number_of_subscriptions());
-    sleep(1);
-  } while (true);
+    struct sigaction flush_handler;
+    flush_handler.sa_handler = [](int signum) {
+      telemetry_file.flush();
+      telemetry_file.close();
+      exit(signum);
+    };
+    sigemptyset(&flush_handler.sa_mask);
+    flush_handler.sa_flags = 0;
+    sigaction(SIGINT, &flush_handler, 0);
+
+    auto path_string = arguments["telemetry-file"].as<std::string>();
+    auto path = std::filesystem::path(path_string);
+    std::filesystem::create_directories(path.parent_path());
+
+    telemetry_file.open(path, std::ios::out);
+    assert(telemetry_file.is_open());
+    do {
+      auto timestamp = uActor::BoardFunctions::seconds_timestamp();
+
+      telemetry_fetch_hook();
+      auto last_second_telemetry =
+          uActor::Controllers::TelemetryData::replace_seconds_instance();
+
+      for (const auto& [key, value] : last_second_telemetry.data) {
+        telemetry_file << timestamp << "," << key << "," << value << std::endl;
+      }
+
+      sleep(1);
+    } while (true);
+  }
 #endif
 
   tcp_task2.join();
