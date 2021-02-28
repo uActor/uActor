@@ -123,7 +123,8 @@ std::optional<Filter> Filter::deserialize(std::string_view serialized) {
     }
   }
 
-  if (optional_index + 1 != std::string_view::npos) {
+  if (optional_index != std::string_view::npos &&
+      optional_index + 1 != std::string_view::npos) {
     std::string_view optional_args = serialized.substr(optional_index + 1);
     for (std::string_view constraint_string :
          Support::StringHelper::string_split(optional_args, "^")) {
