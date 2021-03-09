@@ -3,18 +3,21 @@ variables:
 stages:
   - build
   - lint
+
 lint:
   before_script:
-    - export DEBIAN_FRONTEND="noninteractive" && apt update -y && apt upgrade -y && apt install -y git ssh-client build-essential cmake ninja-build libboost-all-dev curl libcurl4-openssl-dev python3 python3-pip clang-tidy && pip3 install cpplint
+    - export DEBIAN_FRONTEND="noninteractive" && apt update -y && apt upgrade -y && apt install -y git ssh-client build-essential cmake ninja-build python3 python3-pip clang-tidy && pip3 install conan cpplint
   stage: lint
   image: ubuntu:20.04
   script: make lint
+
 build_linux_x64:
   before_script:
-    - export DEBIAN_FRONTEND="noninteractive" && apt-get update -y && apt-get upgrade -y && apt-get install -y git ssh-client build-essential cmake ninja-build libboost-all-dev curl libcurl4-openssl-dev
+    - export DEBIAN_FRONTEND="noninteractive" && apt-get update -y && apt-get upgrade -y && apt-get install -y git ssh-client build-essential cmake ninja-build python3-pip && pip3 install conan
   stage: build
   image: ubuntu:20.04
   script: make
+
 build_esp32:
   stage: build
   image: espressif/idf:release-v4.2
