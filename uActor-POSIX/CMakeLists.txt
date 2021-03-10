@@ -7,7 +7,8 @@ endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(BUILD_SHARED_LIBS False)
+
+option(BUILD_SHARED_LIBS "Build shared versions of libraries" OFF)
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_BINARY_DIR})
 list(APPEND CMAKE_PREFIX_PATH ${CMAKE_BINARY_DIR})
@@ -111,6 +112,7 @@ add_compile_options(-Werror -Wall -Wextra -pedantic)
 target_compile_options(uActor PUBLIC -DCONFIG_BENCHMARK_ENABLED=1)
 
 if (NOT TARGET InfluxData::InfluxDB)
+  set(INFLUXCXX_TESTING OFF CACHE INTERNAL "" FORCE)
   add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../vendor/influxdb-cxx ${CMAKE_CURRENT_BINARY_DIR}/lib_influxdb)
 endif()
 target_link_libraries(uActorBin InfluxData::InfluxDB)
