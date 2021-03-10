@@ -22,3 +22,14 @@ build_esp32:
   stage: build
   image: espressif/idf:release-v4.2
   script: make build_esp32
+
+build_armv7:
+  before_script:
+    - export DEBIAN_FRONTEND="noninteractive" && apt-get update -y && apt-get upgrade -y && apt-get install -y git ssh-client build-essential cmake ninja-build python3-pip crossbuild-essential-armhf && pip3 install conan
+  stage: build
+  image: ubuntu:20.04
+  script: make build_armv7
+  artifacts:
+    paths:
+      - build/arm_v7/release/uActorBin
+    expire_in: 1 week

@@ -62,7 +62,7 @@ conan_cmake_configure(REQUIRES
                         boost:without_timer=True
                         boost:without_type_erasure=True
                         boost:without_wave=True
-                        lubcurl:shared=False
+                        libcurl:shared=False
                      )
 
 if(CMAKE_SYSTEM_PROCESSOR STREQUAL arm)
