@@ -40,15 +40,36 @@ It can be build by creating and moving to the build directory, running `cmake`, 
 * Ninja
 * Boost
 
-#### Ubuntu
+#### Debian / Ubuntu
 ```bash
-apt-get install build-essential cmake ninja-build libboost-all-dev
+apt-get install build-essential cmake ninja-build python3-pip
+pip3 install conan
 ```
 
 #### macOS
 ```bash
 brew install cmake ninja boost
 ```
+
+### Crossbuilding
+Crossbuilding using cmake toolchains is supported. Prebuild toolchains can be found in the `toolchains` folder.
+#### ARMv7
+##### Dependencies
+Debian / Ubuntu
+```bash
+apt-get install build-essential cmake ninja-build python3-pip crossbuild-essential-armhf g++-8-arm-linux-gnueabihf
+pip3 install conan
+```
+##### Buidling
+Debian / Ubuntu
+```bash
+mkdir build
+cd build
+cmake .. -DCMAKE_TOOLCHAIN_FILE=../toolchains/armv7_linux.cmake
+cmake --build .
+```
+
+Alternatively, an ARMv7 build can be downloaded [here](gitlab.lrz.de/cm/uactor/-/jobs/artifacts/master/download?job=build_armv7).
 
 ## License and Copyright
 
