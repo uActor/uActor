@@ -6,6 +6,7 @@ PROJECT_HOME = ${CURDIR}
 BUILD_DIRECTORY = build
 ESP32_BUILD_DIRECTORY = ${BUILD_DIRECTORY}/esp32
 LOCAL_BUILD_DIRECTORY = ${BUILD_DIRECTORY}/$(shell uname)_$(shell uname -m)
+ARMV7_BUILD_DIRECTORY = ${BUILD_DIRECTORY}/arm_v7
 TEST_DIRECTORY = ${BUILD_DIRECTORY}/test
 
 
@@ -29,10 +30,27 @@ ${LOCAL_BUILD_DIRECTORY}/release/compile_commands.json:
 	cd ${LOCAL_BUILD_DIRECTORY}/release && \
 	cmake -G Ninja ${PROJECT_HOME}/uActor-POSIX -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=TRUE
 
+${ARMV7_BUILD_DIRECTORY}/debug/compile_commands.json:
+	mkdir -p ${ARMV7_BUILD_DIRECTORY}/debug/ && \
+	cd ${ARMV7_BUILD_DIRECTORY}/debug && \
+	cmake -G Ninja ${PROJECT_HOME}/uActor-POSIX -DCMAKE_TOOLCHAIN_FILE=${PROJECT_HOME}/toolchains/armv7_linux.cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=TRUE
+
+${ARMV7_BUILD_DIRECTORY}/release/compile_commands.json:
+	mkdir -p ${ARMV7_BUILD_DIRECTORY}/release/ && \
+	cd ${ARMV7_BUILD_DIRECTORY}/release && \
+	cmake -G Ninja ${PROJECT_HOME}/uActor-POSIX -DCMAKE_TOOLCHAIN_FILE=${PROJECT_HOME}/toolchains/armv7_linux.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=TRUE
+
 build_local: ${LOCAL_BUILD_DIRECTORY}/release/compile_commands.json
 	cd ${LOCAL_BUILD_DIRECTORY}/release && \
 	ninja
 
+build_armv7_debug: ${ARMV7_BUILD_DIRECTORY}/debug/compile_commands.json
+	cd ${ARMV7_BUILD_DIRECTORY}/debug && \
+	ninja
+
+build_armv7: ${ARMV7_BUILD_DIRECTORY}/release/compile_commands.json
+	cd ${ARMV7_BUILD_DIRECTORY}/release && \
+	ninja
 
 build_local_debug: ${LOCAL_BUILD_DIRECTORY}/debug/compile_commands.json
 	cd ${LOCAL_BUILD_DIRECTORY}/debug && \
