@@ -1,12 +1,20 @@
 REQUIRED_COUNT = 100
 
 function receive(message)
+  
+  location_utils_receive_hook(message, location_info_ready_hook)
+
+  if(message.type == "init") then
+    print("INIT Sink")
+    count = 0
+  end
 
   if(message.type == "fake_sensor_value") then
     processing_delay = calculate_time_diff(message.time_sec, message.time_nsec)
-    testbed_log_integer("processing_delay", processing_delay)
-    testbed_log_integer("num", message.num_values)
-    testbed_log_integer("value", message.value)
+    -- testbed_log_integer("processing_delay", processing_delay)
+    telemetry_set("processing_delay", processing_delay)
+    telemetry_set("num_values", message.num_values)
+    telemetry_set("avg_value", message.value)
 
     if(last_time_sec) then
       period = calculate_time_diff(last_time_sec, last_time_nsec)
@@ -16,62 +24,11 @@ function receive(message)
     count = count + 1
     last_time_sec, last_time_nsec = unix_timestamp()
   end
-
-  if(message.type == "init") then
-    print("INIT Sink")
-
-    location_info = {}
-    location_count = 0
-
-    count = 0
-    message_counts = 0
-
-    publish(
-      Publication.new(
-        "type", "label_get",
-        "node_id", node_id,
-        "key", "building"
-      )
-    )
-    publish(
-      Publication.new(
-        "type", "label_get",
-        "node_id", node_id,
-        "key", "floor"
-      )
-    )
-    publish(
-      Publication.new(
-        "type", "label_get",
-        "node_id", node_id,
-        "key", "wing"
-      )
-    )
-    publish(
-      Publication.new(
-        "type", "label_get",
-        "node_id", node_id,
-        "key", "room"
-      )
-    )
-    publish(
-      Publication.new(
-        "type", "label_get",
-        "node_id", node_id,
-        "key", "access_1"
-      )
-    )
-  end
-
-  if(message.type == "label_response") then
-    print("LABEL Response "..message.key.." - "..message.value)
-    if(not location_info[message.key]) then
-      location_count = location_count + 1
-    end
-    location_info[message.key] = message.value
-    if(location_count == 5) then
-      print("READY Sink")
-      sub_id = subscribe({type="fake_sensor_value", aggregation_level="building", building=location_info["building"]})
-    end
-  end
 end
+
+function location_info_ready_hook()
+  print("READY Sink")
+  sub_id = subscribe({type="fake_sensor_value", aggregation_level="BUILDING", building=location_labels["building"]})
+end
+
+--include <../light_control/location_utils>

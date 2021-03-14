@@ -20,6 +20,7 @@ extern "C" {
 #include "controllers/topology_manager.hpp"
 #include "io/gpio_actor.hpp"
 #include "lua.hpp"
+#include "pubsub/receiver.hpp"
 #include "remote/tcp_forwarder.hpp"
 #include "remote/wifi_stack.hpp"
 #include "support/testbed.h"
@@ -93,6 +94,9 @@ void telemetry_fetch_hook() {
   uActor::Controllers::TelemetryData::set(
       "number_of_subscriptions",
       uActor::PubSub::Router::get_instance().number_of_subscriptions());
+
+  uActor::Controllers::TelemetryData::set(
+      "total_queue_size", uActor::PubSub::Receiver::total_queue_size.load());
 }
 #endif
 

@@ -1,0 +1,54 @@
+type: deployment
+name: data_processing_sink
+ttl: 120000
+actor_type:  data_processing_sink_actor
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "data_sink.lua"
+constraints:
+  - "node_type": "building_server"
+  - "building": "fmi"
+---
+type: deployment
+name: data_generator
+ttl:  120000
+actor_type:  data_generator_actor
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file: "data_generator.lua"
+constraints:  
+  - "data_gathering_role": "sensor"
+  - "building": "fmi"
+---
+type: deployment
+name: aggregator_value_node
+ttl: 120000
+actor_type:  aggregator_value_node_actor
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "aggregator_value_node.lua"
+constraints:
+  - "data_gathering_role": "sensor"
+  - "building": "fmi"
+---
+type: deployment
+name: aggregator_node_wing
+ttl: 120000
+actor_type:  aggregator_node_wing_actor
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "aggregator_node_wing.lua"
+constraints:
+  - "node_type": "wing_server"
+  - "building": "fmi"
+---
+type: deployment
+name: aggregator_node_building
+ttl: 120000
+actor_type:  aggregator_node_building_actor
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "aggregator_node_building.lua"
+constraints:
+  - "node_type": "building_server"
+  - "building": "fmi"

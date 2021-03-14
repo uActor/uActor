@@ -1,0 +1,4 @@
+AGGREGATION_LEVEL = "NODE"
+INCOMMING_AGGREGATION_LEVEL = "VALUE"
+
+--include <aggregator_base>

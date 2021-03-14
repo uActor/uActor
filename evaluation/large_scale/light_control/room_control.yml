@@ -1,0 +1,54 @@
+type: deployment
+name: wing_control_system
+ttl: 120000
+actor_type: wing_control_system_actor
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "control_room.lua"
+constraints:
+  - "node_type": "room_server"
+  - "building": "fmi"
+---
+type: deployment
+name: lightswitch
+ttl: 120000
+actor_type:  lightswitch_actor
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "lightswitch.lua"
+constraints:
+  - "light_control_role": "switch"
+  - "building": "fmi"
+---
+type: deployment
+name: lightbulb
+ttl: 120000
+actor_type:  lightbulb_actor
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "lightbulb.lua"
+constraints:
+  - "light_control_role": "bulb"
+  - "building": "fmi"
+---
+type: deployment
+name: fake_gpio_datasource
+ttl: 120000
+actor_type:  fake_gpio_datasource_actor
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "fake_gpio.lua"
+constraints:
+  - "light_control_role": "switch"
+  - "building": "fmi"
+---
+type: deployment
+name: fake_gpio_datasink
+ttl: 120000
+actor_type:  fake_gpio_datasink_actor
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "fake_gpio.lua"
+constraints:
+  - "light_control_role": "bulb"
+  - "building": "fmi"

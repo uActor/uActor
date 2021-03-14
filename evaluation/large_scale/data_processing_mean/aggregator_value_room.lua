@@ -1,0 +1,4 @@
+AGGREGATION_LEVEL = "ROOM"
+INCOMMING_AGGREGATION_LEVEL = "VALUE"
+
+--include <aggregator_base>

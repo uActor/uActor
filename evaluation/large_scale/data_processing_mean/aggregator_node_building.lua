@@ -1,0 +1,4 @@
+AGGREGATION_LEVEL = "BUILDING"
+INCOMMING_AGGREGATION_LEVEL = "NODE"
+
+--include <aggregator_base>

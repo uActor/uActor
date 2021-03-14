@@ -1,0 +1,4 @@
+AGGREGATION_LEVEL = "WING"
+INCOMMING_AGGREGATION_LEVEL = "NODE"
+
+--include <aggregator_base>
