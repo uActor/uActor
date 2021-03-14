@@ -16,11 +16,19 @@ class Receiver::Queue {
         xQueueCreate(RECEIVER_QUEUE_HARD_LIMIT, sizeof(MatchedPublication*));
   }
 
-  ~Queue() { vQueueDelete(queue); }
+  ~Queue() {
+#if CONFIG_UACTOR_ENABLE_TELEMETRY
+    Receiver::total_queue_size -= uxQueueMessagesWaiting(queue);
+#endif
+    vQueueDelete(queue);
+  }
 
   void send_message(MatchedPublication&& publication) {
     MatchedPublication* p = new MatchedPublication(std::move(publication));
     xQueueSend(queue, &p, portMAX_DELAY);
+#if CONFIG_UACTOR_ENABLE_TELEMETRY
+    Receiver::total_queue_size++;
+#endif
   }
 
   std::optional<MatchedPublication> receive_message(uint32_t timeout) {
@@ -29,6 +37,9 @@ class Receiver::Queue {
     if (xQueueReceive(queue, &pub, timeout)) {
       MatchedPublication out = MatchedPublication(std::move(*pub));
       delete pub;
+#if CONFIG_UACTOR_ENABLE_TELEMETRY
+      Receiver::total_queue_size--;
+#endif
       return std::move(out);
     }
     return std::nullopt;
@@ -68,5 +79,8 @@ void Receiver::unsubscribe(uint32_t sub_id, std::string node_id) {
   }
 }
 
-std::atomic<int> Receiver::size_diff{0};
+#if CONFIG_UACTOR_ENABLE_TELEMETRY
+std::atomic<int> Receiver::total_queue_size{0};
+#endif
+
 }  // namespace uActor::PubSub

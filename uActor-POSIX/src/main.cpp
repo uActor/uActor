@@ -72,8 +72,7 @@ void telemetry_fetch_hook() {
       uActor::Controllers::DeploymentManager::inactive_deployments());
 
   uActor::Controllers::TelemetryData::set(
-      "current_queue_size_diff",
-      uActor::PubSub::Receiver::size_diff.exchange(0));
+      "total_queue_size", uActor::PubSub::Receiver::total_queue_size.load());
 
   uActor::Controllers::TelemetryData::set(
       "number_of_subscriptions",

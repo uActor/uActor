@@ -2,6 +2,10 @@
 
 #define RECEIVER_QUEUE_HARD_LIMIT 100
 
+#ifdef ESP_IDF
+#include <sdkconfig.h>
+#endif
+
 #include <list>
 #include <memory>
 #include <set>
@@ -21,7 +25,9 @@ class Receiver {
   explicit Receiver(Router* router);
   ~Receiver();
 
-  static std::atomic<int> size_diff;
+#if CONFIG_UACTOR_ENABLE_TELEMETRY
+  static std::atomic<int> total_queue_size;
+#endif
 
  private:
   Router* router;
