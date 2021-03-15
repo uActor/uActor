@@ -26,6 +26,7 @@ def main():
     parser.add_argument("-r", "--refresh", action="store_true")
     parser.add_argument("--hash-as-version", action="store_true")
     parser.add_argument("-f", "--file", action='append')
+    parser.add_argument("-c", "--publish-code-count", type=int, default=-1)
     arguments = parser.parse_args()
 
     deployments = []
@@ -33,6 +34,8 @@ def main():
 
     sequence_number =  0
     epoch = int(time.time())
+
+    publish_code_count = arguments.publish_code_count
 
     raw_deployments = []
     for configuration_file_r_path in arguments.file:
@@ -68,22 +71,32 @@ def main():
         before = time.time()
         for deployment in deployments:
             last_iterations[deployment["deployment_name"]] = time.time()
+            if publish_code_count == 0:
+                del deployment["deployment_actor_code"]
+            start_publish = time.time()
             _publish(sckt, deployment, epoch, sequence_number)
-            print(f"Publish: {deployment['deployment_name']}")
+            print(f"Publish: {deployment['deployment_name']} {time.time() - start_publish}")
             time.sleep(INTER_DEPLOYMENT_WAIT_TIME_MS/1000)
             sequence_number += 1
+        if publish_code_count > 0:
+            publish_code_count = publish_code_count - 1
 
-        wait_time = max((min_ttl_ms/1000  - (time.time() - before)  - 10), 0)
-        time.sleep(wait_time)
+        if arguments.refresh:
+            wait_time = max((min_ttl_ms/1000  - (time.time() - before)  - 10), 0)
+            time.sleep(wait_time)
 
         while min_ttl_ms > 0 and arguments.refresh:
             before = time.time()
             for deployment in deployments:
+                if publish_code_count == 0:
+                    del deployment["deployment_actor_code"]
                 _publish(sckt, deployment, epoch, sequence_number)
                 print(f"Refresh: {deployment['deployment_name']} Interval: {time.time() - last_iterations[deployment['deployment_name']]}")
                 last_iterations[deployment["deployment_name"]] = time.time()
                 time.sleep(INTER_DEPLOYMENT_WAIT_TIME_MS/1000)
                 sequence_number += 1
+            if publish_code_count > 0:
+                publish_code_count = publish_code_count - 1
             time.sleep(wait_time)
 
         time.sleep(2)

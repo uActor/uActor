@@ -137,6 +137,10 @@ boost::program_options::variables_map parse_arguments(int arg_count,
   (
     "influxdb-url", boost::program_options::value<std::string>(),
     "InfluxDB host"
+  )
+  (
+    "enable-code-server", boost::program_options::bool_switch(),
+    "Add subscription that lets the node respond to remote code fetch requests."
   #if CONFIG_UACTOR_ENABLE_SECONDS_TELEMETRY
   )
   (
@@ -322,6 +326,14 @@ int main(int arg_count, char** args) {
 #endif
 
   sleep(2);
+
+  if (arguments["enable-code-server"].as<bool>()) {
+    auto enable_message = uActor::PubSub::Publication(
+        uActor::BoardFunctions::NODE_ID, "root", "1");
+    enable_message.set_attr("type", "remote_fetch_control_command");
+    enable_message.set_attr("command", "enable");
+    uActor::PubSub::Router::get_instance().publish(std::move(enable_message));
+  }
 
   {
     uActor::PubSub::Publication label_update(uActor::BoardFunctions::NODE_ID,

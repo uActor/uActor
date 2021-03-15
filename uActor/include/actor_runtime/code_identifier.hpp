@@ -13,6 +13,12 @@ struct CodeIdentifier {
            runtime_type == other.runtime_type;
   }
 
+  bool operator<(const CodeIdentifier& other) const {
+    return type < other.type ||
+           (type == other.type && version < other.version) ||
+           (version == other.version && runtime_type < other.runtime_type);
+  }
+
   std::string type;
   std::string version;
   std::string runtime_type;

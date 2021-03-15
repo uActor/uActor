@@ -60,7 +60,6 @@ void DeploymentManager::receive_deployment(
         publication.has_attr("deployment_ttl") &&
         publication.has_attr("deployment_actor_type") &&
         publication.has_attr("deployment_actor_version") &&
-        publication.has_attr("deployment_actor_code") &&
         publication.has_attr("deployment_required_actors")) {
       if (publication.has_attr("deployment_constraints")) {
         std::string_view constraints =
@@ -81,8 +80,7 @@ void DeploymentManager::receive_deployment(
           *publication.get_str_attr("deployment_actor_type");
       std::string_view actor_version =
           *publication.get_str_attr("deployment_actor_version");
-      std::string_view actor_code =
-          *publication.get_str_attr("deployment_actor_code");
+      auto actor_code = publication.get_str_attr("deployment_actor_code");
       std::string_view actor_runtime_type =
           *publication.get_str_attr("deployment_actor_runtime_type");
       std::string_view required_actors =
@@ -94,7 +92,7 @@ void DeploymentManager::receive_deployment(
       }
 
       auto [deployment_iterator, inserted] = deployments.try_emplace(
-          std::string(name), name, actor_type, actor_version, actor_code,
+          std::string(name), name, actor_type, actor_version,
           actor_runtime_type, required_actors, end_time);
 
       Deployment& deployment = deployment_iterator->second;
@@ -102,11 +100,14 @@ void DeploymentManager::receive_deployment(
       if (inserted) {
         uActor::Support::Logger::debug("DEPLOYMENT-MANAGER",
                                        "RECEIVE-DEPLOYMENT", "New Deployment");
+
+        if (actor_code) {
 #if CONFIG_UACTOR_OPTIMIZATIONS_DIRECT_CODE_STORE
-        push_code_package(deployment, actor_code);
+          push_code_package(deployment, *actor_code);
 #else
-        publish_code_package(deployment, std::string(actor_code));
+          publish_code_package(deployment, std::string(*actor_code));
 #endif
+        }
         // printf("Receive deployment from: %s\n",
         //       publication.get_str_attr("publisher_node_id")->data());
         add_deployment_dependencies(&deployment);
@@ -133,11 +134,19 @@ void DeploymentManager::receive_deployment(
         }
 
         deployment.lifetime_end = end_time;
+        if (actor_code) {
 #if CONFIG_UACTOR_OPTIMIZATIONS_DIRECT_CODE_STORE
-        push_code_package(deployment, actor_code);
+          push_code_package(deployment, *actor_code);
 #else
-        publish_code_package(deployment, std::string(actor_code));
+          publish_code_package(deployment, std::string(*actor_code));
 #endif
+        } else {
+#if CONFIG_UACTOR_OPTIMIZATIONS_DIRECT_CODE_STORE
+          update_code_lifetime(deployment);
+#else
+          publish_code_lifetime_update(deployment);
+#endif
+        }
       }
       if (deployment.lifetime_end > 0) {
         enqueue_lifetime_end_wakeup(&deployment);
@@ -221,8 +230,14 @@ void DeploymentManager::receive_label_update(const PubSub::Publication& pub) {
   std::list<PubSub::Constraint> constraints{
       PubSub::Constraint{"type", "deployment"}};
   for (const auto& label : labels) {
-    constraints.emplace_back(label.first, label.second,
-                             PubSub::ConstraintPredicates::Predicate::EQ, true);
+    std::vector<std::string> hidden_labels{"building", "floor", "wing", "room",
+                                           "node_id"};
+    if (std::find(hidden_labels.begin(), hidden_labels.end(), label.first) ==
+        hidden_labels.end()) {
+      constraints.emplace_back(label.first, label.second,
+                               PubSub::ConstraintPredicates::Predicate::EQ,
+                               true);
+    }
   }
   uint32_t new_deployment_sub_id =
       subscribe(PubSub::Filter{std::move(constraints)});
@@ -499,11 +514,34 @@ void DeploymentManager::publish_code_package(const Deployment& deployment,
 
 void DeploymentManager::push_code_package(const Deployment& deployment,
                                           std::string_view code) {
-  ActorRuntime::CodeStore::get_instance().store(
+  ActorRuntime::CodeStore::get_instance().insert_or_refresh(
       ActorRuntime::CodeIdentifier(deployment.actor_type,
                                    deployment.actor_version,
                                    deployment.actor_runtime_type),
-      code, deployment.lifetime_end);
+      deployment.lifetime_end, code);
+}
+
+void DeploymentManager::publish_code_lifetime_update(
+    const Deployment& deployment) {
+  PubSub::Publication lifetime_update_message(node_id(), actor_type(),
+                                              instance_id());
+  lifetime_update_message.set_attr("type", "actor_code_lifetime_update");
+  lifetime_update_message.set_attr("actor_code_type", deployment.actor_type);
+  lifetime_update_message.set_attr("actor_code_version",
+                                   deployment.actor_version);
+  lifetime_update_message.set_attr("actor_code_runtime_type",
+                                   deployment.actor_runtime_type);
+  lifetime_update_message.set_attr(
+      "actor_code_lifetime_end", static_cast<int32_t>(deployment.lifetime_end));
+  publish(std::move(lifetime_update_message));
+}
+
+void DeploymentManager::update_code_lifetime(const Deployment& deployment) {
+  ActorRuntime::CodeStore::get_instance().insert_or_refresh(
+      ActorRuntime::CodeIdentifier(deployment.actor_type,
+                                   deployment.actor_version,
+                                   deployment.actor_runtime_type),
+      deployment.lifetime_end, std::nullopt);
 }
 
 }  // namespace uActor::Controllers

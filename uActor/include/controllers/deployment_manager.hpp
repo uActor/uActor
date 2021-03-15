@@ -32,7 +32,7 @@ class DeploymentManager : public ActorRuntime::NativeActor {
  private:
   struct Deployment {
     Deployment(std::string_view name, std::string_view actor_type,
-               std::string_view actor_version, std::string_view /*actor_code*/,
+               std::string_view actor_version,
                std::string_view actor_runtime_type,
                std::string_view raw_required_actors, uint32_t lifetime_end)
         : name(name),
@@ -130,6 +130,10 @@ class DeploymentManager : public ActorRuntime::NativeActor {
   void publish_code_package(const Deployment& deployment, std::string&& code);
 
   void push_code_package(const Deployment& deployment, std::string_view code);
+
+  void publish_code_lifetime_update(const Deployment& deployment);
+
+  void update_code_lifetime(const Deployment& deployment);
 };
 
 }  // namespace uActor::Controllers
