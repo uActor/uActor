@@ -9,6 +9,8 @@ experiments/
 old_snippets/
 scratch_data/
 large_scale_test_results/
+large_scale_results_combined/
+combined_results/
 *.pyc
 large_scale_results/
 large_scale_results2/
@@ -17,3 +19,5 @@ evaluation/smart_office/smart_office_data/
 *.DS_Store
 *.sublime-workspace
 *.sublime-project
+sdkconfig.*
+conan/

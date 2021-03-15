@@ -3,7 +3,6 @@
 #include <InfluxDBException.h>
 
 #include <memory>
-#include <string>
 #include <utility>
 
 #include "support/logger.hpp"
@@ -17,6 +16,9 @@ void InfluxDBActor::receive(const PubSub::Publication& publication) {
     receive_data_point(publication);
   }
 }
+
+std::string InfluxDBActor::server_url =  // NOLINT
+    "http://smart_office:smart_office_user@influxdb:8086?db=smart_office";
 
 void InfluxDBActor::receive_data_point(const PubSub::Publication& publication) {
   if (publication.has_attr("measurement") && publication.has_attr("values")) {
@@ -58,9 +60,7 @@ void InfluxDBActor::receive_data_point(const PubSub::Publication& publication) {
 
     try {
       std::unique_ptr<influxdb::InfluxDB> connection =
-          influxdb::InfluxDBFactory::Get(
-              "http://"
-              "smart_office:smart_office_user@influxdb:8086?db=smart_office");
+          influxdb::InfluxDBFactory::Get(server_url);
       connection->write(std::move(p));
     } catch (const ::influxdb::InfluxDBException&) {
       Support::Logger::error("INFLUXDB", "WRITE_DATAPOINT", "Connection error");

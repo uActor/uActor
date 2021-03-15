@@ -133,6 +133,10 @@ boost::program_options::variables_map parse_arguments(int arg_count,
   (
     "tcp-external-port", boost::program_options::value<uint16_t>(),
     "Provide a hint on the external port this node can be reached at."
+  )
+  (
+    "influxdb-url", boost::program_options::value<std::string>(),
+    "InfluxDB host"
   #if CONFIG_UACTOR_ENABLE_SECONDS_TELEMETRY
   )
   (
@@ -280,19 +284,23 @@ int main(int arg_count, char** args) {
   create_code_store.set_attr("instance_id", "1");
   uActor::PubSub::Router::get_instance().publish(std::move(create_code_store));
 
-  auto create_influxdb_actor =
-      uActor::PubSub::Publication(uActor::BoardFunctions::NODE_ID, "root", "1");
-  create_influxdb_actor.set_attr("command", "spawn_native_actor");
-  create_influxdb_actor.set_attr("spawn_actor_version", "default");
-  create_influxdb_actor.set_attr("spawn_node_id",
-                                 uActor::BoardFunctions::NODE_ID);
-  create_influxdb_actor.set_attr("spawn_actor_type", "influxdb_connector");
-  create_influxdb_actor.set_attr("spawn_instance_id", "1");
-  create_influxdb_actor.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
-  create_influxdb_actor.set_attr("actor_type", "native_executor");
-  create_influxdb_actor.set_attr("instance_id", "1");
-  uActor::PubSub::Router::get_instance().publish(
-      std::move(create_influxdb_actor));
+  if (arguments.count("influxdb-host")) {
+    uActor::Database::InfluxDBActor::server_url =
+        arguments["infludb-host"].as<std::string>();
+    auto create_influxdb_actor = uActor::PubSub::Publication(
+        uActor::BoardFunctions::NODE_ID, "root", "1");
+    create_influxdb_actor.set_attr("command", "spawn_native_actor");
+    create_influxdb_actor.set_attr("spawn_actor_version", "default");
+    create_influxdb_actor.set_attr("spawn_node_id",
+                                   uActor::BoardFunctions::NODE_ID);
+    create_influxdb_actor.set_attr("spawn_actor_type", "influxdb_connector");
+    create_influxdb_actor.set_attr("spawn_instance_id", "1");
+    create_influxdb_actor.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
+    create_influxdb_actor.set_attr("actor_type", "native_executor");
+    create_influxdb_actor.set_attr("instance_id", "1");
+    uActor::PubSub::Router::get_instance().publish(
+        std::move(create_influxdb_actor));
+  }
 
 #if CONFIG_UACTOR_ENABLE_TELEMETRY
   {
