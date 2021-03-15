@@ -8,7 +8,7 @@ import time
 import os
 import io
 import hashlib
-import minifier.minifier
+import re
 
 import msgpack
 import yaml
@@ -26,6 +26,7 @@ def main():
     parser.add_argument("-r", "--refresh", action="store_true")
     parser.add_argument("--hash-as-version", action="store_true")
     parser.add_argument("-f", "--file", action='append')
+    parser.add_argument("-m", "--minify", action="store_true")
     parser.add_argument("-c", "--publish-code-count", type=int, default=-1)
     arguments = parser.parse_args()
 
@@ -46,7 +47,7 @@ def main():
         raw_deployments = yaml.safe_load_all(configuration_file)
 
         for raw_deployment in raw_deployments:
-            deployment = _parse_deployment(configuration_file_path, raw_deployment)
+            deployment = _parse_deployment(configuration_file_path, raw_deployment, arguments.minify)
             if deployment:
                 if deployment["deployment_ttl"] > 0 and deployment["deployment_ttl"] < MIN_DEPLOYMENT_LIFETIME:
                     print(f"Increased deployment ttl to the minimum value of {MIN_DEPLOYMENT_LIFETIME/1000} seconds")
@@ -101,7 +102,7 @@ def main():
 
         time.sleep(2)
 
-def _parse_deployment(configuration_file_path, raw_deployment):
+def _parse_deployment(configuration_file_path, raw_deployment, minify):
     if "type" not in raw_deployment or not raw_deployment["type"] == "deployment":
         return None
 
@@ -118,14 +119,16 @@ def _parse_deployment(configuration_file_path, raw_deployment):
 
     configuration_dir = os.path.dirname(configuration_file_path)
     code_file = os.path.join(configuration_dir, raw_deployment["actor_code_file"])
-    if not os.path.isfile(code_file):
-        raise SystemExit("Code file does not exist.")
-    code = io.open(code_file, "r", encoding="utf-8").read()
-    minified_code = minifier.minifier.minify(code)
+
+    code = load_code_file(code_file)
+    
+    if minify:
+        import minifier.minifier
+        minified_code = minifier.minifier.minify(code)
 
     code_hash = base64.b64encode(hashlib.blake2s(code.encode()).digest()).decode()
 
-    print(f"Code Size: {raw_deployment['name']} Before: {len(code)} After: {len(minified_code)}")
+    print(f"Code Size: {raw_deployment['name']} Before: {len(code)} After: {len(minified_code) if minify else 'not minified'}")
 
     deployment = {
         "type" : "deployment",
@@ -136,7 +139,7 @@ def _parse_deployment(configuration_file_path, raw_deployment):
         "deployment_actor_type": raw_deployment["actor_type"],
         "deployment_actor_runtime_type": raw_deployment["actor_runtime_type"],
         "deployment_actor_version": raw_deployment["actor_version"],
-        "deployment_actor_code": minified_code,
+        "deployment_actor_code": minified_code if minify else code,
         "deployment_actor_code_hash": code_hash,
         "deployment_required_actors": required_actors,
         "deployment_ttl": raw_deployment["ttl"]
@@ -154,6 +157,22 @@ def _parse_deployment(configuration_file_path, raw_deployment):
         deployment["deployment_constraints"] = ",".join(deployment_constraints)
     
     return deployment
+
+
+def load_code_file(code_file):
+    if not os.path.isfile(code_file):
+        raise SystemExit("Code file does not exist.")
+    code_pre = io.open(code_file, "r", encoding="utf-8").read()
+
+    code = ""
+    for line in code_pre.splitlines():
+        match = re.compile(r"^--include\s+\<([\w\./]+)\>").match(line)
+        if match:
+            code += load_code_file(os.path.join(os.path.dirname(code_file), f"{match.group(1)}.lua")) + "\n"
+        else:
+            code += line + "\n"
+    
+    return code
 
 
 def _publish(sckt, publication, epoch, sequence_number):
