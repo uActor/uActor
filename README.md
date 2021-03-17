@@ -52,42 +52,52 @@ brew install cmake ninja boost
 ```
 
 ### Crossbuilding
-Crossbuilding using cmake toolchains is supported. Prebuild toolchains can be found in the `toolchains` folder.
-#### ARMv7
-##### Dependencies
+Crossbuilding using cmake toolchains is supported. Prebuild toolchains can be found in the [toolchains](https://gitlab.lrz.de/cm/uactor/-/tree/master/toolchains) folder.
+#### Dependencies
 Debian / Ubuntu
 ```bash
-apt-get install build-essential cmake ninja-build python3-pip crossbuild-essential-armhf g++-8-arm-linux-gnueabihf
+apt-get install build-essential cmake ninja-build python3-pip
 pip3 install conan
 ```
-##### Buidling
+##### ARMv7
 Debian / Ubuntu
+```bash
+apt-get install crossbuild-essential-armhf g++-8-arm-linux-gnueabihf
+```
+##### ARM64
+Debian / Ubuntu
+```bash
+apt-get install crossbuild-essential-arm64 g++-8-aarch64-linux-gnu
+```
+#### Building
+##### Creating a Build directory
 ```bash
 mkdir build
 cd build
-cmake .. -DCMAKE_TOOLCHAIN_FILE=../toolchains/armv7_linux.cmake
-cmake --build .
 ```
-
-Alternatively, an ARMv7 build can be downloaded [here](gitlab.lrz.de/cm/uactor/-/jobs/artifacts/master/download?job=build_armv7).
-
-#### ARM64
-##### Dependencies
-Debian / Ubuntu
+##### Configuring
+###### ARMv7
 ```bash
-apt-get install build-essential cmake ninja-build python3-pip crossbuild-essential-arm64 g++-8-aarch64-linux-gnu
-pip3 install conan
+cmake ../uActor-POSIX -DCMAKE_TOOLCHAIN_FILE=../toolchains/armv7_linux.cmake
 ```
-##### Buidling
-Debian / Ubuntu
+###### ARM64
 ```bash
-mkdir build
+cmake ../uActor-POSIX -DCMAKE_TOOLCHAIN_FILE=../toolchains/arm64_linux.cmake
+```
+##### Setting a Conan Directory
+The previous command can fail, if conan is unable to determine a conan directory. To resolve this issue execute this block followed by the respective cmake configure command.
+```bash
+mkdir ../conan
+cd ..
+export CONAN_USER_HOME=$PWD/conan
 cd build
-cmake .. -DCMAKE_TOOLCHAIN_FILE=../toolchains/arm64_linux.cmake
+```
+##### Building
+```bash
 cmake --build .
 ```
-
-Alternatively, an ARMv7 build can be downloaded [here](gitlab.lrz.de/cm/uactor/-/jobs/artifacts/master/download?job=build_arm64).
+#### Downloading a Prebuild Binary
+Prebuild binaries can be download from the CI both for [ARMv7](gitlab.lrz.de/cm/uactor/-/jobs/artifacts/master/download?job=build_armv7) and [ARM64](gitlab.lrz.de/cm/uactor/-/jobs/artifacts/master/download?job=build_arm64)
 
 ## License and Copyright
 
