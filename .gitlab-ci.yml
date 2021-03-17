@@ -41,3 +41,14 @@ build_armv7:
     paths:
       - build/arm_v7/release/uActorBin
     expire_in: 1 week
+
+build_arm64:
+  before_script:
+    - apt-get update -y && apt-get upgrade -y && apt-get install -y git ssh-client build-essential cmake ninja-build python3-pip crossbuild-essential-arm64 g++-8-aarch64-linux-gnu && pip3 install conan
+  stage: build
+  image: debian:buster
+  script: CONAN_USER_HOME=$PWD/conan make build_arm64
+  artifacts:
+    paths:
+      - build/arm64/release/uActorBin
+    expire_in: 1 week

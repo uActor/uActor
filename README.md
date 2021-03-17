@@ -71,6 +71,24 @@ cmake --build .
 
 Alternatively, an ARMv7 build can be downloaded [here](gitlab.lrz.de/cm/uactor/-/jobs/artifacts/master/download?job=build_armv7).
 
+#### ARM64
+##### Dependencies
+Debian / Ubuntu
+```bash
+apt-get install build-essential cmake ninja-build python3-pip crossbuild-essential-arm64 g++-8-aarch64-linux-gnu
+pip3 install conan
+```
+##### Buidling
+Debian / Ubuntu
+```bash
+mkdir build
+cd build
+cmake .. -DCMAKE_TOOLCHAIN_FILE=../toolchains/arm64_linux.cmake
+cmake --build .
+```
+
+Alternatively, an ARMv7 build can be downloaded [here](gitlab.lrz.de/cm/uactor/-/jobs/artifacts/master/download?job=build_arm64).
+
 ## License and Copyright
 
 uActor is released under the [MIT license](LICENSE.txt). Please refer to CONTRIBUTORS.md for a list of contributors and their affiliations.
