@@ -15,3 +15,5 @@ large_scale_results2/
 results/
 evaluation/smart_office/smart_office_data/
 *.DS_Store
+*.sublime-workspace
+*.sublime-project
