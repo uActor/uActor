@@ -13,6 +13,7 @@
 #include "actor_runtime/code_store_actor.hpp"
 #include "actor_runtime/executor.hpp"
 #include "actor_runtime/lua_executor.hpp"
+#include "actor_runtime/managed_actor.hpp"
 #include "actor_runtime/managed_native_actor.hpp"
 #include "actor_runtime/native_executor.hpp"
 #include "actors/influxdb_actor.hpp"
@@ -73,6 +74,10 @@ void telemetry_fetch_hook() {
 
   uActor::Controllers::TelemetryData::set(
       "total_queue_size", uActor::PubSub::Receiver::total_queue_size.load());
+
+  uActor::Controllers::TelemetryData::set(
+      "total_actor_queue_size",
+      uActor::ActorRuntime::ManagedActor::total_queue_size.load());
 
   uActor::Controllers::TelemetryData::set(
       "number_of_subscriptions",

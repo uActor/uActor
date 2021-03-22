@@ -231,7 +231,7 @@ class Executor : public ExecutorApi {
         wait_time = 0;
       }
       auto publication = router_handle.receive(wait_time);
-      if (publication) {
+      while (publication) {
         if (publication->subscription_id == executor_subscription_id) {
           if (publication->publication.has_attr("spawn_actor_type")) {
             add_actor_wrapper(publication->publication);
@@ -276,6 +276,7 @@ class Executor : public ExecutorApi {
             // NO-OP
           }
         }
+        publication = router_handle.receive(0);
       }
 
       while (delayed_messages.begin() != delayed_messages.end() &&

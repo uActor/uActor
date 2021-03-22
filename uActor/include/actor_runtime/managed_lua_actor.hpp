@@ -88,6 +88,7 @@ class ManagedLuaActor : public ManagedActor {
 
   static int enqueue_wakeup_wrapper(lua_State* state);
 
+  static int queue_size_wrapper(lua_State* state);
 #if CONFIG_BENCHMARK_ENABLED
   static int testbed_log_integer_wrapper(lua_State* state);
 
@@ -123,6 +124,7 @@ class ManagedLuaActor : public ManagedActor {
             {"unsubscribe", &unsubscribe_wrapper}, {"now", &now_wrapper},
             {"encode_base64", &encode_base64},
             {"decode_base64", &decode_base64},
+            {"queue_size", &queue_size_wrapper},
 #if CONFIG_BENCHMARK_ENABLED
             {"testbed_log_integer", &testbed_log_integer_wrapper},
             {"testbed_log_double", &testbed_log_double_wrapper},

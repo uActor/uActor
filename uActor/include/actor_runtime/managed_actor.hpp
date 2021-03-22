@@ -1,5 +1,9 @@
 #pragma once
 
+#ifdef ESP_IDF
+#include <sdkconfig.h>
+#endif
+
 #include <cstdint>
 #include <deque>
 #include <functional>
@@ -60,6 +64,9 @@ class ManagedActor {
     for (uint32_t sub_id : subscriptions) {
       api->remove_subscription(_id, sub_id);
     }
+#if CONFIG_UACTOR_ENABLE_TELEMETRY
+    total_queue_size -= queue_size();
+#endif
   }
 
   virtual bool receive(PubSub::Publication&& p) = 0;
@@ -109,6 +116,10 @@ class ManagedActor {
 
   [[nodiscard]] bool initialized() const { return _initialized; }
 
+#if CONFIG_UACTOR_ENABLE_TELEMETRY
+  static std::atomic<int> total_queue_size;
+#endif
+
  protected:
   virtual bool early_internal_initialize() = 0;
   virtual bool late_internal_initialize(std::string&& code) = 0;
@@ -123,6 +134,8 @@ class ManagedActor {
   void enqueue_wakeup(uint32_t delay, std::string_view wakeup_id);
 
   void deffered_block_for(PubSub::Filter&& filter, uint32_t timeout);
+
+  uint32_t queue_size();
 
  private:
   uint32_t _id;

@@ -222,6 +222,13 @@ int ManagedLuaActor::enqueue_wakeup_wrapper(lua_State* state) {
   return 0;
 }
 
+int ManagedLuaActor::queue_size_wrapper(lua_State* state) {
+  ManagedLuaActor* actor = reinterpret_cast<ManagedLuaActor*>(
+      lua_touserdata(state, lua_upvalueindex(1)));
+
+  lua_pushinteger(state, actor->queue_size());
+  return 1;
+}
 #if CONFIG_BENCHMARK_ENABLED
 
 int ManagedLuaActor::testbed_log_integer_wrapper(lua_State* state) {

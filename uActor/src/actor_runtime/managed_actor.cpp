@@ -11,6 +11,10 @@
 
 namespace uActor::ActorRuntime {
 
+#if CONFIG_UACTOR_ENABLE_TELEMETRY
+std::atomic<int> ManagedActor::total_queue_size{0};
+#endif
+
 ManagedActor::ReceiveResult ManagedActor::receive_next_internal() {
   waiting = false;
   _timeout = UINT32_MAX;
@@ -18,6 +22,9 @@ ManagedActor::ReceiveResult ManagedActor::receive_next_internal() {
 
   auto next_message = std::move(message_queue.front());
   message_queue.pop_front();
+#if CONFIG_UACTOR_ENABLE_TELEMETRY
+  total_queue_size--;
+#endif
   // message_queue.shrink_to_fit();
   // Exit message is processed to
   // allow for any necessary cleanup
@@ -74,11 +81,16 @@ ManagedActor::ReceiveResult ManagedActor::receive_next_internal() {
 }
 
 bool ManagedActor::enqueue(PubSub::Publication&& message) {
-  if (message_queue.size() >= ACTOR_QUEUE_SOFTLIMIT) {
-    printf("Warning: Actor queue size excedes configured limit.");
+#if CONFIG_UACTOR_ENABLE_TELEMETRY
+  total_queue_size++;
+#endif
+  if (message.get_str_attr("type") == "exit") {
+    message_queue.push_front(std::move(message));
+    return true;
   }
   if (waiting) {
     if (pattern.matches(message)) {
+      // waiting = false;
       message_queue.push_front(std::move(message));
       return true;
     } else {
@@ -104,6 +116,9 @@ void ManagedActor::trigger_timeout(bool user_defined,
     p.set_attr("wakeup_id", wakeup_id);
   }
   message_queue.emplace_front(std::move(p));
+#if CONFIG_UACTOR_ENABLE_TELEMETRY
+  total_queue_size++;
+#endif
 }
 
 std::pair<bool, uint32_t> ManagedActor::early_initialize() {
@@ -167,6 +182,8 @@ void ManagedActor::delayed_publish(PubSub::Publication&& p, uint32_t delay) {
 void ManagedActor::enqueue_wakeup(uint32_t delay, std::string_view wakeup_id) {
   api->enqueue_wakeup(_id, delay, wakeup_id);
 }
+
+uint32_t ManagedActor::queue_size() { return message_queue.size(); }
 
 void ManagedActor::deffered_block_for(PubSub::Filter&& filter,
                                       uint32_t timeout) {
