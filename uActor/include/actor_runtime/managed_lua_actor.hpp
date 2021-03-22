@@ -89,6 +89,13 @@ class ManagedLuaActor : public ManagedActor {
   static int enqueue_wakeup_wrapper(lua_State* state);
 
   static int queue_size_wrapper(lua_State* state);
+
+  static int blake2s_wrapper(lua_State* state);
+
+#if CONFIG_UACTOR_ENABLE_TELEMETRY
+  static int telemetry_set_wrapper(lua_State* state);
+#endif
+
 #if CONFIG_BENCHMARK_ENABLED
   static int testbed_log_integer_wrapper(lua_State* state);
 
@@ -137,8 +144,12 @@ class ManagedLuaActor : public ManagedActor {
              &testbed_stop_timekeeping_inner_wrapper},
 #endif
 #endif
-            {"unix_timestamp", &unix_timestamp_wrapper}, {
-          "enqueue_wakeup", &enqueue_wakeup_wrapper
+#if CONFIG_UACTOR_ENABLE_TELEMETRY
+            {"telemetry_set", &telemetry_set_wrapper},
+#endif
+            {"unix_timestamp", &unix_timestamp_wrapper},
+            {"enqueue_wakeup", &enqueue_wakeup_wrapper}, {
+          "code_hash", &blake2s_wrapper
         }
       });
 };

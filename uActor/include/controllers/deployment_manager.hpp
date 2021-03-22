@@ -55,6 +55,7 @@ class DeploymentManager : public ActorRuntime::NativeActor {
     std::list<std::string> required_actors;
 
     uint32_t lifetime_subscription_id = 0;
+    uint32_t cancelation_subscription_id = 0;
     int32_t restarts = -1;
     uint32_t lifetime_end;
     bool active = false;
@@ -99,6 +100,8 @@ class DeploymentManager : public ActorRuntime::NativeActor {
   void receive_unmanaged_actor_update(const PubSub::Publication& pub);
 
   void receive_executor_update(const PubSub::Publication& pub);
+
+  void receive_deployment_cancelation(const PubSub::Publication& publication);
 
   bool requirements_check(Deployment* deployment);
 

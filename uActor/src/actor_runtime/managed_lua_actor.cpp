@@ -1,11 +1,15 @@
 #include "actor_runtime/managed_lua_actor.hpp"
 
 #include <base64.h>
+#include <blake2.h>
 
+#include <array>
 #include <cassert>
 #include <chrono>
 #include <ctime>
+#include <string_view>
 
+#include "controllers/telemetry_data.hpp"
 #include "support/logger.hpp"
 
 #if CONFIG_BENCHMARK_ENABLED
@@ -229,6 +233,24 @@ int ManagedLuaActor::queue_size_wrapper(lua_State* state) {
   lua_pushinteger(state, actor->queue_size());
   return 1;
 }
+
+int ManagedLuaActor::blake2s_wrapper(lua_State* state) {
+  ManagedLuaActor* actor = reinterpret_cast<ManagedLuaActor*>(
+      lua_touserdata(state, lua_upvalueindex(1)));
+
+  auto code = std::string_view(lua_tostring(state, 1));
+
+  std::array<char, 32> out_buffer;
+
+  blake2s(out_buffer.data(), 32, code.data(), code.length(), code.data(), 0);
+
+  lua_pushstring(state, base64_encode(std::string_view(out_buffer.data(),
+                                                       out_buffer.size()))
+                            .data());
+
+  return 1;
+}
+
 #if CONFIG_BENCHMARK_ENABLED
 
 int ManagedLuaActor::testbed_log_integer_wrapper(lua_State* state) {
@@ -276,6 +298,15 @@ int ManagedLuaActor::testbed_stop_timekeeping_inner_wrapper(lua_State* state) {
   return 0;
 }
 #endif
+#endif
+
+#if CONFIG_UACTOR_ENABLE_TELEMETRY
+int ManagedLuaActor::telemetry_set_wrapper(lua_State* state) {
+  auto variable = std::string(lua_tostring(state, 1));
+  auto value = lua_tonumber(state, 2);
+  uActor::Controllers::TelemetryData::set(variable, value);
+  return 0;
+}
 #endif
 
 bool ManagedLuaActor::createActorEnvironment(

@@ -45,6 +45,8 @@ void DeploymentManager::receive(const PubSub::Publication& publication) {
     receive_unmanaged_actor_update(publication);
   } else if (publication.get_str_attr("type") == "executor_update") {
     receive_executor_update(publication);
+  } else if (publication.get_str_attr("type") == "deployment_cancelation") {
+    receive_deployment_cancelation(publication);
   }
 }
 
@@ -151,6 +153,26 @@ void DeploymentManager::receive_deployment(
       if (deployment.lifetime_end > 0) {
         enqueue_lifetime_end_wakeup(&deployment);
       }
+    }
+  }
+}
+
+void DeploymentManager::receive_deployment_cancelation(
+    const PubSub::Publication& publication) {
+  if (!publication.has_attr("deployment_name")) {
+    return;
+  }
+
+  auto deployment_name = *publication.get_str_attr("deployment_name");
+
+  auto deployment_it = deployments.find(std::string(deployment_name));
+
+  if (deployment_it != deployments.end()) {
+    bool was_active = deployment_it->second.active;
+    deactivate_deployment(&deployment_it->second);
+    _active_deployments--;
+    if (!was_active) {
+      remove_deployment(&deployment_it->second);
     }
   }
 }
@@ -417,6 +439,10 @@ void DeploymentManager::remove_deployment(Deployment* deployment) {
     unsubscribe(deployment->lifetime_subscription_id);
     subscriptions.erase(deployment->lifetime_subscription_id);
     deployment->lifetime_subscription_id = 0;
+  }
+
+  if (deployment->cancelation_subscription_id > 0) {
+    unsubscribe(deployment->cancelation_subscription_id);
   }
 
   for (const auto& actor_type : deployment->required_actors) {

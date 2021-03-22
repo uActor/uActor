@@ -19,7 +19,7 @@ end
 function receive(message)
 
   location_utils_receive_hook(message, got_location_data)
-  
+
   if(message.type == "fake_sensor_value") then
     --- print highest delay from publication to this stage
     processing_delay = calculate_time_diff(message.time_sec, message.time_nsec)
@@ -66,12 +66,22 @@ function receive(message)
   end
 
   if(message.type == "init") then
+    last_queue_size_watermark = 0
+    sub_id = 0
     print("INIT Aggregator "..INCOMMING_AGGREGATION_LEVEL)
     reset_collection_state()
   end
 
   if(message.type == "exit") then
     print("Aggregator exit "..INCOMMING_AGGREGATION_LEVEL)
+  end
+
+  local qs = queue_size()
+  if(qs > last_queue_size_watermark + 5000) then
+    last_queue_size_watermark = qs
+    publish(Publication.new("type", "aggregator_overload", "overload_level", AGGREGATION_LEVEL))
+  elseif((qs < last_queue_size_watermark - 5000) or qs == 0) then
+    last_queue_size_watermark = qs
   end
 end
 
@@ -94,10 +104,10 @@ function got_location_data()
   end
 
   subscription["aggregation_level"] = INCOMMING_AGGREGATION_LEVEL
-  subscribe(subscription)
+  sub_id = subscribe(subscription)
 end
 
-function reset_collection_state() 
+function reset_collection_state()
   collected_values = 0
   store = {}
   min_sec = 0x7FFFFFFF

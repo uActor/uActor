@@ -1,0 +1,10 @@
+type: deployment
+name: data_processing_controller
+ttl: 1200000
+actor_type:  data_processing_controller_actor
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "aggregator_controller.lua"
+constraints:
+  - "node_type": "building_server"
+  - "building": "fmi"
