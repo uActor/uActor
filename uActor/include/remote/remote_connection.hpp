@@ -21,6 +21,7 @@ extern "C" {
 #include "forwarding_strategy.hpp"
 #include "pubsub/publication_factory.hpp"
 #include "remote/sequence_info.hpp"
+#include "subscription_processors/subscription_processor.hpp"
 
 namespace uActor::Remote {
 
@@ -55,6 +56,9 @@ class RemoteConnection {
 
   void process_data(uint32_t len, char* data);
 
+  static std::map<std::string, std::string> local_location_labels;
+  static std::list<std::vector<std::string>> clusters;
+
  private:
   uint32_t local_id;
   int sock = 0;
@@ -70,13 +74,20 @@ class RemoteConnection {
   ForwarderSubscriptionAPI* handle;
   std::set<uint32_t> subscription_ids;
   uint32_t update_sub_id = 0;
-  uint32_t add_sub_id = 0;
-  uint32_t remove_sub_id = 0;
+
+  uint32_t local_sub_added_id = 0;
+  uint32_t local_sub_removed_id = 0;
+  uint32_t remote_subs_added_id = 0;
+  uint32_t remote_subs_removed_id = 0;
 
   // Peer related
   std::string partner_node_id;
+  std::map<std::string, std::string> partner_location_labels;
   uint32_t last_read_contact = 0;
   uint32_t last_write_contact = 0;
+
+  std::vector<std::unique_ptr<SubscriptionProcessor>>
+      egress_subscription_processors;
 
   // Connection statemachine
   ProcessingState state{empty};
@@ -97,13 +108,15 @@ class RemoteConnection {
   std::queue<std::shared_ptr<std::vector<char>>> write_buffer;
   size_t write_offset = 0;
 
-  void process_publication(PubSub::Publication&& p);
+  void process_remote_publication(PubSub::Publication&& p);
 
-  void update_subscriptions(PubSub::Publication&& p);
-  void add_subscriptions(PubSub::Publication&& p);
-  void remove_subscriptions(PubSub::Publication&& p);
+  void handle_local_subscription_removed(const PubSub::Publication& p);
+  void handle_local_subscription_added(const PubSub::Publication& p);
+  void handle_remote_subscriptions_removed(const PubSub::Publication& p);
+  void handle_remote_subscriptions_added(const PubSub::Publication& p);
 
-  friend uActor::Remote::TCPForwarder;
+  void handle_remote_hello(PubSub::Publication&& p);
+
   friend uActor::Remote::TCPForwarder;
 };
 

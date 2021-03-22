@@ -47,11 +47,14 @@ class TCPForwarder : public uActor::Remote::ForwarderSubscriptionAPI {
 
   void receive(PubSub::MatchedPublication&& m);
 
-  uint32_t add_subscription(uint32_t local_id, PubSub::Filter&& filter,
-                            std::string node_id) override;
+  uint32_t add_remote_subscription(uint32_t local_id, PubSub::Filter&& filter,
+                                   std::string node_id) override;
+  void remove_remote_subscription(uint32_t local_id, uint32_t sub_id,
+                                  std::string node_id) override;
 
-  void remove_subscription(uint32_t local_id, uint32_t sub_id,
-                           std::string node_id) override;
+  uint32_t add_local_subscription(uint32_t local_id,
+                                  PubSub::Filter&& filter) override;
+  void remove_local_subscription(uint32_t local_id, uint32_t sub_id) override;
 
  private:
   int forwarder_subscription_id;

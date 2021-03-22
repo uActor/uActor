@@ -107,6 +107,34 @@ void TCPForwarder::receive(PubSub::MatchedPublication&& m) {
     }
   }
 
+  if (m.publication.get_str_attr("type") == "local_subscription_added") {
+    auto s_receivers = subscription_mapping.find(m.subscription_id);
+    if (s_receivers != subscription_mapping.end()) {
+      auto sub_ids = s_receivers->second;
+      for (const auto& sub_id : sub_ids) {
+        auto remote_it = remotes.find(sub_id);
+        if (remote_it != remotes.end()) {
+          remote_it->second.handle_local_subscription_added(m.publication);
+        }
+      }
+    }
+    return;
+  }
+
+  if (m.publication.get_str_attr("type") == "local_subscription_removed") {
+    auto s_receivers = subscription_mapping.find(m.subscription_id);
+    if (s_receivers != subscription_mapping.end()) {
+      auto sub_ids = s_receivers->second;
+      for (const auto& sub_id : sub_ids) {
+        auto remote_it = remotes.find(sub_id);
+        if (remote_it != remotes.end()) {
+          remote_it->second.handle_local_subscription_removed(m.publication);
+        }
+      }
+    }
+    return;
+  }
+
   if (m.subscription_id == peer_announcement_subscription_id) {
     Logger::trace("TCP-FORWARDER", "ACTOR-RECEIVE", "peer announcement");
     if (m.publication.get_str_attr("type") == "tcp_client_connect" &&
@@ -161,9 +189,33 @@ void TCPForwarder::receive(PubSub::MatchedPublication&& m) {
   }
 }
 
-uint32_t TCPForwarder::add_subscription(uint32_t local_id,
-                                        PubSub::Filter&& filter,
-                                        std::string node_id) {
+void TCPForwarder::remove_local_subscription(uint32_t local_id,
+                                             uint32_t sub_id) {
+  auto it = subscription_mapping.find(sub_id);
+  if (it != subscription_mapping.end()) {
+    it->second.erase(local_id);
+    if (it->second.empty()) {
+      handle.unsubscribe(sub_id);
+      subscription_mapping.erase(it);
+    }
+  }
+}
+
+uint32_t TCPForwarder::add_local_subscription(uint32_t local_id,
+                                              PubSub::Filter&& filter) {
+  uint32_t sub_id = handle.subscribe(std::move(filter));
+  auto entry = subscription_mapping.find(sub_id);
+  if (entry != subscription_mapping.end()) {
+    entry->second.insert(local_id);
+  } else {
+    subscription_mapping.emplace(sub_id, std::set<uint32_t>{local_id});
+  }
+  return sub_id;
+}
+
+uint32_t TCPForwarder::add_remote_subscription(uint32_t local_id,
+                                               PubSub::Filter&& filter,
+                                               std::string node_id) {
   uint32_t sub_id = handle.subscribe(std::move(filter), node_id);
   auto entry = subscription_mapping.find(sub_id);
   if (entry != subscription_mapping.end()) {
@@ -174,8 +226,9 @@ uint32_t TCPForwarder::add_subscription(uint32_t local_id,
   return sub_id;
 }
 
-void TCPForwarder::remove_subscription(uint32_t local_id, uint32_t sub_id,
-                                       std::string /*node_id*/) {
+void TCPForwarder::remove_remote_subscription(uint32_t local_id,
+                                              uint32_t sub_id,
+                                              std::string /*node_id*/) {
   auto it = subscription_mapping.find(sub_id);
   if (it != subscription_mapping.end()) {
     it->second.erase(local_id);

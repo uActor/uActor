@@ -13,6 +13,14 @@
 #include "constraint.hpp"
 #include "publication.hpp"
 
+namespace uActor::Remote {
+class SubscriptionFilter;
+class NodeLocalFilterDrop;
+class NodeIdAggregator;
+class ClusterBarrier;
+class ClusterAggregator;
+};  // namespace uActor::Remote
+
 namespace uActor::PubSub {
 
 template <template <typename> typename Allocator>
@@ -87,6 +95,10 @@ class Filter {
 
   [[nodiscard]] bool operator==(const Filter& other) const;
 
+  [[nodiscard]] bool operator!=(const Filter& other) const {
+    return !operator==(other);
+  }
+
   [[nodiscard]] const std::vector<
       Constraint, std::scoped_allocator_adaptor<Allocator<Constraint>>>&
   required_constraints() const {
@@ -112,6 +124,11 @@ class Filter {
   template <template <typename> typename Allocator>
   friend class Subscription;
   friend class InternalFilter;
+  friend class Remote::SubscriptionFilter;
+  friend class Remote::NodeLocalFilterDrop;
+  friend class Remote::NodeIdAggregator;
+  friend class Remote::ClusterBarrier;
+  friend class Remote::ClusterAggregator;
   friend Router;
 };
 }  // namespace uActor::PubSub

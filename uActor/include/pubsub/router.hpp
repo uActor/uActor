@@ -36,8 +36,9 @@ class Router {
 
   ReceiverHandle new_subscriber();
 
-  std::vector<std::string> subscriptions_for(std::string_view node_id,
-                                             uint32_t max_size = 0);
+  std::vector<std::string> subscriptions_for(
+      std::string_view node_id, std::function<bool(Filter*)> processing_chain,
+      uint32_t max_size = 0);
 
   uint32_t find_sub_id(Filter&& filter);
   uint32_t number_of_subscriptions();
@@ -99,6 +100,9 @@ class Router {
                                   AString include);
   void publish_subscription_removed(const InternalFilter& filter,
                                     AString exclude, AString include);
+
+  void publish_local_subscription_added(const ASubscription& subscription);
+  void publish_local_subscription_removed(const ASubscription& subscription);
 };
 
 }  // namespace uActor::PubSub

@@ -123,6 +123,12 @@ boost::program_options::variables_map parse_arguments(int arg_count,
     "Add a node label ( key:value, can be specified many times)."
   )
   (
+    "cluster-labels",
+    boost::program_options::value<std::string>(),
+    "Comma-separated list of labels that are used"
+    "for cluster aggregation and subscription containment."
+  )
+  (
     "tcp-port",
     boost::program_options::value<uint16_t>(),
     "Set the port the TCP server will listen on."
@@ -351,6 +357,13 @@ int main(int arg_count, char** args) {
     uActor::PubSub::Router::get_instance().publish(std::move(label_update));
   }
 
+  if (arguments.count("cluster-labels")) {
+    auto raw = arguments["cluster-labels"].as<std::string>();
+    auto raw_split = uActor::Support::StringHelper::string_split(raw);
+    uActor::Remote::RemoteConnection::clusters.emplace_back(raw_split.begin(),
+                                                            raw_split.end());
+  }
+
   if (arguments.count("node-label")) {
     auto raw_labels = arguments["node-label"].as<std::vector<std::string>>();
 
@@ -360,6 +373,12 @@ int main(int arg_count, char** args) {
 
       std::string key = raw_label.substr(0, split_pos);
       std::string value = raw_label.substr(split_pos + 1);
+
+      for (const auto& cluster : uActor::Remote::RemoteConnection::clusters) {
+        if (std::find(cluster.begin(), cluster.end(), key) != cluster.end()) {
+          uActor::Remote::RemoteConnection::local_location_labels[key] = value;
+        }
+      }
 
       uActor::PubSub::Publication label_update(uActor::BoardFunctions::NODE_ID,
                                                "root", "1");

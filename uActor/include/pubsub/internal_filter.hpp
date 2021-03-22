@@ -9,9 +9,9 @@
 
 #include "allocator_configuration.hpp"
 #include "constraint.hpp"
+#include "filter.hpp"
 #include "publication.hpp"
 #include "support/memory_manager.hpp"
-#include "filter.hpp"
 
 namespace uActor::PubSub {
 

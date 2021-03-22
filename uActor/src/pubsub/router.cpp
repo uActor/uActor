@@ -104,8 +104,9 @@ void Router::publish_internal(Publication&& publication) {
 #endif
 }
 
-std::vector<std::string> Router::subscriptions_for(std::string_view node_id,
-                                                   uint32_t max_size) {
+std::vector<std::string> Router::subscriptions_for(
+    std::string_view node_id, std::function<bool(Filter*)> processing_chain,
+    uint32_t max_size) {
   std::shared_lock lock(mtx);
   std::vector<std::string> serialized_sub{std::string()};
   bool send_node_id = false;
@@ -119,31 +120,15 @@ std::vector<std::string> Router::subscriptions_for(std::string_view node_id,
 
   for (auto& sub_pair : subscriptions) {
     auto& sub = sub_pair.second;
-    bool skip = false;
+
     // Only subscriptions that could be fulfilled
     auto n = sub.nodes();
     if (n.size() >= 2 || n.find(internal_node_id) == n.end()) {
-      for (const auto& constraint_ptr : sub.filter.required) {
-        // Don't forward local subscriptions
-        if (constraint_ptr->attribute() == "publisher_node_id") {
-          if (std::holds_alternative<std::string_view>(
-                  constraint_ptr->operand()) &&
-              std::get<std::string_view>(constraint_ptr->operand()) ==
-                  BoardFunctions::NODE_ID) {
-            skip = true;
-          }
-        }
-        // Overapproximate node_id based subscriptions as they would otherwise
-        // floud the routing tables
-        if (constraint_ptr->attribute() == "node_id" &&
-            std::get<std::string_view>(constraint_ptr->operand()) ==
-                BoardFunctions::NODE_ID) {
-          send_node_id = true;
-          skip = true;
-        }
-      }
-      if (!skip) {
-        auto current = sub.filter.serialize();
+      Filter filter = *Filter::deserialize(sub.filter.serialize());
+
+      if (!processing_chain(&filter)) {
+        auto current = filter.serialize();
+
         if (max_size > 0 &&
             current.size() + serialized_sub.back().size() > max_size) {
           serialized_sub.emplace_back();
@@ -155,17 +140,6 @@ std::vector<std::string> Router::subscriptions_for(std::string_view node_id,
           serialized_sub.back() = std::move(current);
         }
       }
-    }
-  }
-
-  if (send_node_id) {
-    if (!serialized_sub.back().empty()) {
-      serialized_sub.back() +=
-          "&" +
-          Filter{Constraint{"node_id", BoardFunctions::NODE_ID}}.serialize();
-    } else {
-      serialized_sub.back() =
-          Filter{Constraint{"node_id", BoardFunctions::NODE_ID}}.serialize();
     }
   }
 
@@ -279,11 +253,9 @@ uint32_t Router::remove_subscription(uint32_t sub_id, Receiver* r,
 
     if (empty_sub) {
       // Index maintenance
-
       if (sub.count_required() == 0) {
         no_requirements.erase(&sub);
       }
-
       for (auto constraint_ptr : sub.filter.required) {
         if (auto constraint_it = constraints.find(constraint_ptr->attribute());
             constraint_it != constraints.end()) {
@@ -292,7 +264,6 @@ uint32_t Router::remove_subscription(uint32_t sub_id, Receiver* r,
           }
         }
       }
-
       for (auto constraint_ptr : sub.filter.optional) {
         if (auto constraint_it = constraints.find(constraint_ptr->attribute());
             constraint_it != constraints.end()) {
@@ -303,7 +274,6 @@ uint32_t Router::remove_subscription(uint32_t sub_id, Receiver* r,
       }
 
       auto filter = std::move(sub.filter);
-
       subscriptions.erase(sub.subscription_id);
 
       publish_subscription_removed(filter, "", "");
@@ -327,38 +297,9 @@ void Router::publish_subscription_added(const Filter& filter, AString exclude,
                                         AString include) {
   std::string serialized = filter.serialize();
 
-  // Sub optimization
-  for (const auto& constraint : filter.required) {
-    if (constraint.attribute() == "publisher_node_id") {
-      if (std::holds_alternative<std::string_view>(constraint.operand()) &&
-          std::get<std::string_view>(constraint.operand()) ==
-              BoardFunctions::NODE_ID) {
-        include = "local";
-      }
-    }
-    // Overapproximate node_id
-    if (constraint.attribute() == "node_id" &&
-        std::get<std::string_view>(constraint.operand()) ==
-            BoardFunctions::NODE_ID) {
-      for (auto& [node_id_string, node_id_info] : peer_node_ids) {
-        if (node_id_string != exclude && !node_id_info.first) {
-          Publication update{BoardFunctions::NODE_ID, "router", "1"};
-          update.set_attr("type", "subscriptions_added");
-          update.set_attr("serialized_subscriptions",
-                          Filter{Constraint{"node_id", BoardFunctions::NODE_ID}}
-                              .serialize());
-          update.set_attr("include_node_id", node_id_string);
-          publish_internal(std::move(update));
-          node_id_info.first = true;
-        }
-      }
-      return;
-    }
-  }
-
   Publication update{BoardFunctions::NODE_ID, "router", "1"};
-  update.set_attr("type", "subscriptions_added");
-  update.set_attr("serialized_subscriptions", std::move(serialized));
+  update.set_attr("type", "local_subscription_added");
+  update.set_attr("serialized_subscription", std::move(serialized));
   if (exclude.length() != 0) {
     update.set_attr("exclude_node_id", exclude);
   }
@@ -370,27 +311,9 @@ void Router::publish_subscription_added(const Filter& filter, AString exclude,
 
 void Router::publish_subscription_removed(const InternalFilter& filter,
                                           AString exclude, AString include) {
-  // Sub optimization
-  for (auto constraint_ptr : filter.required) {
-    if (constraint_ptr->attribute() == "publisher_node_id") {
-      if (std::holds_alternative<std::string_view>(constraint_ptr->operand()) &&
-          std::get<std::string_view>(constraint_ptr->operand()) ==
-              BoardFunctions::NODE_ID) {
-        include = "local";
-      }
-    }
-    // TODO(raphaelhetzel) Keep track of the published node ids and remove them
-    // as required
-    if (constraint_ptr->attribute() == "node_id" &&
-        std::get<std::string_view>(constraint_ptr->operand()) ==
-            BoardFunctions::NODE_ID) {
-      return;
-    }
-  }
-
   Publication update{BoardFunctions::NODE_ID, "router", "1"};
-  update.set_attr("type", "subscriptions_removed");
-  update.set_attr("serialized_subscriptions", filter.serialize());
+  update.set_attr("type", "local_subscription_removed");
+  update.set_attr("serialized_subscription", filter.serialize());
   if (exclude.length() != 0) {
     update.set_attr("exclude_node_id", exclude);
   }
