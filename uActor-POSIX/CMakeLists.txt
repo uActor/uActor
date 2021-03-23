@@ -113,7 +113,7 @@ target_compile_options(uActor PUBLIC -DCONFIG_BENCHMARK_ENABLED=1)
 
 if (NOT TARGET InfluxData::InfluxDB)
   set(INFLUXCXX_TESTING OFF CACHE INTERNAL "" FORCE)
-  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../vendor/influxdb-cxx ${CMAKE_CURRENT_BINARY_DIR}/lib_influxdb)
+  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../vendor/influxdb-cxx ${CMAKE_CURRENT_BINARY_DIR}/lib_influxdb EXCLUDE_FROM_ALL)
 endif()
 target_link_libraries(uActorBin InfluxData::InfluxDB)
 
