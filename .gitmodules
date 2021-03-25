@@ -34,6 +34,6 @@
 [submodule "vendor/frozen"]
 	path = vendor/frozen
 	url = https://github.com/serge-sans-paille/frozen.git
-[submodule "vendor/blake2/BLAKE2"]
-	path = vendor/blake2/BLAKE2
+[submodule "vendor/blake2/blake2_impl"]
+	path = vendor/blake2/blake2_impl
 	url = https://github.com/BLAKE2/BLAKE2.git
