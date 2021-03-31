@@ -113,6 +113,7 @@ conan_cmake_install(PATH_OR_REFERENCE .
 find_package(Threads REQUIRED)
 set(Boost_USE_STATIC_LIBS ON)
 find_package(Boost COMPONENTS program_options REQUIRED)
+find_package(CURL REQUIRED)
 
 add_executable(uActorBin ${SOURCES} ${HEADERS})
 target_include_directories(uActorBin PUBLIC "include")
@@ -143,7 +144,7 @@ endif()
 target_link_libraries(uActorBin InfluxData::InfluxDB)
 
 target_link_libraries(uActorBin uActor)
-
+target_link_libraries(uActorBin CURL::libcurl)
 target_link_libraries(uActorBin Threads::Threads)
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "9.1")
