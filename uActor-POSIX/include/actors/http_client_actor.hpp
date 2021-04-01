@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 #include <thread>
 
 #include "pubsub/receiver_handle.hpp"
@@ -21,10 +22,10 @@ class HTTPClientActor {
 
   // todo if announce deannounce HTTPClient Actor
   ~HTTPClientActor() = default;
-
+  // todo check with raphael if it is ok to allow non const refs
   [[nodiscard]] uint8_t get_request(const std::string& url,
-                                    std::string& response,
-                                    std::string& header) const;
+                                    std::string* response,
+                                    std::string* header) const;
   void thread_function();
   // returns if HTTPClientActor is functional
   explicit operator bool() const;

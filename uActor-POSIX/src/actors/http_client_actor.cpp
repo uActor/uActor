@@ -23,7 +23,7 @@ namespace uActor::HTTP {
 size_t write_function(void* ptr, size_t size, size_t nmemb, std::string* data) {
   data->append(static_cast<char*>(ptr), size * nmemb);
   return size * nmemb;
-};
+}
 
 HTTPClientActor::HTTPClientActor()
     : handle(PubSub::Router::get_instance().new_subscriber()),
@@ -47,12 +47,12 @@ void HTTPClientActor::thread_function() {
       const auto& p = result->publication;
       assert("http_reqest" == p.get_str_attr("actor_type"));
       auto request_type = p.get_str_attr("http_method");
-      if (not request_type.has_value()) {
+      if (!request_type.has_value()) {
         continue;
       }
 
       auto request_id = p.get_int_attr("request_id");
-      if (not request_id.has_value()) {
+      if (!request_id.has_value()) {
         continue;
       }
 
@@ -65,7 +65,7 @@ void HTTPClientActor::thread_function() {
         std::string http_response;
         std::string http_header;
         uint8_t response_code =
-            this->get_request(request_url, http_response, http_header);
+            this->get_request(request_url, &http_response, &http_header);
         // todo check if name is fine
         PubSub::Publication p(BoardFunctions::NODE_ID, "core.io,http", "1");
         p.set_attr("type", "http_response");
@@ -88,15 +88,15 @@ void HTTPClientActor::thread_function() {
 }
 
 uint8_t HTTPClientActor::get_request(const std::string& url,
-                                     std::string& response,
-                                     std::string& header) const {
+                                     std::string* response,
+                                     std::string* header) const {
   assert(*this);
   curl_easy_setopt(this->curl, CURLOPT_URL, url.c_str());
   curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1L);
 
   curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_function);
-  curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
-  curl_easy_setopt(curl, CURLOPT_HEADERDATA, &header);
+  curl_easy_setopt(curl, CURLOPT_WRITEDATA, response);
+  curl_easy_setopt(curl, CURLOPT_HEADERDATA, header);
 
   const auto code = curl_easy_perform(curl);
   int64_t http_code = 0;
