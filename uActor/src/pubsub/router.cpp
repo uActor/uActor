@@ -26,7 +26,10 @@ void Router::publish(Publication&& publication) {
 
 void Router::publish_internal(Publication&& publication) {
   Counter<Allocator> c;
+
+  uint8_t current_priority = 0;
   std::list<std::pair<Receiver*, uint32_t>> current_receivers;
+
 #if CONFIG_BENCHMARK_BREAKDOWN
   testbed_start_timekeeping(2);
 #endif
@@ -61,10 +64,17 @@ void Router::publish_internal(Publication&& publication) {
   }
   testbed_start_timekeeping(7);
 #endif
+
   for (const auto& [subscription_ptr, counts] : c) {
     if (counts.required == subscription_ptr->count_required()) {
       if (counts.optional == subscription_ptr->count_optional() ||
           subscription_ptr->filter.check_optionals(publication)) {
+        if (subscription_ptr->priority > current_priority) {
+          current_priority = subscription_ptr->priority;
+          current_receivers.clear();
+        } else if (subscription_ptr->priority < current_priority) {
+          continue;
+        }
         for (auto& receiver : subscription_ptr->receivers) {
           current_receivers.emplace_back(receiver.first,
                                          subscription_ptr->subscription_id);
@@ -77,6 +87,12 @@ void Router::publish_internal(Publication&& publication) {
   for (const auto& sub : no_requirements) {
     if (c.find(sub) == c.end()) {
       if (sub->filter.check_optionals(publication)) {
+        if (sub->priority > current_priority) {
+          current_priority = sub->priority;
+          current_receivers.clear();
+        } else if (sub->priority < current_priority) {
+          continue;
+        }
         for (auto& receiver : sub->receivers) {
           current_receivers.emplace_back(receiver.first, sub->subscription_id);
         }
@@ -160,15 +176,18 @@ uint32_t Router::find_sub_id(Filter&& filter) {
 uint32_t Router::number_of_subscriptions() { return subscriptions.size(); }
 
 uint32_t Router::add_subscription(Filter&& f, Receiver* r,
-                                  std::string subscriber_node_id) {
+                                  std::string subscriber_node_id,
+                                  uint8_t priority) {
   std::unique_lock lck(mtx);
   auto [res_it, _inserted] = peer_node_ids.try_emplace(
       AString(subscriber_node_id), false, next_node_id++);
   uint32_t internal_node_id = res_it->second.second;
 
-  if (auto it = std::find_if(
-          subscriptions.begin(), subscriptions.end(),
-          [&](const auto& sub_pair) { return sub_pair.second.filter == f; });
+  if (auto it = std::find_if(subscriptions.begin(), subscriptions.end(),
+                             [&](const auto& sub_pair) {
+                               return sub_pair.second.filter == f &&
+                                      sub_pair.second.priority == priority;
+                             });
       it != subscriptions.end()) {
     Subscription<Allocator>& sub = it->second;
     bool updated = sub.add_receiver(r, internal_node_id);
@@ -195,7 +214,7 @@ uint32_t Router::add_subscription(Filter&& f, Receiver* r,
   } else {  // new subscription
     uint32_t id = next_sub_id++;
     auto [sub_it, inserted] = subscriptions.try_emplace(
-        id, id, r, internal_node_id);  // Filters not set yet;
+        id, id, r, internal_node_id, priority);  // Filters not set yet;
 
     std::vector<std::shared_ptr<const Constraint>,
                 Allocator<std::shared_ptr<const Constraint>>>

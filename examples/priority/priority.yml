@@ -1,0 +1,23 @@
+type: deployment
+name: de.tum.test.prio
+ttl:  60000
+actor_type:  de.tum.test.prio.actor
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "priority.lua"
+---
+type: deployment
+name: de.tum.test.low_prio
+ttl:  60000
+actor_type:  de.tum.test.low_prio.actor
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "low_priority.lua"
+---
+type: deployment
+name: de.tum.test.blocker
+ttl:  60000
+actor_type:  de.tum.test.blocker.actor
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "deployment_blocker.lua"

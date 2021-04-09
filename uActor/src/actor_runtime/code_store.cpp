@@ -9,8 +9,8 @@
 
 namespace uActor::ActorRuntime {
 
-std::optional<CodeHandle> CodeStore::retrieve(
-    const CodeIdentifier& identifier) {
+std::optional<CodeHandle> CodeStore::retrieve(const CodeIdentifier& identifier,
+                                              bool use_hook) {
   std::unique_lock lck(mtx);
   auto stored_result = _store.find(identifier);
   if (stored_result != _store.end()) {
@@ -18,10 +18,15 @@ std::optional<CodeHandle> CodeStore::retrieve(
       return CodeHandle(std::string_view(stored_result->second.code),
                         std::move(lck));
     } else {
-      code_unavailable_hook(identifier);
+      if (use_hook) {
+        code_unavailable_hook(identifier);
+      }
       return std::nullopt;
     }
   } else {
+    if (use_hook) {
+      code_unavailable_hook(identifier);
+    }
     return std::nullopt;
   }
 }

@@ -17,13 +17,17 @@ void NativeActor::publish(PubSub::Publication&& p) {
   actor_wrapper->publish(std::move(p));
 }
 
+void NativeActor::republish(PubSub::Publication&& p) {
+  actor_wrapper->republish(std::move(p));
+}
+
 void NativeActor::delayed_publish(PubSub::Publication&& publication,
                                   uint32_t delay) {
   actor_wrapper->delayed_publish(std::move(publication), delay);
 }
 
-uint32_t NativeActor::subscribe(PubSub::Filter&& filter) {
-  return actor_wrapper->subscribe(std::move(filter));
+uint32_t NativeActor::subscribe(PubSub::Filter&& filter, uint8_t priority) {
+  return actor_wrapper->subscribe(std::move(filter), priority);
 }
 
 void NativeActor::unsubscribe(uint32_t subscription_id) {

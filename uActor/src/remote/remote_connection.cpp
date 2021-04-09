@@ -23,6 +23,7 @@
 #include "remote/subscription_processors/cluster_barrier.hpp"
 #include "remote/subscription_processors/node_id_aggregator.hpp"
 #include "remote/subscription_processors/node_local_filter_drop.hpp"
+#include "remote/subscription_processors/optional_constraint_drop.hpp"
 #include "support/logger.hpp"
 
 namespace uActor::Remote {
@@ -436,6 +437,11 @@ void RemoteConnection::handle_remote_hello(PubSub::Publication&& p) {
           BoardFunctions::NODE_ID, partner_node_id, std::move(cl),
           KeyList{std::string("node_id")}));
     }
+    egress_subscription_processors.push_back(
+        std::make_unique<OptionalConstraintDrop>(
+            BoardFunctions::NODE_ID, partner_node_id,
+            std::set<PubSub::Constraint>{
+                {"node_id", BoardFunctions::NODE_ID}}));
 
     for (const auto& chunk : PubSub::Router::get_instance().subscriptions_for(
              partner_node_id,

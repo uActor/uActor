@@ -103,6 +103,12 @@ void DeploymentManager::receive_deployment(
         uActor::Support::Logger::debug("DEPLOYMENT-MANAGER",
                                        "RECEIVE-DEPLOYMENT", "New Deployment");
 
+        deployment.cancelation_subscription_id = subscribe(PubSub::Filter{
+            PubSub::Constraint{"type", "deployment_cancelation"},
+            PubSub::Constraint{"node_id", node_id(),
+                               PubSub::ConstraintPredicates::EQ, true},
+            PubSub::Constraint{"deployment_name", deployment.name}});
+
         if (actor_code) {
 #if CONFIG_UACTOR_OPTIMIZATIONS_DIRECT_CODE_STORE
           push_code_package(deployment, *actor_code);

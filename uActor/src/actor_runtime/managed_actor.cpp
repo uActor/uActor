@@ -30,11 +30,11 @@ ManagedActor::ReceiveResult ManagedActor::receive_next_internal() {
   // allow for any necessary cleanup
   bool is_exit = next_message.get_str_attr("type") == "exit";
   bool success = false;
-  if (next_message.get_str_attr("type") == "fetch_actor_code_response") {
+  if (next_message.get_str_attr("type") == "code_fetch_response") {
     waiting_for_code = false;
-    if (next_message.get_str_attr("actor_code_type") == actor_type()) {
+    if (next_message.get_str_attr("fetch_actor_type") == actor_type()) {
       success = late_initialize(
-          std::string(*next_message.get_str_attr("actor_code")));
+          std::string(*next_message.get_str_attr("fetch_actor_code")));
     } else {
       Support::Logger::fatal("MANAGED-ACTOR", "CODE-FETCH",
                              "Received wrong code package.\n");
@@ -45,16 +45,18 @@ ManagedActor::ReceiveResult ManagedActor::receive_next_internal() {
       Support::Logger::warning("MANAGED-ACTOR", "CODE-FETCH", "RETRY");
       trigger_code_fetch();
       code_fetch_retries++;
+      return ManagedActor::ReceiveResult(false, _timeout);
     } else {
       Support::Logger::warning("MANAGED-ACTOR", "CODE-FETCH", "FAILED");
       success = false;
     }
   } else {
-    if (!initialized()) {
-      wakeup();
+    if (!initialized() && !wakeup()) {
+      message_queue.emplace_front(std::move(next_message));
+    } else {
+      success = this->receive(std::move(next_message));
+      hibernate();
     }
-    success = this->receive(std::move(next_message));
-    hibernate();
   }
   if (!success || is_exit) {
     if (success) {
@@ -143,22 +145,21 @@ bool ManagedActor::late_initialize(std::string&& code) {
 
 void ManagedActor::trigger_code_fetch() {
   waiting_for_code = true;
-  Support::Logger::trace("MANAGED-ACTOR", "LATE-CODE-FETCH",
-                         "trigger code fetch");
+  Support::Logger::info("MANAGED-ACTOR", "LATE-CODE-FETCH",
+                        "trigger code fetch");
   deffered_block_for(
-      PubSub::Filter{PubSub::Constraint("type", "fetch_actor_code_response")},
-      10000);
+      PubSub::Filter{PubSub::Constraint("type", "code_fetch_response")}, 10000);
   PubSub::Publication fetch_code(node_id(), actor_type(), instance_id());
-  fetch_code.set_attr("node_id", node_id());
-  fetch_code.set_attr("command", "fetch_actor_code");
-  fetch_code.set_attr("actor_code_type", std::string_view(_actor_type));
-  fetch_code.set_attr("actor_code_version", std::string_view(_actor_version));
-  fetch_code.set_attr("actor_code_runtime_type", actor_runtime_type());
+  // fetch_code.set_attr("node_id", node_id());
+  fetch_code.set_attr("type", "code_fetch_request");
+  fetch_code.set_attr("fetch_actor_type", std::string_view(_actor_type));
+  fetch_code.set_attr("fetch_actor_version", std::string_view(_actor_version));
+  fetch_code.set_attr("fetch_actor_runtime_type", actor_runtime_type());
   publish(std::move(fetch_code));
 }
 
-uint32_t ManagedActor::subscribe(PubSub::Filter&& f) {
-  uint32_t sub_id = api->add_subscription(_id, std::move(f));
+uint32_t ManagedActor::subscribe(PubSub::Filter&& f, uint8_t priority) {
+  uint32_t sub_id = api->add_subscription(_id, std::move(f), priority);
   subscriptions.insert(sub_id);
   return sub_id;
 }
@@ -172,6 +173,13 @@ void ManagedActor::publish(PubSub::Publication&& p) {
   p.set_attr("publisher_node_id", _node_id);
   p.set_attr("publisher_instance_id", _instance_id);
   p.set_attr("publisher_actor_type", _actor_type);
+  PubSub::Router::get_instance().publish(std::move(p));
+}
+
+void ManagedActor::republish(PubSub::Publication&& p) {
+  p.set_attr("processor_node_id", _node_id);
+  p.set_attr("processor_instance_id", _instance_id);
+  p.set_attr("processor_actor_type", _actor_type);
   PubSub::Router::get_instance().publish(std::move(p));
 }
 

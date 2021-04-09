@@ -36,7 +36,8 @@ class Receiver {
 
   std::optional<MatchedPublication> receive(uint32_t timeout = 0);
 
-  uint32_t subscribe(Filter&& f, std::string node_id = "local");
+  uint32_t subscribe(Filter&& f, std::string node_id = "local",
+                     uint8_t priority = 0);
 
   void unsubscribe(uint32_t sub_id, std::string node_id = "");
 

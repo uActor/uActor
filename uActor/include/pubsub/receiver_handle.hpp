@@ -23,8 +23,9 @@ class ReceiverHandle {
       : receiver(std::make_unique<Receiver>(router)) {}
 
   uint32_t subscribe(Filter f,
-                     std::string_view node_id = std::string_view("local")) {
-    return receiver->subscribe(std::move(f), std::string(node_id));
+                     std::string_view node_id = std::string_view("local"),
+                     uint8_t priority = 0) {
+    return receiver->subscribe(std::move(f), std::string(node_id), priority);
   }
 
   void unsubscribe(uint32_t sub_id,

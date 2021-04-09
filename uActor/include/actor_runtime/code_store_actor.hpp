@@ -25,15 +25,12 @@ class CodeStoreActor : public NativeActor {
 
   void receive(const PubSub::Publication &publication) override;
   void receive_code_store(const PubSub::Publication &publication);
-  void receive_code_fetch(const PubSub::Publication &publication);
   void receive_lifetime_update(const PubSub::Publication &publication);
 
   void receive_code_unavailable_notification(
       const PubSub::Publication &publication);
-  void receive_remote_code_fetch_request(
-      const PubSub::Publication &publication);
-  void receive_remote_code_fetch_response(
-      const PubSub::Publication &publication);
+  void receive_code_fetch_request(PubSub::Publication &&publication);
+  void receive_code_fetch_response(const PubSub::Publication &publication);
 
   void receive_remote_fetch_control_command(
       const PubSub::Publication &publication);
@@ -42,7 +39,7 @@ class CodeStoreActor : public NativeActor {
 
  private:
   std::map<CodeIdentifier, uint32_t> code_miss_debounce;
-  uint32_t remote_code_fetch_subscription_id = 0;
+  uint32_t code_fetch_subscription_id = 0;
 };
 
 }  // namespace uActor::ActorRuntime

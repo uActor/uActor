@@ -113,9 +113,9 @@ class Executor : public ExecutorApi {
     }
   }
 
-  uint32_t add_subscription(uint32_t local_id,
-                            PubSub::Filter&& filter) override {
-    uint32_t sub_id = router_handle.subscribe(filter);
+  uint32_t add_subscription(uint32_t local_id, PubSub::Filter&& filter,
+                            uint8_t priority) override {
+    uint32_t sub_id = router_handle.subscribe(filter, "local", priority);
     auto entry = subscription_mapping.find(sub_id);
     if (entry != subscription_mapping.end()) {
       entry->second.insert(local_id);

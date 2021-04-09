@@ -57,7 +57,13 @@ class Constraint {
     }
 
     bool operator==(const Container<T>& other) const {
-      return operand == other.operand;
+      return operand == other.operand && operation_name == other.operation_name;
+    }
+
+    bool operator<(const Container<T>& other) const {
+      return operation_name < other.operation_name ||
+             (operation_name == other.operation_name &&
+              operand < other.operand);
     }
   };
 
@@ -150,6 +156,13 @@ class Constraint {
   bool operator()(float input) const;
 
   bool operator==(const Constraint& other) const;
+
+  bool operator<(const Constraint& other) const {
+    return _attribute < other._attribute ||
+           (_attribute == other._attribute && _optional < other._optional) ||
+           (_attribute == other._attribute && _optional == other._optional &&
+            _operand < other._operand);
+  }
 
   [[nodiscard]] bool optional() const { return _optional; }
 

@@ -126,10 +126,11 @@ class ManagedActor {
   virtual bool hibernate_internal() = 0;
   virtual bool wakeup_internal() = 0;
 
-  uint32_t subscribe(PubSub::Filter&& f);
+  uint32_t subscribe(PubSub::Filter&& f, uint8_t priority = 0);
   void unsubscribe(uint32_t sub_id);
 
   void publish(PubSub::Publication&& p);
+  void republish(PubSub::Publication&& p);
   void delayed_publish(PubSub::Publication&& p, uint32_t delay);
   void enqueue_wakeup(uint32_t delay, std::string_view wakeup_id);
 

@@ -88,7 +88,8 @@ class Router {
 
   uint32_t add_subscription(
       Filter&& f, Receiver* r,
-      std::string subscriber_node_id = std::string("local"));
+      std::string subscriber_node_id = std::string("local"),
+      uint8_t priority = 0);
 
   uint32_t remove_subscription(uint32_t sub_id, Receiver* r,
                                std::string node_id = "");

@@ -38,7 +38,8 @@ class CodeStore {
     return instance;
   }
 
-  std::optional<CodeHandle> retrieve(const CodeIdentifier& identifier);
+  std::optional<CodeHandle> retrieve(const CodeIdentifier& identifier,
+                                     bool use_hook = true);
 
   void insert_or_refresh(CodeIdentifier&& identifier, uint32_t lifetime_end,
                          std::optional<std::string_view> code);

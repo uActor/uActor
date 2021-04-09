@@ -22,8 +22,11 @@ struct Subscription {
 
   template <typename PAllocator = Allocator<Subscription>>
   Subscription(std::allocator_arg_t, const PAllocator& allocator, uint32_t id,
-               Receiver* r, uint32_t node_id)
-      : subscription_id(id), filter(allocator), receivers(allocator) {
+               Receiver* r, uint32_t node_id, uint8_t priority = 0)
+      : subscription_id(id),
+        filter(allocator),
+        priority(priority),
+        receivers(allocator) {
     receivers.emplace(r, std::initializer_list<uint32_t>{node_id});
   }
 
@@ -32,6 +35,7 @@ struct Subscription {
                const Subscription& other)
       : subscription_id(other.subscription_id),
         filter(other.filter, allocator),
+        priority(other.priority),
         receivers(other.receivers, allocator) {}
 
   template <typename PAllocator = Allocator<Subscription>>
@@ -39,6 +43,7 @@ struct Subscription {
                Subscription&& other)
       : subscription_id(other.subscription_id),
         filter(std::move(other.filter), allocator),
+        priority(other.priority),
         receivers(std::move(other.receivers), allocator) {}
 
   bool add_receiver(Receiver* receiver, uint32_t source_node_id) {
@@ -59,7 +64,6 @@ struct Subscription {
   }
 
   template <typename T>
-
   void set_constraints(T&& required, T&& optional) {
     filter.set_constraints(std::move(required), std::move(optional));
   }
@@ -105,11 +109,12 @@ struct Subscription {
 
   uint32_t count_optional() { return filter.optional.size(); }
 
-  using node_list =
-      std::set<uint32_t, std::less<uint32_t>, Allocator<uint32_t>>;
-  std::map<Receiver*, node_list, std::less<Receiver*>,
+  using NodeList = std::set<uint32_t, std::less<uint32_t>, Allocator<uint32_t>>;
+  uint8_t priority;
+
+  std::map<Receiver*, NodeList, std::less<Receiver*>,
            std::scoped_allocator_adaptor<
-               Allocator<std::pair<Receiver* const, node_list>>>>
+               Allocator<std::pair<Receiver* const, NodeList>>>>
       receivers;
 };
 

@@ -100,6 +100,19 @@ int ManagedLuaActor::publish_wrapper(lua_State* state) {
   return 0;
 }
 
+int ManagedLuaActor::republish_wrapper(lua_State* state) {
+  ManagedLuaActor* actor = reinterpret_cast<ManagedLuaActor*>(
+      lua_touserdata(state, lua_upvalueindex(1)));
+
+  if (lua_isuserdata(state, 1) != 0 &&
+      luaL_checkudata(state, 1, "uActor.Publication") != nullptr) {
+    auto* pub =
+        reinterpret_cast<PubSub::Publication*>(lua_touserdata(state, 1));
+    actor->republish(std::move(*pub));
+  }
+  return 0;
+}
+
 int ManagedLuaActor::delayed_publish_wrapper(lua_State* state) {
   ManagedLuaActor* actor = reinterpret_cast<ManagedLuaActor*>(
       lua_touserdata(state, lua_upvalueindex(1)));
@@ -138,7 +151,12 @@ int ManagedLuaActor::subscribe_wrapper(lua_State* state) {
   ManagedLuaActor* actor = reinterpret_cast<ManagedLuaActor*>(
       lua_touserdata(state, lua_upvalueindex(1)));
 
-  uint32_t id = actor->subscribe(parse_filters(state, 1));
+  uint8_t priority = 0;
+  if (lua_gettop(state) > 1) {
+    priority = lua_tointeger(state, 2);
+  }
+
+  uint32_t id = actor->subscribe(parse_filters(state, 1), priority);
   lua_pushinteger(state, id);
   return 1;
 }
@@ -421,17 +439,12 @@ int ManagedLuaActor::actor_index(lua_State* state) {
 }
 
 bool ManagedLuaActor::fetch_code_and_init() {
-  int retries = 0;
-  while (retries < 10) {
-    auto result = CodeStore::get_instance().retrieve(
-        CodeIdentifier(actor_type(), actor_version(), std::string_view("lua")));
-    if (result) {
-      return createActorEnvironment(result->code);
-    } else {
-      BoardFunctions::sleep(1000);
-      retries++;
-    }
+  auto result = CodeStore::get_instance().retrieve(
+      CodeIdentifier(actor_type(), actor_version(), std::string_view("lua")));
+  if (result) {
+    return createActorEnvironment(result->code);
   }
+  trigger_code_fetch();
   return false;
 }
 
@@ -484,6 +497,10 @@ PubSub::Filter ManagedLuaActor::parse_filters(lua_State* state, size_t index) {
       } else if (lua_isnumber(state, -1) != 0) {
         filter_list.emplace_back(std::move(key),
                                  static_cast<float>(lua_tonumber(state, -1)),
+                                 operation, optional);
+      } else if (lua_isstring(state, -1) != 0) {
+        filter_list.emplace_back(std::move(key),
+                                 std::string_view(lua_tostring(state, -1)),
                                  operation, optional);
       }
       lua_pop(state, 1);
