@@ -5,6 +5,7 @@
 #include <curl/curl.h>
 #include <curl/easy.h>
 #include <curl/options.h>
+#include <fmt/core.h>
 
 #include <cstdint>
 #include <functional>
@@ -21,6 +22,8 @@
 #include "support/testbed.h"
 
 namespace uActor::HTTP {
+
+constexpr std::string_view PUBLICATION_NAME("core.io.http");
 
 size_t write_function(void* ptr, size_t size, size_t nmemb, std::string* data) {
   data->append(static_cast<char*>(ptr), size * nmemb);
@@ -78,7 +81,7 @@ void HTTPClientActor::thread_function() {
       uint8_t response_code = this->get_request(request_url, request_header,
                                                 &http_response, &http_header);
       // todo check if name is fine
-      PubSub::Publication p(BoardFunctions::NODE_ID, "core.io,http", "1");
+      PubSub::Publication p(BoardFunctions::NODE_ID, PUBLICATION_NAME, "1");
       p.set_attr("type", "http_response");
       p.set_attr("http_header", std::move(http_header));
       p.set_attr("body", std::move(http_response));
@@ -90,15 +93,52 @@ void HTTPClientActor::thread_function() {
       continue;
     }
     if (request_type.value() == "POST") {
-      const std::string request_payload{[&p]() {
-        const auto request_payload = p.get_str_attr("request_address");
-        return request_payload.has_value() ? request_payload.value() : "";
-      }()};
+      std::string request_payload;
+      if (p.has_attr("attributes")) {
+        const std::string_view attrs = p.get_str_attr("attributes").value();
+        size_t last_hit = 0;
+        for (size_t i = 0; i < attrs.size(); i++) {
+          if (attrs[i] != ',') {
+            // remove leading spaces
+            if (last_hit == i && attrs[i] == ' ') {
+              last_hit = i + 1;
+            }
+            continue;
+          }
+
+          if (last_hit == i) {
+            last_hit = i + 1;
+            continue;
+          }
+
+          std::string_view attr = attrs.substr(last_hit, i - last_hit);
+          last_hit = i + 1;
+
+          // remove tailing spaces
+          while (!attr.empty() && attr.back() == ' ') {
+            attr.remove_suffix(1);
+          }
+
+          if (attr.empty()) {
+            continue;
+          }
+
+          const auto value = p.get_str_attr(attr);
+          if (value.has_value()) {
+            request_payload =
+                fmt::format("{}&{}={}", request_payload, attr, value.value());
+          } else {
+            request_payload = fmt::format("{}&{}", request_payload, attr);
+          }
+        }
+      } else if (p.has_attr("body")) {
+        request_payload = p.get_str_attr("body").value();
+      }
 
       uint8_t response_code =
           post_request(request_url, request_header, request_payload);
 
-      PubSub::Publication p(BoardFunctions::NODE_ID, "core.io.http", "1");
+      PubSub::Publication p(BoardFunctions::NODE_ID, PUBLICATION_NAME, "1");
       p.set_attr("type", "http_response");
       p.set_attr("http_code", response_code);
       p.set_attr("request_id", request_id.value());

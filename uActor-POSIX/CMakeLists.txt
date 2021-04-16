@@ -32,6 +32,7 @@ include(${CMAKE_BINARY_DIR}/conan.cmake)
 conan_cmake_configure(REQUIRES 
                 boost/1.75.0
                 libcurl/7.75.0
+                fmt/7.1.3
                       GENERATORS cmake_find_package
                       OPTIONS
                         boost:shared=False
@@ -114,6 +115,7 @@ find_package(Threads REQUIRED)
 set(Boost_USE_STATIC_LIBS ON)
 find_package(Boost COMPONENTS program_options REQUIRED)
 find_package(CURL REQUIRED)
+find_package(fmt REQUIRED)
 
 add_executable(uActorBin ${SOURCES} ${HEADERS})
 target_include_directories(uActorBin PUBLIC "include")
@@ -152,3 +154,4 @@ target_link_libraries(uActorBin stdc++fs)
 endif()
 
 target_link_libraries(uActorBin Boost::program_options)
+target_link_libraries(uActorBin fmt::fmt)
