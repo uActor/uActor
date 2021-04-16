@@ -6,6 +6,8 @@
 
 #include "pubsub/receiver_handle.hpp"
 
+struct curl_slist;
+
 namespace uActor::HTTP {
 
 class HTTPClientActor {
@@ -23,15 +25,25 @@ class HTTPClientActor {
   // todo if announce deannounce HTTPClient Actor
   ~HTTPClientActor() = default;
   // todo check with raphael if it is ok to allow non const refs
-  [[nodiscard]] uint8_t get_request(const std::string& url,
-                                    std::string* response,
-                                    std::string* header) const;
   void thread_function();
   // returns if HTTPClientActor is functional
   explicit operator bool() const;
-
   HTTPClientActor& operator=(const HTTPClientActor& other) = delete;
   HTTPClientActor& operator=(HTTPClientActor&& other) = default;
+
+ private:
+  inline void prep_request(const std::string& url,
+                           curl_slist* request_header) const;
+  [[nodiscard]] inline curl_slist* build_header(
+      const std::optional<std::string>& request_header) const;
+  [[nodiscard]] inline uint8_t perform_request(
+      curl_slist* request_header) const;
+  [[nodiscard]] uint8_t get_request(
+      const std::string& url, const std::optional<std::string>& request_header,
+      std::string* response_payload, std::string* resp_header) const;
+  [[nodiscard]] uint8_t post_request(
+      const std::string& url, const std::optional<std::string>& request_header,
+      const std::string& payload) const;
 };
 
 }  // namespace uActor::HTTP
