@@ -4,6 +4,11 @@ idf_component_register(
   REQUIRES bt
 )
 
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+if(CMAKE_CXX_STANDARD LESS 17)
+  set(CMAKE_CXX_STANDARD 17)
+endif()
+
 target_compile_options(${COMPONENT_LIB} PRIVATE -std=c++17)
 
 if (NOT TARGET uActor)
