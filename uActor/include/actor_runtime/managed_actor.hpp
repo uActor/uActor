@@ -22,6 +22,14 @@ namespace uActor::ActorRuntime {
 
 class ManagedActor {
  public:
+  enum class RuntimeReturnValue {
+    NONE = 0,
+    OK,
+    NOT_READY,
+    RUNTIME_ERROR,
+    INITIALIZATION_ERROR
+  };
+
   template <typename U>
   using Allocator = RuntimeAllocatorConfiguration::Allocator<U>;
 
@@ -69,13 +77,13 @@ class ManagedActor {
 #endif
   }
 
-  virtual bool receive(PubSub::Publication&& p) = 0;
+  virtual RuntimeReturnValue receive(PubSub::Publication&& p) = 0;
 
   virtual std::string actor_runtime_type() = 0;
 
-  std::pair<bool, uint32_t> early_initialize();
+  std::pair<RuntimeReturnValue, uint32_t> early_initialize();
 
-  bool late_initialize(std::string&& code);
+  RuntimeReturnValue late_initialize(std::string&& code);
 
   bool hibernate() {
     if (hibernate_internal()) {
@@ -85,12 +93,12 @@ class ManagedActor {
     return false;
   }
 
-  bool wakeup() {
-    if (wakeup_internal()) {
+  RuntimeReturnValue wakeup() {
+    auto ret = wakeup_internal();
+    if (ret == RuntimeReturnValue::OK) {
       _initialized = true;
-      return true;
     }
-    return false;
+    return ret;
   }
 
   ReceiveResult receive_next_internal();
@@ -121,10 +129,10 @@ class ManagedActor {
 #endif
 
  protected:
-  virtual bool early_internal_initialize() = 0;
-  virtual bool late_internal_initialize(std::string&& code) = 0;
+  virtual RuntimeReturnValue early_internal_initialize() = 0;
+  virtual RuntimeReturnValue late_internal_initialize(std::string&& code) = 0;
   virtual bool hibernate_internal() = 0;
-  virtual bool wakeup_internal() = 0;
+  virtual RuntimeReturnValue wakeup_internal() = 0;
 
   uint32_t subscribe(PubSub::Filter&& f, uint8_t priority = 0);
   void unsubscribe(uint32_t sub_id);

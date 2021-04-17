@@ -143,7 +143,7 @@ class Executor : public ExecutorApi {
   }
 
   void enqueue_wakeup(uint32_t actor_id, uint32_t delay,
-                      std::string_view wakeup_id) {
+                      std::string_view wakeup_id) override {
     uint32_t new_timeout = BoardFunctions::timestamp() + delay;
     timeouts.emplace(new_timeout, actor_id, true, AString(wakeup_id));
   }

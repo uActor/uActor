@@ -5,7 +5,7 @@
 
 #include "actor_runtime/lua_executor.hpp"
 #include "actor_runtime/native_executor.hpp"
-#include "actor_runtime/code_store.hpp"
+#include "actor_runtime/code_store_actor.hpp"
 #include "pubsub/publication.hpp"
 #include "pubsub/receiver_handle.hpp"
 #include "pubsub/router.hpp"
@@ -24,9 +24,11 @@ void spawn_actor(std::string_view code, std::string_view instance_id) {
 
   auto publish_code = PubSub::Publication("node_1", "root", "1");
 
+  auto code_version = std::to_string(std::hash<std::string_view>()(code));
+
   publish_code.set_attr("type", "actor_code");
   publish_code.set_attr("actor_code_type", "actor");
-  publish_code.set_attr("actor_code_version", "default");
+  publish_code.set_attr("actor_code_version", code_version);
   publish_code.set_attr("actor_code_lifetime_end", static_cast<int32_t>(UINT32_MAX));
   publish_code.set_attr("actor_code_runtime_type", "lua");
   publish_code.set_attr("actor_code", std::string(code));
@@ -38,12 +40,13 @@ void spawn_actor(std::string_view code, std::string_view instance_id) {
   create_actor.set_attr("spawn_code", code);
   create_actor.set_attr("spawn_node_id", "node_1");
   create_actor.set_attr("spawn_actor_type", "actor");
-  create_actor.set_attr("spawn_actor_version", "default");
+  create_actor.set_attr("spawn_actor_version", code_version);
   create_actor.set_attr("spawn_instance_id", instance_id);
   create_actor.set_attr("node_id", "node_1");
   create_actor.set_attr("actor_type", "lua_executor");
   create_actor.set_attr("instance_id", "1");
   PubSub::Router::get_instance().publish(std::move(create_actor));
+  sleep(1);
 }
 
 void shutdown_executors(Executors* executors) {
@@ -72,6 +75,8 @@ PubSub::ReceiverHandle subscription_handle_with_default_subscription() {
 }
 
 Executors start_executor_threads() {
+  
+  
   BoardFunctions::NODE_ID = "node_1";
   ActorRuntime::ExecutorSettings params = {
       .node_id = "node_1",
@@ -81,10 +86,10 @@ Executors start_executor_threads() {
   std::thread(&ActorRuntime::LuaExecutor::os_task, &params),
   std::thread(&uActor::ActorRuntime::NativeExecutor::os_task, &params)
   );
-  usleep(1000);
+  sleep(1);
 
   uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
-      uActor::ActorRuntime::CodeStore>("code_store");
+      uActor::ActorRuntime::CodeStoreActor>("code_store");
 
   auto create_code_store =
       uActor::PubSub::Publication("node_1", "root", "1");
@@ -97,8 +102,7 @@ Executors start_executor_threads() {
   create_code_store.set_attr("actor_type", "native_executor");
   create_code_store.set_attr("instance_id", "1");
   uActor::PubSub::Router::get_instance().publish(std::move(create_code_store));
-
-  usleep(1000);
+  sleep(1);
 
   return std::move(executors);
 }
@@ -106,7 +110,7 @@ Executors start_executor_threads() {
 TEST(RuntimeSystem, pingPong) {
   const char test_pong[] = R"(function receive(publication)
     if(publication.publisher_actor_type == "root") then
-      publish({instance_id=publication.publisher_instance_id, node_id=publication.publisher_node_id, actor_type=publication.publisher_actor_type, message="pong"});
+      publish(Publication.new("instance_id", publication.publisher_instance_id, "node_id", publication.publisher_node_id, "actor_type", publication.publisher_actor_type, "message", "pong"));
     end
   end)";
 
@@ -115,7 +119,7 @@ TEST(RuntimeSystem, pingPong) {
 
   spawn_actor(test_pong, "1");
 
-  ASSERT_FALSE(root_handle.receive(100));
+  ASSERT_FALSE(root_handle.receive(0));
 
   auto ping = PubSub::Publication("node_1", "root", "1");
   ping.set_attr("node_id", "node_1");
@@ -137,8 +141,8 @@ TEST(RuntimeSystem, pingPong) {
 TEST(RuntimeSystem, delayedSend) {
   const char delayed_pong[] = R"(function receive(publication)
     if(publication.publisher_actor_type == "root") then
-      delayed_publish({instance_id=publication.publisher_instance_id, node_id=publication.publisher_node_id, actor_type=publication.publisher_actor_type, message="pong1"}, 100);
-      publish({instance_id=publication.publisher_instance_id, node_id=publication.publisher_node_id, actor_type=publication.publisher_actor_type, message="pong2"});
+      delayed_publish(Publication.new("instance_id", publication.publisher_instance_id, "node_id", publication.publisher_node_id, "actor_type", publication.publisher_actor_type, "message", "pong1"), 100);
+      publish(Publication.new("instance_id", publication.publisher_instance_id, "node_id", publication.publisher_node_id, "actor_type", publication.publisher_actor_type, "message", "pong2"));
     end
   end)";
 
@@ -147,7 +151,7 @@ TEST(RuntimeSystem, delayedSend) {
 
   spawn_actor(delayed_pong, "1");
 
-  ASSERT_FALSE(root_handle.receive(100));
+  ASSERT_FALSE(root_handle.receive(0));
 
   auto ping = PubSub::Publication("node_1", "root", "1");
   ping.set_attr("node_id", "node_1");
@@ -165,7 +169,7 @@ TEST(RuntimeSystem, delayedSend) {
   }
   usleep(200000);
   {
-    auto result = root_handle.receive(1000);
+    auto result = root_handle.receive(10000);
     ASSERT_TRUE(result);
     ASSERT_STREQ(
         std::get<std::string_view>(result->publication.get_attr("message"))
@@ -180,12 +184,12 @@ TEST(RuntimeSystem, block_for) {
   const char block_for_pong[] = R"(function receive(publication)
     if(not(publication.publisher_actor_type == "lua_executor")) then
       if(publication["_internal_timeout"] == "_timeout") then
-        publish({instance_id="1", node_id=node_id, actor_type="root", message="pong_timeout"});
+        publish(Publication.new("instance_id", "1", "node_id", node_id, "actor_type", "root", "message", "pong_timeout"));
       elseif(publication.message == "ping1") then
         deferred_block_for({foo="bar"}, 100)
-        publish({instance_id=publication.publisher_instance_id, node_id=publication.publisher_node_id, actor_type=publication.publisher_actor_type, message="pong1"});
+        publish(Publication.new("instance_id", publication.publisher_instance_id, "node_id", publication.publisher_node_id, "actor_type", publication.publisher_actor_type, "message", "pong1"));
       elseif(publication.message == "ping2") then
-        publish({instance_id=publication.publisher_instance_id, node_id=publication.publisher_node_id, actor_type=publication.publisher_actor_type, message="pong2"});
+        publish(Publication.new("instance_id", publication.publisher_instance_id, "node_id", publication.publisher_node_id, "actor_type", publication.publisher_actor_type, "message", "pong2"));
       end
     end
   end)";
@@ -195,7 +199,7 @@ TEST(RuntimeSystem, block_for) {
 
   spawn_actor(block_for_pong, "1");
 
-  ASSERT_FALSE(root_handle.receive(100));
+  ASSERT_FALSE(root_handle.receive(0));
 
   auto ping = PubSub::Publication("node_1", "root", "1");
   ping.set_attr("node_id", "node_1");
@@ -212,7 +216,7 @@ TEST(RuntimeSystem, block_for) {
   PubSub::Router::get_instance().publish(std::move(ping2));
 
   {
-    auto result = root_handle.receive(2000);
+    auto result = root_handle.receive(10000);
     ASSERT_TRUE(result);
     ASSERT_STREQ(
         std::get<std::string_view>(result->publication.get_attr("message"))
@@ -220,7 +224,7 @@ TEST(RuntimeSystem, block_for) {
         "pong1");
   }
   {
-    auto result = root_handle.receive(3000);
+    auto result = root_handle.receive(10000);
     ASSERT_TRUE(result);
     ASSERT_STREQ(
         std::get<std::string_view>(result->publication.get_attr("message"))
@@ -228,7 +232,7 @@ TEST(RuntimeSystem, block_for) {
         "pong_timeout");
   }
   {
-    auto result = root_handle.receive(2000);
+    auto result = root_handle.receive(10000);
     ASSERT_TRUE(result);
     ASSERT_STREQ(
         std::get<std::string_view>(result->publication.get_attr("message"))
@@ -244,11 +248,11 @@ TEST(RuntimeSystem, sub_unsub) {
     if(publication.publisher_actor_type == "root") then
       if(publication.message == "sub") then
         sub_id = subscribe({foo="bar"})
-        publish({instance_id=publication.publisher_instance_id, node_id=publication.publisher_node_id, actor_type=publication.publisher_actor_type, sub_id=sub_id});
+        publish(Publication.new("instance_id", publication.publisher_instance_id, "node_id", publication.publisher_node_id, "actor_type", publication.publisher_actor_type, "sub_id", sub_id));
       elseif(publication.message == "unsub") then
         unsubscribe(publication.sub_id)
       else
-        publish({instance_id=publication.publisher_instance_id, node_id=publication.publisher_node_id, actor_type=publication.publisher_actor_type, message="pong"});
+        publish(Publication.new("instance_id", publication.publisher_instance_id, "node_id", publication.publisher_node_id, "actor_type", publication.publisher_actor_type, "message", "pong"));
       end
     end
   end)";
@@ -258,7 +262,7 @@ TEST(RuntimeSystem, sub_unsub) {
 
   spawn_actor(block_for_pong, "1");
 
-  ASSERT_FALSE(root_handle.receive(100));
+  ASSERT_FALSE(root_handle.receive(0));
 
   auto sub = PubSub::Publication("node_1", "root", "1");
   sub.set_attr("node_id", "node_1");
@@ -267,7 +271,7 @@ TEST(RuntimeSystem, sub_unsub) {
   sub.set_attr("message", "sub");
   PubSub::Router::get_instance().publish(std::move(sub));
 
-  auto sub_result = root_handle.receive(2000);
+  auto sub_result = root_handle.receive(10000);
   ASSERT_TRUE(sub_result);
   int32_t sub_id = std::get<std::int32_t>(sub_result->publication.get_attr("sub_id"));
 
@@ -277,7 +281,7 @@ TEST(RuntimeSystem, sub_unsub) {
   PubSub::Router::get_instance().publish(std::move(test_message));
 
   {
-    auto result = root_handle.receive(2000);
+    auto result = root_handle.receive(10000);
     ASSERT_TRUE(result);
     ASSERT_STREQ(
         std::get<std::string_view>(result->publication.get_attr("message"))
@@ -293,6 +297,11 @@ TEST(RuntimeSystem, sub_unsub) {
   unsub.set_attr("sub_id", sub_id);
   PubSub::Router::get_instance().publish(std::move(unsub));
 
+  auto test_message2 = PubSub::Publication("node_1", "root", "1");
+  test_message2.set_attr("foo", "bar");
+  test_message2.set_attr("message", "asdf");
+  PubSub::Router::get_instance().publish(std::move(test_message2)); 
+
   ASSERT_FALSE(root_handle.receive(2000));
 
   shutdown_executors(&executors);
@@ -303,9 +312,9 @@ TEST(RuntimeSystem, complex_subscription) {
     if(publication.publisher_actor_type == "root") then
       if(publication.message == "sub") then
         sub_id = subscribe({foo=1, bar={LT, 50.0}})
-        publish({instance_id=publication.publisher_instance_id, node_id=publication.publisher_node_id, actor_type=publication.publisher_actor_type, sub_id=sub_id});
+        publish(Publication.new("instance_id", publication.publisher_instance_id, "node_id", publication.publisher_node_id, "actor_type", publication.publisher_actor_type, "sub_id", sub_id));
       else
-        publish({instance_id=publication.publisher_instance_id, node_id=publication.publisher_node_id, actor_type=publication.publisher_actor_type, message="pong"});
+        publish(Publication.new("instance_id", publication.publisher_instance_id, "node_id", publication.publisher_node_id, "actor_type", publication.publisher_actor_type, "message", "pong"));
       end
     end
   end)";
@@ -406,7 +415,7 @@ TEST(RuntimeSystem, spawn_failure_syntax) {
 
   auto result = root_handle.receive(3000);
   ASSERT_TRUE(result);
-  ASSERT_STREQ(
+  EXPECT_STREQ(
       std::get<std::string_view>(result->publication.get_attr("exit_reason"))
           .data(),
       "initialization_failure");
@@ -430,7 +439,7 @@ TEST(RuntimeSystem, spawn_failure_no_receive) {
 
   auto result = root_handle.receive(3000);
   ASSERT_TRUE(result);
-  ASSERT_STREQ(
+  EXPECT_STREQ(
       std::get<std::string_view>(result->publication.get_attr("exit_reason"))
           .data(),
       "initialization_failure");
@@ -455,7 +464,7 @@ TEST(RuntimeSystem, spawn_failure_bad_call) {
 
   auto result = root_handle.receive(3000);
   ASSERT_TRUE(result);
-  ASSERT_STREQ(
+  EXPECT_STREQ(
       std::get<std::string_view>(result->publication.get_attr("exit_reason"))
           .data(),
       "initialization_failure");
@@ -478,7 +487,7 @@ TEST(RuntimeSystem, runtime_failure) {
 
   auto result = root_handle.receive(3000);
   ASSERT_TRUE(result);
-  ASSERT_STREQ(
+  EXPECT_STREQ(
       std::get<std::string_view>(result->publication.get_attr("exit_reason"))
           .data(),
       "runtime_failure");

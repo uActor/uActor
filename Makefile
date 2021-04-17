@@ -83,7 +83,7 @@ test:
 	cd ${TEST_DIRECTORY} && \
 	cmake -G Ninja ${PROJECT_HOME}/unit_test && \
 	ninja && \
-	./uActor_test
+	./uactor_test
 
 lint_cpplint:
 	cpplint --recursive --root=. --filter -legal,-build/c++11,-whitespace/braces,-build/include_order,-readability/nolint $(CODE_FILES) ${POSIX_CODE_FILES}

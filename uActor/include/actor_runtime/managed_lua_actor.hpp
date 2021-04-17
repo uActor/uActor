@@ -42,29 +42,35 @@ class ManagedLuaActor : public ManagedActor {
 
   ~ManagedLuaActor();
 
-  bool receive(PubSub::Publication&& m) override;
+  RuntimeReturnValue receive(PubSub::Publication&& m) override;
 
   std::string actor_runtime_type() override { return std::string("lua"); }
 
  protected:
-  bool early_internal_initialize() override {
+  RuntimeReturnValue early_internal_initialize() override {
     // trigger_code_fetch();
     // return false;
     return fetch_code_and_init();
   }
 
-  bool late_internal_initialize(std::string&& code) override {
-    return createActorEnvironment(std::move(code));
+  RuntimeReturnValue late_internal_initialize(std::string&& code) override {
+    if (!createActorEnvironment(std::move(code))) {
+      return RuntimeReturnValue::INITIALIZATION_ERROR;
+    } else {
+      return RuntimeReturnValue::OK;
+    }
   }
 
   bool hibernate_internal() override;
 
-  bool wakeup_internal() override { return fetch_code_and_init(); }
+  RuntimeReturnValue wakeup_internal() override {
+    return fetch_code_and_init();
+  }
 
  private:
   lua_State* state;
 
-  bool fetch_code_and_init();
+  RuntimeReturnValue fetch_code_and_init();
 
   static int publish_wrapper(lua_State* state);
 

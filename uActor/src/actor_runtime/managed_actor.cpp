@@ -29,11 +29,11 @@ ManagedActor::ReceiveResult ManagedActor::receive_next_internal() {
   // Exit message is processed to
   // allow for any necessary cleanup
   bool is_exit = next_message.get_str_attr("type") == "exit";
-  bool success = false;
+  auto ret = RuntimeReturnValue::NONE;
   if (next_message.get_str_attr("type") == "code_fetch_response") {
     waiting_for_code = false;
     if (next_message.get_str_attr("fetch_actor_type") == actor_type()) {
-      success = late_initialize(
+      ret = late_initialize(
           std::string(*next_message.get_str_attr("fetch_actor_code")));
     } else {
       Support::Logger::fatal("MANAGED-ACTOR", "CODE-FETCH",
@@ -48,19 +48,31 @@ ManagedActor::ReceiveResult ManagedActor::receive_next_internal() {
       return ManagedActor::ReceiveResult(false, _timeout);
     } else {
       Support::Logger::warning("MANAGED-ACTOR", "CODE-FETCH", "FAILED");
-      success = false;
+      ret = RuntimeReturnValue::INITIALIZATION_ERROR;
     }
   } else {
-    if (!initialized() && !wakeup()) {
-      message_queue.emplace_front(std::move(next_message));
-    } else {
-      success = this->receive(std::move(next_message));
+    if (!initialized()) {
+      ret = wakeup();
+      if (ret == RuntimeReturnValue::NOT_READY) {
+        message_queue.emplace_front(std::move(next_message));
+      }
+    }
+    if (ret == RuntimeReturnValue::NONE || ret == RuntimeReturnValue::OK) {
+      ret = receive(std::move(next_message));
+      if (ret == RuntimeReturnValue::NOT_READY) {
+        Support::Logger::error("MANAGED-ACTOR", "RECEIVE",
+                               "Receive called on inactive actor");
+        ret = RuntimeReturnValue::RUNTIME_ERROR;
+      }
       hibernate();
     }
   }
-  if (!success || is_exit) {
-    if (success) {
+  if (ret == RuntimeReturnValue::INITIALIZATION_ERROR ||
+      ret == RuntimeReturnValue::RUNTIME_ERROR || is_exit) {
+    if (ret == RuntimeReturnValue::OK) {
       publish_exit_message("clean_exit");
+    } else if (ret == RuntimeReturnValue::INITIALIZATION_ERROR) {
+      publish_exit_message("initialization_failure");
     } else {
       publish_exit_message("runtime_failure");
     }
@@ -123,23 +135,27 @@ void ManagedActor::trigger_timeout(bool user_defined,
 #endif
 }
 
-std::pair<bool, uint32_t> ManagedActor::early_initialize() {
+std::pair<ManagedActor::RuntimeReturnValue, uint32_t>
+ManagedActor::early_initialize() {
   // We need to wrap the runtime-specific initialization.
-  _initialized = early_internal_initialize();
-  return std::make_pair(_initialized, _timeout);
+  auto ret = early_internal_initialize();
+  _initialized = ret == RuntimeReturnValue::OK;
+  return std::make_pair(ret, _timeout);
 }
 
-bool ManagedActor::late_initialize(std::string&& code) {
+ManagedActor::RuntimeReturnValue ManagedActor::late_initialize(
+    std::string&& code) {
   // We need to wrap the runtime-specific initialization.
   Support::Logger::trace("MANAGED-ACTOR", "LATE-INIT", "called");
-  _initialized = late_internal_initialize(std::move(code));
+  auto ret = late_internal_initialize(std::move(code));
+  _initialized = ret == RuntimeReturnValue::OK;
   if (_initialized) {
     Support::Logger::trace("MANAGED-ACTOR", "LATE-INIT", "success");
-    return true;
+    return RuntimeReturnValue::OK;
   } else {
     publish_exit_message("initialization_failure");
     Support::Logger::trace("MANAGED-ACTOR", "LATE-INIT", "failure");
-    return false;
+    return RuntimeReturnValue::INITIALIZATION_ERROR;
   }
 }
 

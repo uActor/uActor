@@ -5,9 +5,10 @@
 
 namespace uActor::ActorRuntime {
 
-bool ManagedNativeActor::receive(PubSub::Publication&& p) {
+ManagedActor::RuntimeReturnValue ManagedNativeActor::receive(
+    PubSub::Publication&& p) {
   actor->receive(std::move(p));
-  return true;
+  return RuntimeReturnValue::OK;
 }
 
 std::unordered_map<std::string, ManagedNativeActor::ConstructionMethod>

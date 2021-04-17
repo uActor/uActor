@@ -36,16 +36,21 @@ class ManagedNativeActor : public ManagedActor {
     }
   }
 
-  bool receive(PubSub::Publication&& p) override;
+  RuntimeReturnValue receive(PubSub::Publication&& p) override;
 
   std::string actor_runtime_type() override { return std::string("native"); }
 
-  bool early_internal_initialize() override { return true; }
-  bool late_internal_initialize(std::string&& /*_code*/) override {
-    return true;
+  RuntimeReturnValue early_internal_initialize() override {
+    return RuntimeReturnValue::OK;
+  }
+  RuntimeReturnValue late_internal_initialize(
+      std::string&& /*_code*/) override {
+    return RuntimeReturnValue::OK;
   }
   bool hibernate_internal() override { return false; };
-  bool wakeup_internal() override { return true; };
+  RuntimeReturnValue wakeup_internal() override {
+    return RuntimeReturnValue::OK;
+  };
 
   // Basic type-registration system based on
   // https://www.bfilipek.com/2018/02/factory-selfregister.html

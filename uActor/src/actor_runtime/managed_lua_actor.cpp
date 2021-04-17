@@ -27,7 +27,8 @@ ManagedLuaActor::~ManagedLuaActor() {
   lua_gc(state, LUA_GCCOLLECT, 0);
 }
 
-bool ManagedLuaActor::receive(PubSub::Publication&& m) {
+ManagedActor::RuntimeReturnValue ManagedLuaActor::receive(
+    PubSub::Publication&& m) {
 #if CONFIG_BENCHMARK_BREAKDOWN
   if (m.get_str_attr("type") == "ping") {
     testbed_stop_timekeeping_inner(6, "scheduling");
@@ -36,7 +37,7 @@ bool ManagedLuaActor::receive(PubSub::Publication&& m) {
   if (!initialized()) {
     Support::Logger::warning("MANAGED-LUA-ACTOR", "RECEIVE",
                              "Actor not initialized, can't process message");
-    return false;
+    return RuntimeReturnValue::NOT_READY;
   }
 
   lua_getglobal(state, std::to_string(id()).data());
@@ -70,11 +71,11 @@ bool ManagedLuaActor::receive(PubSub::Publication&& m) {
            instance_id());
     printf("ERROR: %s\n", lua_tostring(state, -1));
     lua_pop(state, 1);
-    return false;
+    return RuntimeReturnValue::RUNTIME_ERROR;
   }
 
   lua_gc(state, LUA_GCCOLLECT, 0);
-  return true;
+  return RuntimeReturnValue::OK;
 }
 
 bool ManagedLuaActor::hibernate_internal() {
@@ -108,7 +109,7 @@ int ManagedLuaActor::republish_wrapper(lua_State* state) {
       luaL_checkudata(state, 1, "uActor.Publication") != nullptr) {
     auto* pub =
         reinterpret_cast<PubSub::Publication*>(lua_touserdata(state, 1));
-    actor->republish(std::move(*pub));
+    actor->republish(PubSub::Publication(*pub));
   }
   return 0;
 }
@@ -438,14 +439,19 @@ int ManagedLuaActor::actor_index(lua_State* state) {
   return 1;
 }
 
-bool ManagedLuaActor::fetch_code_and_init() {
+ManagedLuaActor::RuntimeReturnValue ManagedLuaActor::fetch_code_and_init() {
   auto result = CodeStore::get_instance().retrieve(
       CodeIdentifier(actor_type(), actor_version(), std::string_view("lua")));
   if (result) {
-    return createActorEnvironment(result->code);
+    if (createActorEnvironment(result->code)) {
+      return RuntimeReturnValue::OK;
+    } else {
+      return RuntimeReturnValue::INITIALIZATION_ERROR;
+    }
+  } else {
+    trigger_code_fetch();
+    return RuntimeReturnValue::NOT_READY;
   }
-  trigger_code_fetch();
-  return false;
 }
 
 PubSub::Filter ManagedLuaActor::parse_filters(lua_State* state, size_t index) {

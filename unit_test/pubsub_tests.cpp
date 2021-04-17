@@ -3,6 +3,7 @@
 #include <iostream>
 
 #include "pubsub/router.hpp"
+#include "pubsub/publication_factory.hpp"
 
 namespace uActor::Test {
 
@@ -45,7 +46,7 @@ TEST(ROUTERV3, alias) {
   Router router{};
   auto r = router.new_subscriber();
   size_t sub_id = r.subscribe(
-      Filter{Constraint{"foo", "bar"}, Constraint{"?asdf", "ghjkl"}});
+      Filter{Constraint{"foo", "bar"}, Constraint{"asdf", "ghjkl", ConstraintPredicates::Predicate::EQ, true}});
 
   auto result0 = r.receive(0);
   ASSERT_FALSE(result0);
@@ -72,7 +73,15 @@ TEST(ROUTERV3, sub_all) {
   size_t sub_id = r.subscribe(Filter{});
 
   auto result0 = r.receive(0);
-  ASSERT_FALSE(result0);
+  ASSERT_TRUE(result0);
+  ASSERT_TRUE(result0->publication.has_attr("type"));
+  ASSERT_STREQ(std::get<std::string_view>(
+                  result0->publication.get_attr("type"))
+                  .data(),
+              "local_subscription_added");
+
+  result0 = r.receive(0);
+  ASSERT_FALSE(result0); 
 
   Publication p = Publication("sender_node", "sender_type", "sender_instance");
   p.set_attr("foo", "bar");
@@ -238,9 +247,11 @@ TEST(ROUTERV3, float_negative_match) {
 TEST(ROUTERV3, valid_optional) {
   Router router{};
   auto r = router.new_subscriber();
-  r.subscribe(Filter{Constraint{"?opt", "ional"}});
+  r.subscribe(Filter{Constraint{"opt", "ional",  ConstraintPredicates::Predicate::EQ, true}});
 
   auto result0 = r.receive(0);
+  ASSERT_TRUE(result0);
+  result0 = r.receive(0);
   ASSERT_FALSE(result0);
 
   Publication p = Publication("sender_node", "sender_type", "sender_instance");
@@ -261,13 +272,14 @@ TEST(ROUTERV3, valid_optional) {
 TEST(ROUTERV3, invalid_optional) {
   Router router{};
   auto r = router.new_subscriber();
-  r.subscribe(Filter{Constraint{"?opt", "ional"}});
+  r.subscribe(Filter{Constraint{"asdf", "bar"}, Constraint{"opt", "ional", ConstraintPredicates::Predicate::EQ, true}});
 
   auto result0 = r.receive(0);
   ASSERT_FALSE(result0);
 
   Publication p = Publication("sender_node", "sender_type", "sender_instance");
   p.set_attr("opt", "nope");
+  p.set_attr("asdf", "bar");
   router.publish(std::move(p));
 
   auto result1 = r.receive(0);
@@ -328,9 +340,13 @@ TEST(Publication, msgpack) {
   p.set_attr("integer", 1);
   p.set_attr("float", 2.0f);
 
-  std::string serialized = p.to_msg_pack();
+  auto serialized = p.to_msg_pack();
 
-  Publication decoded = *Publication::from_msg_pack(serialized);
+  auto pub_fac = PubSub::PublicationFactory();
+  pub_fac.write(serialized->data()+4, serialized->size()-4);
+  auto deserialized = pub_fac.build();
+  ASSERT_TRUE(deserialized);
+  Publication decoded = *deserialized;
 
   ASSERT_TRUE(p == decoded);
 }
