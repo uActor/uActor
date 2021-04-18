@@ -14,7 +14,6 @@ class HTTPClientActor {
  private:
   PubSub::ReceiverHandle handle;
   std::thread _request_thread;
-  void* curl;
 
  public:
   HTTPClientActor();
@@ -26,18 +25,17 @@ class HTTPClientActor {
   ~HTTPClientActor() = default;
   // todo check with raphael if it is ok to allow non const refs
   void thread_function();
-  // returns if HTTPClientActor is functional
-  explicit operator bool() const;
+
   HTTPClientActor& operator=(const HTTPClientActor& other) = delete;
   HTTPClientActor& operator=(HTTPClientActor&& other) = default;
 
  private:
-  inline void prep_request(const std::string& url,
+  inline void prep_request(const std::string& url, void* curl,
                            curl_slist* request_header) const;
   [[nodiscard]] inline curl_slist* build_header(
       const std::optional<std::string>& request_header) const;
   [[nodiscard]] inline uint8_t perform_request(
-      curl_slist* request_header) const;
+      void* curl, curl_slist* request_header) const;
   [[nodiscard]] uint8_t get_request(
       const std::string& url, const std::optional<std::string>& request_header,
       std::string* response_payload, std::string* resp_header) const;

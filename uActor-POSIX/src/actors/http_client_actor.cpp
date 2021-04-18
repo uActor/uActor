@@ -5,6 +5,7 @@
 #include <curl/curl.h>
 #include <curl/easy.h>
 #include <curl/options.h>
+#include <fmt/compile.h>
 #include <fmt/core.h>
 
 #include <cstdint>
@@ -31,11 +32,7 @@ size_t write_function(void* ptr, size_t size, size_t nmemb, std::string* data) {
 }
 
 HTTPClientActor::HTTPClientActor()
-    : handle(PubSub::Router::get_instance().new_subscriber()),
-      curl(curl_easy_init()) {
-  if (curl == nullptr) {
-    return;
-  }
+    : handle(PubSub::Router::get_instance().new_subscriber()) {
   PubSub::Filter request_filter{
       PubSub::Constraint("actor_type", "http_request")};
   handle.subscribe(request_filter);
@@ -45,7 +42,6 @@ HTTPClientActor::HTTPClientActor()
 }
 
 void HTTPClientActor::thread_function() {
-  assert(*this);
   while (true) {
     const auto result = this->handle.receive(BoardFunctions::SLEEP_FOREVER);
     if (!result.has_value()) {
@@ -125,10 +121,11 @@ void HTTPClientActor::thread_function() {
 
           const auto value = p.get_str_attr(attr);
           if (value.has_value()) {
-            request_payload =
-                fmt::format("{}&{}={}", request_payload, attr, value.value());
+            request_payload = fmt::format(FMT_COMPILE("{}&{}={}"),
+                                          request_payload, attr, value.value());
           } else {
-            request_payload = fmt::format("{}&{}", request_payload, attr);
+            request_payload =
+                fmt::format(FMT_COMPILE("{}&{}"), request_payload, attr);
           }
         }
       } else if (p.has_attr("body")) {
@@ -150,9 +147,8 @@ void HTTPClientActor::thread_function() {
   }
 }
 
-void HTTPClientActor::prep_request(const std::string& url,
+void HTTPClientActor::prep_request(const std::string& url, void* curl,
                                    curl_slist* request_header) const {
-  assert(*this);
   curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
   curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1L);
   if (request_header != nullptr) {
@@ -168,7 +164,8 @@ curl_slist* HTTPClientActor::build_header(
   return curl_slist_append(nullptr, request_header->c_str());
 }
 
-uint8_t HTTPClientActor::perform_request(curl_slist* request_header) const {
+uint8_t HTTPClientActor::perform_request(void* curl,
+                                         curl_slist* request_header) const {
   const CURLcode code = curl_easy_perform(curl);
   int64_t http_code = 0;
   if (code == CURLE_OK) {
@@ -182,29 +179,26 @@ uint8_t HTTPClientActor::perform_request(curl_slist* request_header) const {
 uint8_t HTTPClientActor::get_request(
     const std::string& url, const std::optional<std::string>& request_header,
     std::string* response_payload, std::string* resp_header) const {
-  assert(*this);
+  void* curl = curl_easy_init();
   struct curl_slist* request_header_list = build_header(request_header);
-  this->prep_request(url, request_header_list);
+  this->prep_request(url, curl, request_header_list);
   curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_function);
   curl_easy_setopt(curl, CURLOPT_WRITEDATA, response_payload);
   if (resp_header != nullptr) {
     curl_easy_setopt(curl, CURLOPT_HEADERDATA, resp_header);
   }
-  return this->perform_request(request_header_list);
+  return this->perform_request(curl, request_header_list);
 }
 
 uint8_t HTTPClientActor::post_request(
     const std::string& url, const std::optional<std::string>& request_header,
     const std::string& payload) const {
-  assert(*this);
+  void* curl = curl_easy_init();
   curl_slist* request_header_list = build_header(request_header);
-  this->prep_request(url, request_header_list);
+  this->prep_request(url, curl, request_header_list);
   curl_easy_setopt(curl, CURLOPT_POST, 1L);
   curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, payload.size());
   curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload.c_str());
-  return this->perform_request(request_header_list);
+  return this->perform_request(curl, request_header_list);
 }
-
-HTTPClientActor::operator bool() const { return this->curl != nullptr; }
-
 }  // namespace uActor::HTTP
