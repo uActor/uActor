@@ -1,0 +1,7 @@
+type: deployment
+name: xyz.hetzel.deployment.http_requester
+ttl:  240
+actor_type:  xyz.hetzel.actor.example
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "http_get_request.lua"

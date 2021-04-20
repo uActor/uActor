@@ -33,8 +33,7 @@ size_t write_function(void* ptr, size_t size, size_t nmemb, std::string* data) {
 
 HTTPClientActor::HTTPClientActor()
     : handle(PubSub::Router::get_instance().new_subscriber()) {
-  PubSub::Filter request_filter{
-      PubSub::Constraint("actor_type", "http_request")};
+  PubSub::Filter request_filter{PubSub::Constraint("type", "http_request")};
   handle.subscribe(request_filter);
   // thread should be automatically joined/destroyed with the destructor
   this->_request_thread = std::thread(&HTTPClientActor::thread_function, this);
@@ -48,7 +47,8 @@ void HTTPClientActor::thread_function() {
       continue;
     }
     const auto& p = result->publication;
-    assert("http_reqest" == p.get_str_attr("actor_type"));
+    assert(p.get_str_attr("type").has_value());
+    assert("http_request" == p.get_str_attr("type").value());
     auto request_type = p.get_str_attr("http_method");
     if (!request_type.has_value()) {
       continue;
@@ -60,7 +60,7 @@ void HTTPClientActor::thread_function() {
     }
 
     const std::string request_url{[&p]() {
-      const auto request_url = p.get_str_attr("request_address");
+      const auto request_url = p.get_str_attr("request_url");
       return request_url.has_value() ? request_url.value() : "";
     }()};
 
@@ -76,6 +76,7 @@ void HTTPClientActor::thread_function() {
       std::string http_header;
       uint8_t response_code = this->get_request(request_url, request_header,
                                                 &http_response, &http_header);
+
       // todo check if name is fine
       PubSub::Publication p(BoardFunctions::NODE_ID, PUBLICATION_NAME, "1");
       p.set_attr("type", "http_response");
@@ -85,7 +86,6 @@ void HTTPClientActor::thread_function() {
       p.set_attr("request_id", request_id.value());
 
       PubSub::Router::get_instance().publish(std::move(p));
-
       continue;
     }
     if (request_type.value() == "POST") {
