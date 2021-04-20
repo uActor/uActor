@@ -93,8 +93,8 @@ void HTTPClientActor::thread_function() {
       if (p.has_attr("attributes")) {
         const std::string_view attrs = p.get_str_attr("attributes").value();
         size_t last_hit = 0;
-        for (size_t i = 0; i < attrs.size(); i++) {
-          if (attrs[i] != ',') {
+        for (size_t i = 0; i <= attrs.size(); i++) {
+          if (i != attrs.size() && attrs[i] != ',') {
             // remove leading spaces
             if (last_hit == i && attrs[i] == ' ') {
               last_hit = i + 1;
