@@ -14,35 +14,35 @@ variables:
 
 lint:
   before_script:
-    - apt update -y && apt upgrade -y && apt install -y git ssh-client build-essential cmake ninja-build python3 python3-pip clang-tidy && pip3 install conan cpplint && git submodule update --init && git submodule sync
+    - apt update -y && apt upgrade -y && apt install -y git ssh-client build-essential cmake ninja-build python3 python3-pip clang-tidy && pip3 install conan cpplint && git submodule sync --recursive && git submodule update --init --recursive
   stage: lint_test
   image: ubuntu:20.04
   script: CONAN_USER_HOME=$PWD/conan make lint
 
 test:
   before_script:
-    - apt-get update -y && apt-get upgrade -y && apt-get install -y git ssh-client build-essential cmake ninja-build python3-pip && pip3 install conan && git submodule update --init && git submodule sync
+    - apt-get update -y && apt-get upgrade -y && apt-get install -y git ssh-client build-essential cmake ninja-build python3-pip && pip3 install conan && git submodule sync --recursive && git submodule update --init --recursive
   stage: lint_test
   image: ubuntu:20.04
   script: CONAN_USER_HOME=$PWD/conan make test
 
 build_linux_x64:
   before_script:
-    - apt-get update -y && apt-get upgrade -y && apt-get install -y git ssh-client build-essential cmake ninja-build python3-pip && pip3 install conan && git submodule update --init && git submodule sync
+    - apt-get update -y && apt-get upgrade -y && apt-get install -y git ssh-client build-essential cmake ninja-build python3-pip && pip3 install conan && git submodule sync --recursive && git submodule update --init --recursive
   stage: build
   image: ubuntu:20.04
   script: CONAN_USER_HOME=$PWD/conan make
 
 build_esp32:
   before_script:
-    -  apt-get update -y && apt-get upgrade -y && apt-get install -y && git submodule update --init && git submodule sync
+    -  apt-get update -y && apt-get upgrade -y && apt-get install -y && git submodule sync --recursive && git submodule update --init --recursive
   stage: build
   image: espressif/idf:release-v4.2
   script: make build_esp32
 
 build_armv7:
   before_script:
-    - apt-get update -y && apt-get upgrade -y && apt-get install -y git ssh-client build-essential cmake ninja-build python3-pip crossbuild-essential-armhf g++-8-arm-linux-gnueabihf && pip3 install conan && git submodule update --init && git submodule sync
+    - apt-get update -y && apt-get upgrade -y && apt-get install -y git ssh-client build-essential cmake ninja-build python3-pip crossbuild-essential-armhf g++-8-arm-linux-gnueabihf && pip3 install conan && git submodule sync --recursive && git submodule update --init --recursive
   stage: build
   image: debian:buster
   script: CONAN_USER_HOME=$PWD/conan make build_armv7
@@ -53,7 +53,7 @@ build_armv7:
 
 build_arm64:
   before_script:
-    - apt-get update -y && apt-get upgrade -y && apt-get install -y git ssh-client build-essential cmake ninja-build python3-pip crossbuild-essential-arm64 g++-8-aarch64-linux-gnu && pip3 install conan && git submodule update --init && git submodule sync
+    - apt-get update -y && apt-get upgrade -y && apt-get install -y git ssh-client build-essential cmake ninja-build python3-pip crossbuild-essential-arm64 g++-8-aarch64-linux-gnu && pip3 install conan && git submodule sync --recursive && git submodule update --init --recursive
   stage: build
   image: debian:buster
   script: CONAN_USER_HOME=$PWD/conan make build_arm64
