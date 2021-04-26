@@ -1,0 +1,19 @@
+type: deployment
+name: de.tum.ping_pong.deployment.ping
+ttl:  60000
+actor_type:   de.tum.ping_pong.actor.ping
+actor_runtime_type:  lua
+actor_version:  "1.0"
+actor_code_file:  "ping_actor.lua"
+constraints:
+  - "node_id": "example_node_1"
+---
+type: deployment
+name: de.tum.ping_pong.deployment.pong
+ttl:  60000
+actor_type:   de.tum.ping_pong.actor.pong
+actor_runtime_type:  lua
+actor_version:  "1.0"
+actor_code_file:  "pong_actor.lua"
+constraints:
+  - "node_id": "example_node_1"

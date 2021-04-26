@@ -3,23 +3,8 @@ import struct
 import argparse
 import msgpack
 import time
-import testbed_client
 
-# parser = argparse.ArgumentParser()
-# parser.add_argument("board_host")
-# parser.add_argument("board_port", type=int)
-# parser.add_argument("node_id")
-# parser.add_argument("peer_host")
-# parser.add_argument("peer_port", type=int)
-# parser.add_argument("peer_node_id")
-# arguments = parser.parse_args()
-
-def main():
-  nodes = []
-  nodes += testbed_client.node_adresses()
-  # nodes += [("node_laptop", "192.168.50.254", 1337)]
-  # nodes += [("node_cloud", "192.168.50.254", 1338)]
-  # nodes += [("node_laptop2", "192.168.50.254", 1339)]
+def main(nodes):
   t = int(time.time())
   for node_id, node_ip, node_port in nodes:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -46,4 +31,9 @@ def main():
       time.sleep(1)
         
 if __name__ == "__main__":
-  main()
+  parser = argparse.ArgumentParser()
+  parser.add_argument("-p", "--peer", nargs=3, action="append", metavar=("node_id", "node_ip", "node_port"))
+  args = parser.parse_args()
+  peers = [(node_id, node_ip, int(node_port)) for node_id, node_ip, node_port in args.peer]
+
+  main(peers)

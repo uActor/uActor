@@ -16,6 +16,7 @@ These Actors are deployed by multiple tenants and are able to communicate using 
 * `tools`: Tools that allow interacting with the platform nodes.
   * actorctl.py Upload a collection of deployments to one of the nodes (which will share it with its peers)
 * `evaluation`: Configuration scripts and code files that act as examples and allow reproducing the results presented in the paper.
+* `examples`: Contains examples to demonstrate uActor's core functionality as well as the interaction with important platform actors.
 
 ## Building
 The POSIX application is built using CMake and Ninja --- other build tools should also work --- and the ESP32 binary is built using a CMake-based esp.idf project.
