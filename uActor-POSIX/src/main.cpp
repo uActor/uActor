@@ -299,9 +299,9 @@ int main(int arg_count, char** args) {
   create_code_store.set_attr("instance_id", "1");
   uActor::PubSub::Router::get_instance().publish(std::move(create_code_store));
 
-  if (arguments.count("influxdb-host")) {
+  if (arguments.count("influxdb-url")) {
     uActor::Database::InfluxDBActor::server_url =
-        arguments["infludb-host"].as<std::string>();
+        arguments["influxdb-url"].as<std::string>();
     auto create_influxdb_actor = uActor::PubSub::Publication(
         uActor::BoardFunctions::NODE_ID, "root", "1");
     create_influxdb_actor.set_attr("command", "spawn_native_actor");
