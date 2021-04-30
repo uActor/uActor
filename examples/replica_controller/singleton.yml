@@ -1,0 +1,7 @@
+type: deployment
+name: de.tum.test.singleton
+ttl:  600000
+actor_type:  de.tum.test.singleton.actor
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "singleton_controller.lua"
