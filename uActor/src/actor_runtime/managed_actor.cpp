@@ -64,7 +64,9 @@ ManagedActor::ReceiveResult ManagedActor::receive_next_internal() {
                                "Receive called on inactive actor");
         ret = RuntimeReturnValue::RUNTIME_ERROR;
       }
+#if CONFIG_UACTOR_HIBERNATION
       hibernate();
+#endif
     }
   }
   if (ret == RuntimeReturnValue::INITIALIZATION_ERROR ||

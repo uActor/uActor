@@ -117,6 +117,9 @@ menu "uActor"
     config UACTOR_ENABLE_HEAP_TRACKING
        bool "Component-wise heap-memory tracking"
        default y
+    config UACTOR_HIBERNATION
+        bool "Enable hibernation"
+        default n
 endmenu
 menu "Testbed Configuration"
     config TESTBED_NETWORK_UTILS
