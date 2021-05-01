@@ -18,7 +18,7 @@ function receive(message)
       total_num_values = total_num_values + 1
       subscribe{type="sensor_update_"..variable, unit=configuration.unit, publisher_node_id=node_id, sensor=configuration.sensor, calibrated=1}
       if(configuration.alt_sensor) then
-        alt_sensor_sub_ids[variable] = subscribe{type="sensor_update_"..variable, unit=configuration.unit, publisher_node_id=node_id, sensor=configuration.alt_sensor} 
+        alt_sensor_sub_ids[variable] = subscribe{type="sensor_update_"..variable, unit=configuration.unit, publisher_node_id=node_id, sensor=configuration.alt_sensor, calibrated=1} 
       end
     end
   end

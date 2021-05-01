@@ -1,5 +1,6 @@
 function receive(message)
   if(message.type == "init") then
+    print("Init contact tracker")
     encounters = {}
     subscribe({type="contact_tracing.contact"})
     subscribe({type="contact_tracing.infection_warning"})
@@ -8,6 +9,7 @@ function receive(message)
   end
 
   if(message.type == "contact_tracing.contact") then
+    
     local contact_event = {
       peer_1=decode_base64(message.peer_1),
       peer_2=decode_base64(message.peer_2),
@@ -20,10 +22,11 @@ function receive(message)
   end
 
   if(message.type == "contact_tracing.infection_warning") then
+
     local risk_encounters = {}
     local infected_id = decode_base64(message.infected_id)
 
-    for _key, encounter in pairs(encounters) do
+    for _key, encounter in ipairs(encounters) do
       local risk_encounter = nil
       if(encounter.peer_1 == infected_id) then
         risk_encounter = encounter.peer_2
