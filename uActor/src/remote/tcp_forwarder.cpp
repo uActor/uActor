@@ -335,7 +335,7 @@ void TCPForwarder::tcp_reader() {
     testbed_log_rt_string("address",
                           _address_arguments.external_address_hint.data());
   } else {
-    testbed_log_rt_string("address", _address_arguments.listen_ip.data());
+    // testbed_log_rt_string("address", _address_arguments.listen_ip.data());
   }
 
   if (_address_arguments.external_port_hint > 0) {
@@ -609,6 +609,7 @@ void TCPForwarder::add_remote_connection(int socket_id, std::string remote_addr,
           remotes.try_emplace(remote_id, remote_id, socket_id, remote_addr,
                               remote_port, role, this);
       inserted) {
+    remote_it->second.last_read_contact = BoardFunctions::seconds_timestamp();
     if (role == uActor::Remote::ConnectionRole::CLIENT) {
       remote_it->second.send_routing_info();
     }

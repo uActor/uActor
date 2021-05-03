@@ -403,6 +403,11 @@ void main_task(void *) {
         std::move(add_persistent_peer));
   }
 
+#if CONFIG_UACTOR_ENABLE_TELEMETRY
+  uActor::Controllers::TelemetryData::increase("inital_heap",
+                                               xPortGetFreeHeapSize());
+#endif
+
   vTaskDelete(nullptr);
 }
 

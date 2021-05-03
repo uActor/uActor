@@ -21,3 +21,5 @@ evaluation/smart_office/smart_office_data/
 *.sublime-project
 sdkconfig.*
 conan/
+.ipynb_checkpoints
+peer_announcer.json

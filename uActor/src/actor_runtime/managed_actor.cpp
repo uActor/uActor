@@ -30,14 +30,17 @@ ManagedActor::ReceiveResult ManagedActor::receive_next_internal() {
   // allow for any necessary cleanup
   bool is_exit = next_message.get_str_attr("type") == "exit";
   auto ret = RuntimeReturnValue::NONE;
-  if (next_message.get_str_attr("type") == "code_fetch_response") {
+  if (next_message.get_str_attr("type") == "code_fetch_response" &&
+      std::string_view("code_store") != actor_type()) {
     waiting_for_code = false;
     if (next_message.get_str_attr("fetch_actor_type") == actor_type()) {
       ret = late_initialize(
           std::string(*next_message.get_str_attr("fetch_actor_code")));
     } else {
-      Support::Logger::fatal("MANAGED-ACTOR", "CODE-FETCH",
-                             "Received wrong code package.\n");
+      Support::Logger::fatal(
+          "MANAGED-ACTOR", "CODE-FETCH",
+          "Received wrong code package. Received: %s Expected: %s\n",
+          next_message.get_str_attr("fetch_actor_type")->data(), actor_type());
     }
   } else if (next_message.get_str_attr("type") == "timeout" &&
              waiting_for_code) {

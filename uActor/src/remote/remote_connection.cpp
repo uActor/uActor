@@ -266,7 +266,6 @@ void RemoteConnection::handle_remote_subscriptions_added(
     for (auto serialized : Support::StringHelper::string_split(
              *p.get_str_attr("serialized_subscriptions"), "&")) {
       auto deserialized = PubSub::Filter::deserialize(serialized);
-      printf("S: %s\n", serialized.data());
       if (deserialized) {
         uint32_t sub_id = handle->add_remote_subscription(
             local_id, PubSub::Filter(*deserialized), partner_node_id);

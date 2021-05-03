@@ -7,7 +7,7 @@ import json
 import os
 
 def main(host, port, nodes):
-  storage_path = "/home/i11/peer_announcer.json"
+  storage_path = "peer_announcer.json"
   if os.path.exists(storage_path):
       with open(storage_path, "r") as last_boot_timestamps_file:
             t = json.load(last_boot_timestamps_file)
