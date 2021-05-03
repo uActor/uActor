@@ -28,6 +28,7 @@ def main():
     parser.add_argument("-f", "--file", action='append')
     parser.add_argument("-m", "--minify", action="store_true")
     parser.add_argument("-c", "--publish-code-count", type=int, default=-1)
+    parser.add_argument("-u", "--upload-code-node-id")
     arguments = parser.parse_args()
 
     deployments = []
@@ -72,7 +73,12 @@ def main():
         before = time.time()
         for deployment in deployments:
             last_iterations[deployment["deployment_name"]] = time.time()
-            if publish_code_count == 0:
+            if arguments.upload_code_node_id:
+                print("Upload Code")
+                _publish(sckt, code_msg(deployment, arguments.upload_code_node_id), epoch, sequence_number)
+                sequence_number += 1
+
+            if publish_code_count == 0 and "deployment_actor_code" in deployment:
                 del deployment["deployment_actor_code"]
             start_publish = time.time()
             _publish(sckt, deployment, epoch, sequence_number)
@@ -89,7 +95,7 @@ def main():
         while min_ttl_ms > 0 and arguments.refresh:
             before = time.time()
             for deployment in deployments:
-                if publish_code_count == 0:
+                if publish_code_count == 0 and "deployment_actor_code" in deployment:
                     del deployment["deployment_actor_code"]
                 _publish(sckt, deployment, epoch, sequence_number)
                 print(f"Refresh: {deployment['deployment_name']} Interval: {time.time() - last_iterations[deployment['deployment_name']]}")
@@ -174,6 +180,19 @@ def load_code_file(code_file):
     
     return code
 
+
+def code_msg(deployment, node_id):
+    return {
+        "actor_type": "code_store",
+        "instance_id": "1",
+        "node_id": node_id,
+        "type": "actor_code",
+        "actor_code_type": deployment["deployment_actor_code"],
+       "actor_code_runtime_type": "lua",
+       "actor_code_version": deployment["deployment_actor_version"],
+       "actor_code_lifetime_end": 0,
+       "actor_code":  deployment["deployment_actor_code"]
+    }
 
 def _publish(sckt, publication, epoch, sequence_number):
     publication["_internal_sequence_number"] = sequence_number
