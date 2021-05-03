@@ -78,6 +78,18 @@ else()
   set(CONAN_HOST_SYSTEM_PROCESSOR ${CMAKE_HOST_SYSTEM_PROCESSOR})
 endif()
 
+if(CMAKE_SYSTEM_NAME STREQUAL Darwin)
+  set(CONAN_SYSTEM_NAME Macos)
+else()
+  set(CONAN_SYSTEM_NAME ${CMAKE_SYSTEM_NAME})
+endif()
+
+if(CMAKE_HOST_SYSTEM_NAME STREQUAL Darwin)
+  set(CONAN_HOST_SYSTEM_NAME Macos)
+else()
+  set(CONAN_HOST_SYSTEM_NAME ${CMAKE_HOST_SYSTEM_NAME})
+endif()
+
 conan_cmake_autodetect(settings)
 conan_cmake_install(PATH_OR_REFERENCE .
                     BUILD missing
@@ -85,10 +97,10 @@ conan_cmake_install(PATH_OR_REFERENCE .
                     SETTINGS ${settings}
                     SETTINGS_HOST 
                       arch=${CONAN_SYSTEM_PROCESSOR}
-                      os=${CMAKE_SYSTEM_NAME}
+                      os=${CONAN_SYSTEM_NAME}
                     SETTINGS_BUILD 
                       arch=${CONAN_HOST_SYSTEM_PROCESSOR}
-                      os=${CMAKE_HOST_SYSTEM_NAME}
+                      os=${CONAN_HOST_SYSTEM_NAME}
                     ENV CC=${CMAKE_C_COMPILER}
                     ENV CXX=${CMAKE_CXX_COMPILER}
                     ENV CFLAGS=${CMAKE_C_FLAGS}
@@ -109,7 +121,16 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../uActor ${CMAKE_CURRENT_BINARY_DI
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 add_compile_options(-Werror -Wall -Wextra -pedantic)
 
-target_compile_options(uActor PUBLIC -DCONFIG_BENCHMARK_ENABLED=1)
+#TODO: Add build configuation utility
+target_compile_options(uActor PUBLIC -DCONFIG_UACTOR_ENABLE_TELEMETRY=1)
+
+#EVAL: Enable
+#target_compile_options(uActor PUBLIC -DCONFIG_BENCHMARK_ENABLED=1)
+#target_compile_options(uActor PUBLIC -DCONFIG_UACTOR_ENABLE_HEAP_TRACKING=1)
+#target_compile_options(uActor PUBLIC -DCONFIG_UACTOR_ENABLE_SECONDS_TELEMETRY=1)
+
+#Not needed in most situations
+#target_compile_options(uActor PUBLIC -DCONFIG_UACTOR_HIBERNATION=1)
 
 if (NOT TARGET InfluxData::InfluxDB)
   set(INFLUXCXX_TESTING OFF CACHE INTERNAL "" FORCE)
@@ -120,4 +141,9 @@ target_link_libraries(uActorBin InfluxData::InfluxDB)
 target_link_libraries(uActorBin uActor)
 
 target_link_libraries(uActorBin Threads::Threads)
+
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "9.1")
+target_link_libraries(uActorBin stdc++fs)
+endif()
+
 target_link_libraries(uActorBin Boost::program_options)
