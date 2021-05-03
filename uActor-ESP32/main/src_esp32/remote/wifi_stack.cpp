@@ -54,6 +54,7 @@ esp_netif_t* WifiStack::init(void) {
                                              &event_handler_wrapper, this));
   ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP,
                                              &event_handler_wrapper, this));
+  esp_wifi_set_storage(WIFI_STORAGE_RAM);
 
   ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
   ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config));
@@ -62,6 +63,10 @@ esp_netif_t* WifiStack::init(void) {
   extern uint8_t ca_pem_start[] asm("_binary_eduroam_pem_start");
   extern uint8_t ca_pem_end[] asm("_binary_eduroam_pem_end");
   uint32_t ca_pem_bytes = ca_pem_end - ca_pem_start;
+  const char* identity = "anonymous@eduroam.mwn.de";
+  // esp_wifi_sta_wpa2_ent_set_ttls_phase2_method(TTLS_PHASE2_METHOD);
+  esp_wifi_sta_wpa2_ent_set_identity(reinterpret_cast<const uint8_t*>(identity),
+                                     strlen(identity));
   ESP_ERROR_CHECK(
       esp_wifi_sta_wpa2_ent_set_ca_cert(ca_pem_start, ca_pem_bytes));
   ESP_ERROR_CHECK(esp_wifi_sta_wpa2_ent_set_username(
@@ -80,12 +85,7 @@ esp_netif_t* WifiStack::init(void) {
   ESP_ERROR_CHECK(esp_wifi_start());
 
   sntp_setoperatingmode(SNTP_OPMODE_POLL);
-#if CONFIG_BENCHMARK_ENABLED
-  sntp_setservername(0, "192.168.50.2");
-#else
-  sntp_setservername(0, "ntp1.lrz.de");
-  sntp_setservername(1, "ntp3.lrz.de");
-#endif
+  sntp_setservername(0, CONFIG_WIFI_NTP_SERVER);
   sntp_set_sync_mode(SNTP_SYNC_MODE_IMMED);
   sntp_set_time_sync_notification_cb(&sntp_synced);
   sntp_init();
@@ -127,9 +127,14 @@ void WifiStack::event_handler(esp_event_base_t event_base, int32_t event_id,
     esp_wifi_connect();
   } else if (event_base == WIFI_EVENT &&
              event_id == WIFI_EVENT_STA_DISCONNECTED) {
-    ESP_LOGI(TAG, "Retry to connect to the AP");
+    ESP_LOGI(
+        TAG, "Retry to connect to the AP: %d",
+        reinterpret_cast<wifi_event_sta_disconnected_t*>(event_data)->reason);
 #if CONFIG_WIFI_USE_EDUROAM
-    ESP_ERROR_CHECK(esp_wifi_sta_wpa2_ent_enable());
+    if (s_wpa2_state == WPA2_STATE_DISABLED)) {
+        ESP_ERROR_CHECK(esp_wifi_sta_wpa2_ent_enable());
+    uActor::Support::Logger::info"WiFi", "Connect", "Error %d", ret);
+      }
 #endif
     auto ret = esp_wifi_connect();
     if (ret) {
@@ -139,12 +144,14 @@ void WifiStack::event_handler(esp_event_base_t event_base, int32_t event_id,
   } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
     sntp_restart();
     ip_event_got_ip_t* event = reinterpret_cast<ip_event_got_ip_t*>(event_data);
-    //  ESP_LOGI(TAG, "got ip: " IPSTR, IP2STR(&event->ip_info.ip));
-    testbed_log_ipv4_address(event->ip_info.ip);
-    testbed_log_ipv4_netmask(event->ip_info.netmask);
-    testbed_log_ipv4_gateway(event->ip_info.gw);
-
-    retry_count = 0;
+    ESP_LOGI(TAG, "got ip: " IPSTR, IP2STR(&event->ip_info.ip));
+#if CONFIG_BENCHMARK_ENABLED
+    if (event->ip_info.ip.addr != 0) {
+      testbed_log_ipv4_address(event->ip_info.ip);
+      testbed_log_ipv4_netmask(event->ip_info.netmask);
+      testbed_log_ipv4_gateway(event->ip_info.gw);
+    }
+#endif
     xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
   }
 }

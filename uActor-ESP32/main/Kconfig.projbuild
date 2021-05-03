@@ -24,6 +24,12 @@ menu "Wifi Configuration"
         default "1234"
         help
             WiFi password
+    config WIFI_NTP_SERVER
+        string "NTP server ip"
+        # time.cloudflare.com
+        default "162.159.200.1"
+        help
+            NTP server ip
 endmenu
 menu "Board Configuration"
     config USE_MAC_AS_NODE_ID
