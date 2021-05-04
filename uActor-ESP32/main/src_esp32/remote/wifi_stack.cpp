@@ -130,12 +130,7 @@ void WifiStack::event_handler(esp_event_base_t event_base, int32_t event_id,
     ESP_LOGI(
         TAG, "Retry to connect to the AP: %d",
         reinterpret_cast<wifi_event_sta_disconnected_t*>(event_data)->reason);
-#if CONFIG_WIFI_USE_EDUROAM
-    if (s_wpa2_state == WPA2_STATE_DISABLED)) {
-        ESP_ERROR_CHECK(esp_wifi_sta_wpa2_ent_enable());
-    uActor::Support::Logger::info"WiFi", "Connect", "Error %d", ret);
-      }
-#endif
+    // ESP_ERROR_CHECK(esp_wifi_sta_wpa2_ent_enable());
     auto ret = esp_wifi_connect();
     if (ret) {
       uActor::Support::Logger::error("WiFi", "Connect", "Error %d", ret);
