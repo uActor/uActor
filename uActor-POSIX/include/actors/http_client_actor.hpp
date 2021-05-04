@@ -4,6 +4,7 @@
 #include <string>
 #include <thread>
 
+#include "pubsub/matched_publication.hpp"
 #include "pubsub/receiver_handle.hpp"
 
 struct curl_slist;
@@ -21,27 +22,29 @@ class HTTPClientActor {
   HTTPClientActor(const HTTPClientActor& other) = delete;
   HTTPClientActor(HTTPClientActor&& other) = default;
 
-  // todo if announce deannounce HTTPClient Actor
-  ~HTTPClientActor() = default;
-  // todo check with raphael if it is ok to allow non const refs
-  void thread_function();
+  ~HTTPClientActor();
 
   HTTPClientActor& operator=(const HTTPClientActor& other) = delete;
   HTTPClientActor& operator=(HTTPClientActor&& other) = default;
 
  private:
-  inline void prep_request(const std::string& url, void* curl,
-                           curl_slist* request_header) const;
-  [[nodiscard]] inline curl_slist* build_header(
-      const std::optional<std::string>& request_header) const;
-  [[nodiscard]] inline uint8_t perform_request(
-      void* curl, curl_slist* request_header) const;
-  [[nodiscard]] uint8_t get_request(
+  void thread_function();
+
+  static void handle_publication(
+      uActor::PubSub::MatchedPublication&& publication);
+
+  static inline void prep_request(const std::string& url, void* curl,
+                                  curl_slist* request_header);
+  [[nodiscard]] static inline curl_slist* build_header(
+      const std::optional<std::string>& request_header);
+  [[nodiscard]] static inline uint8_t perform_request(
+      void* curl, curl_slist* request_header);
+  [[nodiscard]] static uint8_t get_request(
       const std::string& url, const std::optional<std::string>& request_header,
-      std::string* response_payload, std::string* resp_header) const;
-  [[nodiscard]] uint8_t post_request(
+      std::string* response_payload, std::string* resp_header);
+  [[nodiscard]] static uint8_t post_request(
       const std::string& url, const std::optional<std::string>& request_header,
-      const std::string& payload) const;
+      const std::string& payload);
 };
 
 }  // namespace uActor::HTTP
