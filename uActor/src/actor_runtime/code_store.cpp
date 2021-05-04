@@ -41,7 +41,7 @@ void CodeStore::insert_or_refresh(CodeIdentifier&& identifier,
   if (!inserted) {
     auto& code_packet = iterator->second;
     if (lifetime_end == MAGIC_LIFETIME_VALUE_INFINTE) {
-      iterator->second.lifetime_end;
+      iterator->second.lifetime_end = MAGIC_LIFETIME_VALUE_INFINTE;
     } else {
       iterator->second.lifetime_end =
           std::max(lifetime_end, iterator->second.lifetime_end);

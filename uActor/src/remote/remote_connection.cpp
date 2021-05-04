@@ -201,7 +201,8 @@ void RemoteConnection::process_remote_publication(PubSub::Publication&& p) {
 #endif
       } else {
 #if CONFIG_UACTOR_ENABLE_TELEMETRY
-        if (p.get_str_attr("type") == "deployment") {
+        if (p.get_str_attr("type") == "deployment" ||
+            p.get_str_attr("type") == "actor_code") {
           Controllers::TelemetryData::increase("deployment_traffic_size",
                                                publicaton_full_size);
           Controllers::TelemetryData::increase("deployment_traffic_number", 1);

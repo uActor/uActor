@@ -32,19 +32,24 @@ ManagedActor::ReceiveResult ManagedActor::receive_next_internal() {
   auto ret = RuntimeReturnValue::NONE;
   if (next_message.get_str_attr("type") == "code_fetch_response" &&
       std::string_view("code_store") != actor_type()) {
-    waiting_for_code = false;
-    if (next_message.get_str_attr("fetch_actor_type") == actor_type()) {
-      ret = late_initialize(
-          std::string(*next_message.get_str_attr("fetch_actor_code")));
+    if (!_initialized) {
+      waiting_for_code = false;
+      if (next_message.get_str_attr("fetch_actor_type") == actor_type()) {
+        ret = late_initialize(
+            std::string(*next_message.get_str_attr("fetch_actor_code")));
+      } else {
+        Support::Logger::fatal(
+            "MANAGED-ACTOR", "CODE-FETCH",
+            "Received wrong code package. Received: %s Expected: %s\n",
+            next_message.get_str_attr("fetch_actor_type")->data(),
+            actor_type());
+      }
     } else {
-      Support::Logger::fatal(
-          "MANAGED-ACTOR", "CODE-FETCH",
-          "Received wrong code package. Received: %s Expected: %s\n",
-          next_message.get_str_attr("fetch_actor_type")->data(), actor_type());
+      Support::Logger::info("MANAGED-ACTOR", "CODE-FETCH", "Delayed Code");
     }
   } else if (next_message.get_str_attr("type") == "timeout" &&
              waiting_for_code) {
-    if (code_fetch_retries < 3) {
+    if (code_fetch_retries < 20) {
       Support::Logger::warning("MANAGED-ACTOR", "CODE-FETCH", "RETRY");
       trigger_code_fetch();
       code_fetch_retries++;
@@ -167,9 +172,9 @@ ManagedActor::RuntimeReturnValue ManagedActor::late_initialize(
 void ManagedActor::trigger_code_fetch() {
   waiting_for_code = true;
   Support::Logger::info("MANAGED-ACTOR", "LATE-CODE-FETCH",
-                        "trigger code fetch");
+                        "trigger code fetch\n");
   deffered_block_for(
-      PubSub::Filter{PubSub::Constraint("type", "code_fetch_response")}, 10000);
+      PubSub::Filter{PubSub::Constraint("type", "code_fetch_response")}, 1000);
   PubSub::Publication fetch_code(node_id(), actor_type(), instance_id());
   // fetch_code.set_attr("node_id", node_id());
   fetch_code.set_attr("type", "code_fetch_request");

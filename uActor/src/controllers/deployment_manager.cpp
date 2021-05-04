@@ -115,6 +115,12 @@ void DeploymentManager::receive_deployment(
 #else
           publish_code_package(deployment, std::string(*actor_code));
 #endif
+        } else {
+#if CONFIG_UACTOR_OPTIMIZATIONS_DIRECT_CODE_STORE
+          update_code_lifetime(deployment);
+#else
+          publish_code_lifetime_update(deployment);
+#endif
         }
         // printf("Receive deployment from: %s\n",
         //       publication.get_str_attr("publisher_node_id")->data());

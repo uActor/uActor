@@ -19,6 +19,10 @@ void CodeStoreActor::receive(const PubSub::Publication& publication) {
     subscribe(PubSub::Filter{
         PubSub::Constraint{"publisher_node_id", std::string(node_id())},
         PubSub::Constraint{"type", "actor_code_lifetime_update"}});
+    // subscribe(PubSub::Filter{PubSub::Constraint{"type",
+    // "code_fetch_response"}, PubSub::Constraint{"node_id", "node_id"},
+    // PubSub::Constraint{"publisher_node_id",
+    // node_id(),PubSub::ConstraintPredicates::NE, true}});
     code_fetch_subscription_id = subscribe(
         PubSub::Filter{
             PubSub::Constraint{"type", "code_fetch_request"},
@@ -147,6 +151,8 @@ void CodeStoreActor::receive_code_fetch_request(
         CodeIdentifier(actor_type, actor_version, actor_runtime_type), false);
 
     if (local_code) {
+      Support::Logger::info("CODE_STORE_ACTOR", "CODE_FETCH",
+                            "Code available locally");
       response.set_attr("fetch_actor_code", local_code->code);
     } else {
       auto [debounce_it, inserted] = code_miss_debounce.try_emplace(
@@ -156,8 +162,17 @@ void CodeStoreActor::receive_code_fetch_request(
         debounce_it->second = now() + 5000;
         Support::Logger::info("CODE_STORE_ACTOR", "CODE_FETCH",
                               "Code Missing, resubmitting");
-        publication.set_attr("last_cache_miss_node_id", node_id());
-        republish(std::move(publication));
+        // publication.set_attr("last_cache_miss_node_id", node_id());
+        // republish(std::move(publication));
+
+        auto code_fetch =
+            PubSub::Publication(node_id(), this->actor_type(), instance_id());
+        code_fetch.set_attr("type", "code_fetch_request");
+        code_fetch.set_attr("fetch_actor_type", actor_type);
+        code_fetch.set_attr("fetch_actor_version", actor_version);
+        code_fetch.set_attr("fetch_actor_runtime_type", actor_runtime_type);
+        code_fetch.set_attr("last_cache_miss_node_id", node_id());
+        publish(std::move(code_fetch));
       }
       return;
     }
