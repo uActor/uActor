@@ -2,16 +2,17 @@ MAX_SIZE = 131072
 
 function receive(message)
 
-  if(message.type == "ping") then
+  if(message.foo == "bar") then
     testbed_stop_timekeeping(1, "latency")
-    if(iteration % 25 == 0) then
-      delayed_publish(Publication.new("node_id", node_id, "actor_type", actor_type, "instance_id", instance_id, "type", "setup"), 1000 + math.random(0, 199))
+    if(iteration % 5 == 0) then
+      enqueue_wakeup(1000 + math.random(0, 199), "setup")
     else
-      delayed_publish(Publication.new("node_id", node_id, "actor_type", actor_type, "instance_id", instance_id, "type", "trigger"), 1000 + math.random(0, 199))
+      enqueue_wakeup(1000 + math.random(0, 199), "trigger")
     end
   end
 
   if(message.type == "init") then
+    subscribe({foo="bar", baz="qux"})
     math.randomseed(now()*1379)
     for i=1,3 do
       math.random()
@@ -21,7 +22,7 @@ function receive(message)
   end
 
 
-  if(message.type == "init" or message.type == "setup") then
+  if(message.type == "init" or (message.type == "wakeup" and message.wakeup_id == "setup")) then
     iteration = 0
     size = size + 256
     if(size > MAX_SIZE) then
@@ -31,14 +32,14 @@ function receive(message)
     testbed_log_string("_logger_test_postfix", size)
 
     collectgarbage()
-    delayed_publish(Publication.new("node_id", node_id, "actor_type", actor_type, "instance_id", instance_id, "type", "trigger"), 1000 + math.random(0, 199))
+    enqueue_wakeup(1000 + math.random(0, 199), "trigger")
   end
 
-  if(message.type == "trigger") then
+  if(message.type == "wakeup" and message.wakeup_id == "trigger") then
     
     iteration = iteration + 1
 
-    local publication = Publication.new("node_id", node_id, "actor_type", actor_type, "instance_id", instance_id, "type", "ping")
+    local publication = Publication.new("foo", "bar", "baz", "qux")
   
     if (size > 0) then
       local elem_256 = "A"
