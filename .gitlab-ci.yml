@@ -24,6 +24,8 @@ test:
     - apt-get update -y && apt-get upgrade -y && apt-get install -y git ssh-client build-essential cmake ninja-build python3-pip && pip3 install conan && git submodule sync --recursive && git submodule update --init --recursive
   stage: lint_test
   image: ubuntu:20.04
+  rules:
+    - allow_failure: true
   script: CONAN_USER_HOME=$PWD/conan make test
 
 build_linux_x64:
