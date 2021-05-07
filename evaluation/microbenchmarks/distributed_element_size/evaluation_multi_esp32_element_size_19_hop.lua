@@ -32,7 +32,7 @@ function receive(message)
     testbed_log_string("_logger_test_postfix", size)
 
     collectgarbage()
-    delayed_publish(Publication.new("node_id", node_id, "actor_type", actor_type, "instance_id", instance_id, "type", "trigger"), 2000 + math.random(0, 199))
+    delayed_publish(Publication.new("node_id", node_id, "actor_type", actor_type, "instance_id", instance_id, "type", "trigger"), 10000 + math.random(0, 199))
   end
 
   if(message.type == "trigger") then

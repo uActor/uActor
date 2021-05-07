@@ -16,14 +16,14 @@ function receive(message)
     for i=1,3 do
       math.random()
     end
-    distance = -1
+    distance = 20
     iteration = 0
   end
   
   if(message.type == "init" or message.type == "setup") then
 
     iteration = 0
-    distance = distance + 1
+    distance = distance - 1
     
     if(distance > MAX_DISTANCE) then
       testbed_log_string("done" , "true")
