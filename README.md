@@ -1,6 +1,7 @@
-# μActor: Stateful Content-based In-Network Computing
-Platform for running Actors on various Devices (from Microcontrollers to Edge and Cloud nodes based on Linux/Unix) in the Network.
-These Actors are deployed by multiple tenants and are able to communicate using Content-based Networking.
+# μActor: Stateful Serverless at the Edge
+
+Platform for running actors on various devices (from microcontrollers to edge and cloud nodes based on Linux/Unix) in the network.
+These actors are deployed by multiple tenants and are able to communicate using Content-based Networking.
 
 ## Project Structure
 
@@ -17,6 +18,14 @@ These Actors are deployed by multiple tenants and are able to communicate using 
   * actorctl.py Upload a collection of deployments to one of the nodes (which will share it with its peers)
 * `evaluation`: Configuration scripts and code files that act as examples and allow reproducing the results presented in the paper.
 * `examples`: Contains examples to demonstrate uActor's core functionality as well as the interaction with important platform actors.
+
+## Submodules
+
+You need to download all submodules:
+
+```bash
+git submodule sync &&  git submodule update --init --recursive
+```
 
 ## Building
 The POSIX application is built using CMake and Ninja --- other build tools should also work --- and the ESP32 binary is built using a CMake-based esp.idf project.
