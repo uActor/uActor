@@ -1,0 +1,7 @@
+type: deployment
+name: messaging_test_deployment
+ttl:  0
+actor_type:  messaging_test_actor
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "evaluation_local_element_latency.lua"

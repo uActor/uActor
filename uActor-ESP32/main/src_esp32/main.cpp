@@ -413,10 +413,17 @@ void main_task(void *) {
 
 void heap_caps_alloc_failed_hook(size_t requested_size, uint32_t caps,
                                  const char *function_name) {
+#if CONFIG_BENCHMARK_ENABLED
+  testbed_log_integer("oom", 1);
+  testbed_log_integer("_reboot", 1);
+#endif
   printf(
       "%s was called but failed to allocate %d bytes with 0x%X capabilities. "
       "\n",
       function_name, requested_size, caps);
+#if CONFIG_BENCHMARK_ENABLED
+  esp_restart();
+#endif
 }
 
 esp_err_t error =

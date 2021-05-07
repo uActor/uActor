@@ -4,7 +4,7 @@ function receive(message)
 
   if(message.type == "pong") then
     testbed_stop_timekeeping(1, "latency")
-    if(iteration % 1 == 0) then
+    if(iteration % 10 == 0) then
       delayed_publish(Publication.new("node_id", node_id, "actor_type", actor_type, "instance_id", instance_id, "type", "setup"), 5000 + math.random(0, 199))
     else
       delayed_publish(Publication.new("node_id", node_id, "actor_type", actor_type, "instance_id", instance_id, "type", "trigger"), 1000 + math.random(0, 199))
@@ -16,7 +16,7 @@ function receive(message)
     for i=1,3 do
       math.random()
     end
-    distance = 18
+    distance = -1
     iteration = 0
   end
   

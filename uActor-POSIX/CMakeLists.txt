@@ -124,6 +124,7 @@ add_compile_options(-Werror -Wall -Wextra -pedantic)
 #TODO: Add build configuation utility
 target_compile_options(uActor PUBLIC -DCONFIG_UACTOR_ENABLE_TELEMETRY=1)
 
+# Eval: Disable
 #EVAL: Enable
 #target_compile_options(uActor PUBLIC -DCONFIG_BENCHMARK_ENABLED=1)
 #target_compile_options(uActor PUBLIC -DCONFIG_UACTOR_ENABLE_HEAP_TRACKING=1)
