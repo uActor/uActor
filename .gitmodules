@@ -18,7 +18,7 @@
 	url = https://github.com/ReneNyffenegger/cpp-base64.git
 [submodule "uActor-ESP32/components/sensiron-scd"]
 	path = uActor-ESP32/components/sensiron-scd
-	url = ../../cm/sensirion-embedded-scd.git
+	url = https://github.com/uActor/embedded-scd.git
 [submodule "vendor/influxdb-cxx"]
 	path = vendor/influxdb-cxx
 	url = https://github.com/offa/influxdb-cxx.git
