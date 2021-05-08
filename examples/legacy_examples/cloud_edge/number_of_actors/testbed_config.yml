@@ -1,0 +1,29 @@
+boards:
+  node_edge: # TODO(raphaelhetzel) move to Raspberry Pi
+    type: "UNIX-CMAKE"
+    runtime_configuration:
+      binary_name: "uActorBin"
+      parameters:
+        - --node-id=node_edge
+      # remote:
+      #   host: "116.203.209.168"
+      #   user: raphael
+        # root_directory: /home/raphael/testbed-test
+    build_configuration:
+      root_directory: {{TESTBED_ROOT_DIR}}/uActor-POSIX
+      configuration_name: "default"
+      # container_configuration:
+      #   image: ubuntu_cpp_build:18.04
+      #   container_dir: "/app"
+experiments:
+  default:
+    hooks:
+        _all:
+          _ready: '/bin/bash $TESTBED_CONFIG_DIR/ready_hook.sh evaluation_edge_number_of_deployments_large.yml'
+    limits:
+      default:
+        count_received: 10000
+  run_1: {}
+  run_2: {}
+  run_3: {}
+  run_4: {}
