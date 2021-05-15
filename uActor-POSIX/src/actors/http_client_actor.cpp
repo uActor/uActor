@@ -7,6 +7,7 @@
 #include <curl/options.h>
 #include <fmt/compile.h>
 #include <fmt/core.h>
+#include <fmt/format.h>
 
 #include <chrono>
 #include <cstdint>
@@ -25,6 +26,7 @@
 #include "pubsub/receiver_handle.hpp"
 #include "pubsub/router.hpp"
 #include "support/logger.hpp"
+#include "support/string_helper.hpp"
 #include "support/testbed.h"
 
 namespace uActor::HTTP {
@@ -187,7 +189,16 @@ curl_slist* HTTPClientActor::build_header(
   if (!request_header.has_value()) {
     return nullptr;
   }
-  return curl_slist_append(nullptr, request_header->c_str());
+
+  curl_slist* ret = nullptr;
+
+  // todo check if | is fine
+  for (const auto& header :
+       Support::StringHelper::string_split(request_header.value(), "|")) {
+    // Unfortunately we have to construct a string string_view is not \0 terminated
+    ret = curl_slist_append(ret, std::string(header).c_str());
+  }
+  return ret;
 }
 
 uint8_t HTTPClientActor::perform_request(void* curl,
