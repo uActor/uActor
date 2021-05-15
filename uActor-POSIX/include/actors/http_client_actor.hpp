@@ -5,6 +5,7 @@
 #include <thread>
 
 #include "pubsub/matched_publication.hpp"
+#include "pubsub/publication.hpp"
 #include "pubsub/receiver_handle.hpp"
 
 struct curl_slist;
@@ -30,8 +31,7 @@ class HTTPClientActor {
  private:
   void thread_function();
 
-  static void handle_publication(
-      uActor::PubSub::MatchedPublication&& publication);
+  static void handle_publication(PubSub::Publication&& p);
 
   static inline void prep_request(const std::string& url, void* curl,
                                   curl_slist* request_header);
@@ -41,7 +41,7 @@ class HTTPClientActor {
       void* curl, curl_slist* request_header);
   [[nodiscard]] static uint8_t get_request(
       const std::string& url, const std::optional<std::string>& request_header,
-      std::string* response_payload, std::string* resp_header);
+      std::string* response_payload);
   [[nodiscard]] static uint8_t post_request(
       const std::string& url, const std::optional<std::string>& request_header,
       const std::string& payload);

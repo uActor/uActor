@@ -68,23 +68,28 @@ void HTTPClientActor::thread_function() {
   std::list<std::future<void>> job_list;
   while (true) {
     auto result = this->handle.receive(
-        job_list.empty() ? BoardFunctions::SLEEP_FOREVER : 10);
-    if (!result.has_value()) {
-      continue;
+        job_list.empty() ? BoardFunctions::SLEEP_FOREVER : 100);
+    if (result.has_value()) {
+      job_list.emplace_back(
+          std::async(handle_publication, std::move(result->publication)));
     }
-
-    job_list.emplace_back(
-        std::async(handle_publication, std::move(result.value())));
+#ifndef __OPTIMIZE__
+    const size_t pre_size = job_list.size();
+#endif
+    // remove finished jobs form job list
+    job_list.remove_if([](const std::future<void>& i) {
+      return i.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+    });
+#ifndef __OPTIMIZE__
+    Support::Logger::info(
+        "http_client_actor", "List cleanup",
+        fmt::format("Executed list cleanup {} -> {}", pre_size, job_list.size())
+            .c_str());
+#endif
   }
-  // remove finished jobs form job list
-  job_list.remove_if([](const std::future<void>& i) {
-    return i.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
-  });
 }
 
-void HTTPClientActor::handle_publication(
-    PubSub::MatchedPublication&& publication) {
-  const auto p = publication.publication;
+void HTTPClientActor::handle_publication(PubSub::Publication&& p) {
   assert(p.get_str_attr("type").has_value());
   assert("http_request" == p.get_str_attr("type").value());
   auto request_type = p.get_str_attr("http_method");
@@ -121,14 +126,12 @@ void HTTPClientActor::handle_publication(
 
   if (request_type.value() == "GET") {
     std::string http_response;
-    std::string http_header;
     uint8_t response_code =
-        get_request(request_url, request_header, &http_response, &http_header);
+        get_request(request_url, request_header, &http_response);
 
     // todo check if name is fine
     PubSub::Publication p(BoardFunctions::NODE_ID, HTTP_ACTOR_NAME, "1");
     p.set_attr("type", "http_response");
-    p.set_attr("http_header", std::move(http_header));
     p.set_attr("body", std::move(http_response));
     p.set_attr("http_code", response_code);
     p.set_attr("request_id", request_id.value());
@@ -195,7 +198,8 @@ curl_slist* HTTPClientActor::build_header(
   // todo check if | is fine
   for (const auto& header :
        Support::StringHelper::string_split(request_header.value(), "|")) {
-    // Unfortunately we have to construct a string string_view is not \0 terminated
+    // Unfortunately we have to construct a string string_view is not \0
+    // terminated
     ret = curl_slist_append(ret, std::string(header).c_str());
   }
   return ret;
@@ -216,15 +220,13 @@ uint8_t HTTPClientActor::perform_request(void* curl,
 
 uint8_t HTTPClientActor::get_request(
     const std::string& url, const std::optional<std::string>& request_header,
-    std::string* response_payload, std::string* resp_header) {
+    std::string* response_payload) {
   void* curl = curl_easy_init();
-  struct curl_slist* request_header_list = build_header(request_header);
+  curl_slist* request_header_list = build_header(request_header);
   prep_request(url, curl, request_header_list);
   curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_function);
   curl_easy_setopt(curl, CURLOPT_WRITEDATA, response_payload);
-  if (resp_header != nullptr) {
-    curl_easy_setopt(curl, CURLOPT_HEADERDATA, resp_header);
-  }
+
   return perform_request(curl, request_header_list);
 }
 
