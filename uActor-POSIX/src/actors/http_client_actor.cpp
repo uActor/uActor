@@ -87,11 +87,15 @@ void HTTPClientActor::handle_publication(
   assert("http_request" == p.get_str_attr("type").value());
   auto request_type = p.get_str_attr("http_method");
   if (!request_type.has_value()) {
+    Support::Logger::warning("http_client_actor", "handle_publication",
+                             "No request_type given");
     return;
   }
 
   auto request_id = p.get_int_attr("request_id");
   if (!request_id.has_value()) {
+    Support::Logger::warning("http_client_actor", "handle_publication",
+                             "No request_id given");
     return;
   }
 
@@ -99,6 +103,12 @@ void HTTPClientActor::handle_publication(
     const auto request_url = p.get_str_attr("request_url");
     return request_url.has_value() ? request_url.value() : "";
   }()};
+
+  if (request_url.empty()) {
+    Support::Logger::warning("http_client_actor", "handle_publication",
+                             "No request_url given");
+    return;
+  }
 
   std::optional<std::string> request_header{[&p]() {
     const auto request_header = p.get_str_attr("headers");
@@ -157,8 +167,10 @@ void HTTPClientActor::handle_publication(
     PubSub::Router::get_instance().publish(std::move(p));
     return;
   }
-  // Support::Logger::warning("http_client_actor", )
-  // todo log wrong code
+
+  Support::Logger::warning(
+      "http_client_actor", "handle_publication",
+      fmt::format("unknown request_type: {}", request_type.value()).c_str());
 }
 
 void HTTPClientActor::prep_request(const std::string& url, void* curl,
