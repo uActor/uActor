@@ -1,0 +1,20 @@
+type: deployment
+name: de.tum.smart_office.deployment.corona_risk_parameter_server
+ttl:  0
+actor_type:  de.tum.smart_office.actor.corona_risk_parameter_server
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "corona_risk_parameter_server.lua"
+constraints:
+  - "node_id": "smart_office_central"
+---
+type: deployment
+name: de.tum.smart_office.deployment.corona_risk
+ttl:  0
+actor_type:  de.tum.smart_office.actor.corona_risk
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "corona_risk.lua"
+required_actors:
+  - "de.tum.smart_office.actor.contact_scanner"
+  - "de.tum.smart_office.actor.node_en_number_tracker"

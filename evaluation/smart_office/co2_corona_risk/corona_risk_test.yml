@@ -1,0 +1,23 @@
+type: deployment
+name: de.tum.smart_office.deployment.corona_risk_parameter_server
+ttl:  0
+actor_type:  de.tum.smart_office.actor.corona_risk_parameter_server
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "corona_risk_parameter_server.lua"
+---
+type: deployment
+name: de.tum.smart_office.deployment.corona_risk
+ttl:  0
+actor_type:  de.tum.smart_office.actor.corona_risk
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "corona_risk.lua"
+---
+type: deployment
+name: de.tum.smart_office.deployment.corona_risk_test
+ttl:  0
+actor_type:  de.tum.smart_office.actor.corona_risk_test
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "corona_risk_test.lua"
