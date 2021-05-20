@@ -271,6 +271,7 @@ std::pair<bool, std::unique_lock<std::mutex>> TCPForwarder::write(
       if (written > 0) {
         remote->write_offset += written;
       }
+      signal_select_change();
     }
     remote->last_write_contact = BoardFunctions::seconds_timestamp();
   }
@@ -352,6 +353,26 @@ void TCPForwarder::tcp_reader() {
     listen_sock = 0;
   }
 
+  signal_socket = socket(addr_family, SOCK_DGRAM, ip_protocol);
+  if(signal_socket < 0) {
+    Logger::error("TCP-FORWARDER", "SERVER", "Signal socket creation error - %d", errno); 
+  }
+  // NOLINTNEXTLINE (cppcoreguidelines-pro-type-member-init, hicpp-member-init)
+  sockaddr_in signal_dest_addr;
+  signal_dest_addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+  signal_dest_addr.sin_family = AF_INET;
+  signal_dest_addr.sin_port = htons(12345);
+  err = bind(signal_socket, (struct sockaddr *)&signal_dest_addr, sizeof(dest_addr));
+  if (err != 0) {
+    Logger::error("TCP-FORWARDER", "SERVER", "Signal socket bind error - %d", errno); 
+  } else {
+    Logger::debug("TCP-FORWARDER", "SERVER", "Signal socket bound");  
+  }
+  signal_socket_write_handler = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
+  if(signal_socket_write_handler < 0) {
+    Logger::error("TCP-FORWARDER", "SERVER", "Signal socket write handle creation error - %d", errno); 
+  }
+
   while (true) {
     std::unique_lock remote_lock(remote_mtx);
     FD_ZERO(&read_sockets);
@@ -360,7 +381,9 @@ void TCPForwarder::tcp_reader() {
     FD_SET(listen_sock, &read_sockets);
     FD_SET(listen_sock, &write_sockets);
     FD_SET(listen_sock, &error_sockets);
-    int max_val = listen_sock;
+    FD_SET(signal_socket, &read_sockets);
+    FD_SET(signal_socket, &error_sockets); 
+    int max_val = std::max(listen_sock, signal_socket);
     for (const auto& remote_pair : remotes) {
       FD_SET(remote_pair.second.sock, &read_sockets);
       if (!remote_pair.second.write_buffer.empty()) {
@@ -435,6 +458,13 @@ void TCPForwarder::tcp_reader() {
 
       if (FD_ISSET(listen_sock, &error_sockets)) {
         Logger::fatal("TCP-FORWARDER", "RECEIVE", "Listen sock error");
+      }
+      if(FD_ISSET(signal_socket, &read_sockets)) {
+        char buf[8];
+        recv(signal_socket, buf, sizeof(buf), MSG_DONTWAIT);
+      }
+      if (FD_ISSET(signal_socket, &error_sockets)) {
+        Logger::fatal("TCP-FORWARDER", "RECEIVE", "Signal socket error");
       }
     }
   }
@@ -613,6 +643,7 @@ void TCPForwarder::add_remote_connection(int socket_id, std::string remote_addr,
     if (role == uActor::Remote::ConnectionRole::CLIENT) {
       remote_it->second.send_routing_info();
     }
+    signal_select_change();
     Logger::trace("TCP-FORWARDER", "ADD-CONNECTION", "Remote connection added");
   } else {
     Logger::warning("TCP-FORWARDER", "ADD-CONNECTION",
@@ -623,6 +654,15 @@ void TCPForwarder::add_remote_connection(int socket_id, std::string remote_addr,
     shutdown(socket_id, 0);
     close(socket_id);
   }
+}
+
+void TCPForwarder::signal_select_change() {
+  // NOLINTNEXTLINE (cppcoreguidelines-pro-type-member-init, hicpp-member-init)
+  sockaddr_in signal_dest_addr;
+  signal_dest_addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+  signal_dest_addr.sin_family = AF_INET;
+  signal_dest_addr.sin_port = htons(12345);
+  sendto(signal_socket_write_handler, "A", strlen("A"), 0, (struct sockaddr *)&signal_dest_addr, sizeof(signal_dest_addr));
 }
 
 void TCPForwarder::set_socket_options(int socket_id) {

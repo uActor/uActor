@@ -70,6 +70,8 @@ class TCPForwarder : public uActor::Remote::ForwarderSubscriptionAPI {
   std::mutex remote_mtx;
 
   int listen_sock = 0;
+  int signal_socket = 0;
+  int signal_socket_write_handler = 0;
 
   std::pair<bool, std::unique_lock<std::mutex>> write(
       RemoteConnection* remote, std::shared_ptr<std::vector<char>> dataset,
@@ -90,6 +92,8 @@ class TCPForwarder : public uActor::Remote::ForwarderSubscriptionAPI {
   void add_remote_connection(int socket_id, std::string remote_addr,
                              uint16_t remote_port,
                              uActor::Remote::ConnectionRole role);
+
+  void signal_select_change();
 
   static void set_socket_options(int socket_id);
 };
