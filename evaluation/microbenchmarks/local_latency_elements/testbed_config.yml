@@ -203,7 +203,7 @@ experiments:
   default:
     hooks:
        _all:
-        _ready: '/bin/bash $TESTBED_ROOT_DIR/../evaluation/esp32_local/_tools/per_node_ready_hook.sh evaluation_local_num_elems.yml'
+        _ready: '/bin/bash $TESTBED_ROOT_DIR/../evaluation/esp32_local/_tools/per_node_ready_hook.sh evaluation_local_element_latency.yml'
     limits:
       default:
         _reboot: 1
