@@ -63,7 +63,6 @@ def main():
     total_required_time = sum(
         [(INTER_DEPLOYMENT_WAIT_TIME_MS/1000) for deployment in deployments] # if deployment["deployment_ttl"] > 0 else 0
     )
-    assert(total_required_time < min_ttl_ms)
 
     last_iterations = {}
 

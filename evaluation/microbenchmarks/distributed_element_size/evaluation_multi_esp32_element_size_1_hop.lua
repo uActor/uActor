@@ -5,7 +5,7 @@ function receive(message)
 
   if(message.type == "pong") then
     testbed_stop_timekeeping(1, "latency")
-    if(iteration % 25 == 0) then
+    if(iteration % 50 == 0) then
       publish(Publication.new("node_id", node_id, "actor_type", actor_type, "instance_id", instance_id, "type", "setup"))
     else
       delayed_publish(Publication.new("node_id", node_id, "actor_type", actor_type, "instance_id", instance_id, "type", "trigger"), 1000 + math.random(0, 199))
@@ -17,14 +17,14 @@ function receive(message)
     for i=1,3 do
       math.random()
     end
-    size = -256
+    size = -1024
     iteration = 0
   end
   
   if(message.type == "init" or message.type == "setup") then
 
     iteration = 0
-    size = size + 256
+    size = size + 1024
     if(size > MAX_SIZE) then
       testbed_log_string("done" , "true")
       return
