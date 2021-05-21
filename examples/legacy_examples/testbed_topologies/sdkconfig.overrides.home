@@ -1,4 +1,0 @@
-CONFIG_NODE_ID="node_home"
-CONFIG_NODE_LABELS="core.location.room=home,xyz.hetzel.lighting.device_type=lightbulb,xyz.hetzel.fire_alarm.device_type=smoke_detector"
-CONFIG_WIFI_SSID="HETZEL-IOT"
-CONFIG_WIFI_PASSWORD="1FrksjDpuz"
