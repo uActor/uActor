@@ -33,12 +33,9 @@ class HTTPClientActor {
 
   static void handle_publication(PubSub::Publication&& p);
 
-  static inline void prep_request(const std::string& url, void* curl,
-                                  curl_slist* request_header);
   [[nodiscard]] static inline curl_slist* build_header(
       const std::optional<std::string>& request_header);
-  [[nodiscard]] static inline uint8_t perform_request(
-      void* curl, curl_slist* request_header);
+  [[nodiscard]] static inline uint8_t perform_request(void* curl);
   [[nodiscard]] static uint8_t get_request(
       const std::string& url, const std::optional<std::string>& request_header,
       std::string* response_payload);

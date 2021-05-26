@@ -73,6 +73,7 @@ void HTTPClientActor::thread_function() {
       job_list.emplace_back(
           std::async(handle_publication, std::move(result->publication)));
     }
+// This is just used for debug info no need in release builds
 #ifndef __OPTIMIZE__
     const size_t pre_size = job_list.size();
 #endif
@@ -147,7 +148,6 @@ void HTTPClientActor::handle_publication(PubSub::Publication&& p) {
       const std::list<std::string_view> attrs_list =
           Support::StringHelper::string_split(attrs);
 
-      size_t last_hit = 0;
       for (const std::string_view& attr : attrs_list) {
         const auto value = p.get_str_attr(attr);
         if (value.has_value()) {
@@ -178,15 +178,6 @@ void HTTPClientActor::handle_publication(PubSub::Publication&& p) {
       fmt::format("unknown request_type: {}", request_type.value()).c_str());
 }
 
-void HTTPClientActor::prep_request(const std::string& url, void* curl,
-                                   curl_slist* request_header) {
-  curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-  curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1L);
-  if (request_header != nullptr) {
-    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, request_header);
-  }
-}
-
 curl_slist* HTTPClientActor::build_header(
     const std::optional<std::string>& request_header) {
   if (!request_header.has_value()) {
@@ -205,16 +196,16 @@ curl_slist* HTTPClientActor::build_header(
   return ret;
 }
 
-uint8_t HTTPClientActor::perform_request(void* curl,
-                                         curl_slist* request_header) {
+uint8_t HTTPClientActor::perform_request(void* curl) {
   const CURLcode code = curl_easy_perform(curl);
   int64_t http_code = 0;
 
   if (code == CURLE_OK) {
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+  } else {
+    Support::Logger::warning("http_client_actor", "handle_publication",
+                             "Error executing curl request");
   }
-  curl_easy_cleanup(curl);
-  curl_slist_free_all(request_header);
   return static_cast<uint8_t>(http_code);
 }
 
@@ -223,22 +214,41 @@ uint8_t HTTPClientActor::get_request(
     std::string* response_payload) {
   void* curl = curl_easy_init();
   curl_slist* request_header_list = build_header(request_header);
-  prep_request(url, curl, request_header_list);
+  curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+
+  if (request_header_list != nullptr) {
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, request_header_list);
+  }
   curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_function);
   curl_easy_setopt(curl, CURLOPT_WRITEDATA, response_payload);
 
-  return perform_request(curl, request_header_list);
+  const auto ret = perform_request(curl);
+
+  curl_easy_cleanup(curl);
+  curl_slist_free_all(request_header_list);
+  return ret;
 }
+
+// todo router.cpp
 
 uint8_t HTTPClientActor::post_request(
     const std::string& url, const std::optional<std::string>& request_header,
     const std::string& payload) {
   void* curl = curl_easy_init();
   curl_slist* request_header_list = build_header(request_header);
-  prep_request(url, curl, request_header_list);
+  curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+
+  if (request_header_list != nullptr) {
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, request_header_list);
+  }
   curl_easy_setopt(curl, CURLOPT_POST, 1L);
   curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, payload.size());
   curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload.c_str());
-  return perform_request(curl, request_header_list);
+
+  const auto ret = perform_request(curl);
+
+  curl_easy_cleanup(curl);
+  curl_slist_free_all(request_header_list);
+  return ret;
 }
 }  // namespace uActor::HTTP
