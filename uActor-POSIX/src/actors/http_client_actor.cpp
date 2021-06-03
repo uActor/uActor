@@ -221,6 +221,8 @@ uint8_t HTTPClientActor::get_request(
   }
   curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_function);
   curl_easy_setopt(curl, CURLOPT_WRITEDATA, response_payload);
+  curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1L);
+  curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
 
   const auto ret = perform_request(curl);
 
@@ -228,8 +230,6 @@ uint8_t HTTPClientActor::get_request(
   curl_slist_free_all(request_header_list);
   return ret;
 }
-
-// todo router.cpp
 
 uint8_t HTTPClientActor::post_request(
     const std::string& url, const std::optional<std::string>& request_header,
@@ -242,6 +242,8 @@ uint8_t HTTPClientActor::post_request(
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, request_header_list);
   }
   curl_easy_setopt(curl, CURLOPT_POST, 1L);
+  curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1L);
+  curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
   curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, payload.size());
   curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload.c_str());
 
