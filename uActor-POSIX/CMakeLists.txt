@@ -12,6 +12,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 #add_compile_options(-Werror -Wall -Wextra -pedantic)
 
 option(BUILD_SHARED_LIBS "Build shared versions of libraries" OFF)
+option(HTTPCLIENT_ACTOR_ENABLE_SSL "Enable openssl for the http client actor" OFF)
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_BINARY_DIR})
 list(APPEND CMAKE_PREFIX_PATH ${CMAKE_BINARY_DIR})
@@ -27,8 +28,13 @@ if(NOT EXISTS "${CMAKE_BINARY_DIR}/conan.cmake")
                 TLS_VERIFY ON)
 endif()
 
-include(${CMAKE_BINARY_DIR}/conan.cmake)
+if (HTTPCLIENT_ACTOR_ENABLE_SSL)
+  set(SSL_BACKEND openssl)
+else()
+  set(SSL_BACKEND False)
+endif()
 
+include(${CMAKE_BINARY_DIR}/conan.cmake)
 conan_cmake_configure(REQUIRES 
                 boost/1.75.0
                 libcurl/7.75.0
@@ -68,6 +74,7 @@ conan_cmake_configure(REQUIRES
                         boost:without_type_erasure=True
                         boost:without_wave=True
                         libcurl:shared=False
+                        libcurl:with_ssl=${SSL_BACKEND}
                      )
 
 if(CMAKE_SYSTEM_PROCESSOR STREQUAL arm)
