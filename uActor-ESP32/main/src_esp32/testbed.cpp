@@ -25,6 +25,7 @@ class TestBed {
  public:
   static constexpr const char* TESTBED_TAG = "TestBed";
 
+  IRAM_ATTR
   static TestBed& get_instance() {
     static TestBed instance;
     return instance;
@@ -36,6 +37,7 @@ class TestBed {
 #endif
   }
 
+  IRAM_ATTR
   void log_integer(const char* variable, int64_t value,
                    bool runtime_value = false) {
     if (runtime_value) {
@@ -63,17 +65,20 @@ class TestBed {
     }
   }
 
+  IRAM_ATTR
   void start_timekeeping(size_t variable) {
     timekeeping[variable] = esp_timer_get_time();
   }
 
 #if CONFIG_TESTBED_NESTED_TIMEKEEPING
+  IRAM_ATTR
   void stop_timekeeping_inner(size_t variable, const char* name) {
     uint64_t timestamp = esp_timer_get_time();
     times.emplace_back(std::string(name), timestamp - timekeeping[variable]);
   }
 #endif
 
+  IRAM_ATTR
   void stop_timekeeping(size_t variable, const char* name) {
     uint64_t timestamp = esp_timer_get_time();
 
@@ -103,7 +108,8 @@ class TestBed {
 #endif
 
   template <class T>
-  void log_generic(const char* variable, const char* format, T value) {
+  IRAM_ATTR void log_generic(const char* variable, const char* format,
+                             T value) {
     // time_t timestamp;
     // time(&timestamp);
     printf(format, variable, sequence_number++, 0, value);
@@ -135,15 +141,19 @@ void testbed_log_rt_double(const char* variable, double value) {
   testbed::TestBed::get_instance().log_double(variable, value, true);
 }
 
+IRAM_ATTR
 void testbed_start_timekeeping(size_t variable) {
   testbed::TestBed::get_instance().start_timekeeping(variable);
 }
+
+IRAM_ATTR
 void testbed_stop_timekeeping_inner(size_t variable, const char* name) {
 #if CONFIG_TESTBED_NESTED_TIMEKEEPING
   testbed::TestBed::get_instance().stop_timekeeping_inner(variable, name);
 #endif
 }
 
+IRAM_ATTR
 void testbed_stop_timekeeping(size_t variable, const char* name) {
   testbed::TestBed::get_instance().stop_timekeeping(variable, name);
 }
