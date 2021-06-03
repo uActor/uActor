@@ -53,14 +53,14 @@ class Executor : public ExecutorApi {
   Executor(PubSub::Router* router, const char* node_id, const char* actor_type,
            const char* instance_id)
       : router_handle(router->new_subscriber()),
-        actors(RuntimeAllocatorConfiguration::make_allocator<typename decltype(
-                   actors)::value_type>()),
+        actors(RuntimeAllocatorConfiguration::make_allocator<
+               typename decltype(actors)::value_type>()),
         _node_id(node_id),
         _actor_type(actor_type),
         _instance_id(instance_id),
         subscription_mapping(
-            RuntimeAllocatorConfiguration::make_allocator<typename decltype(
-                subscription_mapping)::value_type>()),
+            RuntimeAllocatorConfiguration::make_allocator<
+                typename decltype(subscription_mapping)::value_type>()),
         ready_queue(RuntimeAllocatorConfiguration::make_allocator<
                     typename decltype(ready_queue)::value_type>()),
         timeouts(RuntimeAllocatorConfiguration::make_allocator<

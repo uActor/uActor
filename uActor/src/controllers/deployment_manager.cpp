@@ -52,8 +52,8 @@ void DeploymentManager::receive(const PubSub::Publication& publication) {
 
 void DeploymentManager::receive_deployment(
     const PubSub::Publication& publication) {
-  uActor::Support::Logger::error("DEPLOYMENT-MANAGER", "RECEIVE-DEPLOYMENT",
-                                 "Deployment Message");
+  uActor::Support::Logger::info("DEPLOYMENT-MANAGER", "RECEIVE-DEPLOYMENT",
+                                "Deployment Message");
   if (auto executor_it = executors.find(std::string(
           *publication.get_str_attr("deployment_actor_runtime_type")));
       executor_it != executors.end()) {

@@ -131,7 +131,6 @@ std::vector<std::string> Router::subscriptions_for(
     uint32_t max_size) {
   std::shared_lock lock(mtx);
   std::vector<std::string> serialized_sub{std::string()};
-  bool send_node_id = false;
 
   auto [peer_node_it, _inserted] =
       peer_node_ids.try_emplace(AString(node_id), false, next_node_id++);

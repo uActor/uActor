@@ -257,9 +257,6 @@ int ManagedLuaActor::queue_size_wrapper(lua_State* state) {
 }
 
 int ManagedLuaActor::blake2s_wrapper(lua_State* state) {
-  ManagedLuaActor* actor = reinterpret_cast<ManagedLuaActor*>(
-      lua_touserdata(state, lua_upvalueindex(1)));
-
   auto code = std::string_view(lua_tostring(state, 1));
 
   std::array<char, 32> out_buffer;
