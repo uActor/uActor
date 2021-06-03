@@ -4,4 +4,4 @@ ttl:  6000
 actor_type:  xyz.hetzel.actor.example
 actor_runtime_type:  lua
 actor_version:  "0.1"
-actor_code_file:  "http_get_request.lua"
+actor_code_file:  "http_post_request.lua"
