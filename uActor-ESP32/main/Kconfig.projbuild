@@ -116,6 +116,11 @@ menu "uActor"
             default y
             help
                 Let the deployment manager directly interact with the CodeStore.
+        config UACTOR_OPTIMIZATIONS_IRAM
+            bool "Place core functions in static IRAM"
+            default n
+            help
+                Reduce the latency at the cost of higher memory use and contention on the static IRAM pool
     endmenu
     config UACTOR_ENABLE_TELEMETRY
        bool "Collect and send telemetry updates"

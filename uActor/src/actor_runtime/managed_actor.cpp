@@ -1,5 +1,10 @@
 #include "actor_runtime/managed_actor.hpp"
 
+#if ESP_IDF
+#include <esp_attr.h>
+#include <sdkconfig.h>
+#endif
+
 #include <algorithm>
 #include <cstring>
 #include <memory>
@@ -15,6 +20,9 @@ namespace uActor::ActorRuntime {
 std::atomic<int> ManagedActor::total_queue_size{0};
 #endif
 
+#if CONFIG_UACTOR_OPTIMIZATIONS_IRAM
+IRAM_ATTR
+#endif
 ManagedActor::ReceiveResult ManagedActor::receive_next_internal() {
   waiting = false;
   _timeout = UINT32_MAX;

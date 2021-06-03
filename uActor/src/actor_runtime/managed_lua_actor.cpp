@@ -1,5 +1,8 @@
 #include "actor_runtime/managed_lua_actor.hpp"
 
+#if ESP_IDF
+#include <esp_attr.h>
+#endif
 #include <base64.h>
 #include <blake2.h>
 
@@ -296,12 +299,18 @@ int ManagedLuaActor::testbed_log_string_wrapper(lua_State* state) {
   return 0;
 }
 
+#if ESP_IDF
+IRAM_ATTR
+#endif
 int ManagedLuaActor::testbed_start_timekeeping_wrapper(lua_State* state) {
   size_t variable = lua_tointeger(state, 1);
   testbed_start_timekeeping(variable);
   return 0;
 }
 
+#if ESP_IDF
+IRAM_ATTR
+#endif
 int ManagedLuaActor::testbed_stop_timekeeping_wrapper(lua_State* state) {
   size_t variable = lua_tointeger(state, 1);
   const char* name = lua_tostring(state, 2);
@@ -310,6 +319,9 @@ int ManagedLuaActor::testbed_stop_timekeeping_wrapper(lua_State* state) {
 }
 
 #if CONFIG_TESTBED_NESTED_TIMEKEEPING
+#if ESP_IDF
+IRAM_ATTR
+#endif
 int ManagedLuaActor::testbed_stop_timekeeping_inner_wrapper(lua_State* state) {
   size_t variable = lua_tointeger(state, 1);
   const char* name = lua_tostring(state, 2);

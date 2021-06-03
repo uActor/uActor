@@ -1,6 +1,7 @@
 #include "pubsub/router.hpp"
 
 #ifdef ESP_IDF
+#include <esp_attr.h>
 #include <sdkconfig.h>
 #endif
 #if CONFIG_BENCHMARK_BREAKDOWN
@@ -18,12 +19,17 @@
 #include "remote/sequence_number_forwarding_strategy.hpp"
 
 namespace uActor::PubSub {
-
+#if CONFIG_UACTOR_OPTIMIZATIONS_IRAM
+IRAM_ATTR
+#endif
 void Router::publish(Publication&& publication) {
   std::shared_lock lock(mtx);
   publish_internal(std::move(publication));
 }
 
+#if CONFIG_UACTOR_OPTIMIZATIONS_IRAM
+IRAM_ATTR
+#endif
 void Router::publish_internal(Publication&& publication) {
   Counter<Allocator> c;
 
