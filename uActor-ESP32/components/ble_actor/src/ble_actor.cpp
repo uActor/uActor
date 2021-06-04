@@ -1,10 +1,10 @@
-
-#include "ble_actor.hpp"
-
+#include <sdkconfig.h>
+#if CONFIG_ENABLE_BLE_ACTOR
 #include <base64.h>
 
 #include <cstring>
 
+#include "ble_actor.hpp"
 #include "pubsub/publication.hpp"
 #include "pubsub/router.hpp"
 
@@ -342,3 +342,4 @@ void BLEActor::handle_discovery_event(ble_gap_event* event) {
   PubSub::Router::get_instance().publish(std::move(publication));
 }
 };  // namespace uActor::ESP32::BLE
+#endif
