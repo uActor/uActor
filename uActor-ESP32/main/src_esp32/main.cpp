@@ -18,7 +18,6 @@ extern "C" {
 #include "board_functions.hpp"
 #include "controllers/deployment_manager.hpp"
 #include "controllers/topology_manager.hpp"
-#include "io/gpio_actor.hpp"
 #include "lua.hpp"
 #include "pubsub/receiver.hpp"
 #include "remote/tcp_forwarder.hpp"
@@ -41,6 +40,10 @@ extern "C" {
 
 #if CONFIG_ENABLE_BLE_ACTOR
 #include "ble_actor.hpp"
+#endif
+
+#if CONFIG_ENABLE_GPIO_ACTOR
+#include "io/gpio_actor.hpp"
 #endif
 
 #if CONFIG_UACTOR_ENABLE_TELEMETRY
@@ -351,8 +354,10 @@ void main_task(void *) {
                           "LUA_EXECUTOR", 8192, &executor_settings,
                           configMAX_PRIORITIES - 1, nullptr, 1);
 
+#if CONFIG_ENABLE_GPIO_ACTOR
   xTaskCreatePinnedToCore(&uActor::ESP32::IO::GPIOActor::os_task, "GPIO_ACTOR",
                           4192, nullptr, 5, nullptr, 0);
+#endif
 
   auto tcp_task_args =
       uActor::Remote::TCPAddressArguments("0.0.0.0", 1337, "", 0);

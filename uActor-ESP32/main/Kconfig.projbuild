@@ -85,6 +85,9 @@ menu "Board Configuration"
     config ENABLE_BLE_ACTOR
        bool "Enable BLE Actor"
        default y
+    config ENABLE_GPIO_ACTOR
+       bool "Enable GPIO Actor"
+       default y
     config DISABLE_WIFI_PS
        bool "Disable WiFi PS"
        default n
