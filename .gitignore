@@ -23,3 +23,5 @@ sdkconfig.*
 conan/
 .ipynb_checkpoints
 peer_announcer.json
+local_scripts/
+local_notebooks/

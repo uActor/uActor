@@ -1,0 +1,22 @@
+boards:
+  node_1:
+    type: "UNIX-GENERIC"
+    runtime_configuration:
+      binary_path: "/home/pi/uActorEVAL"
+      parameters:
+        - "--node-id=96A679"
+        - "--tcp-external-address=192.168.50.231"
+      remote:
+        host: "cm-pi3"
+        root_directory: "/home/pi/"
+    build_configuration:
+      configuration_name: "example"
+experiments:
+  default:
+    hooks:
+       _all:
+        _ready: '/bin/bash $TESTBED_ROOT_DIR/../evaluation/tools/per_node_ready_hook.sh evaluation_local_number_of_deployments.yml'
+    limits:
+      default:
+        count_received: 10000
+  check_pi_num_actors: {}

@@ -122,6 +122,8 @@ void main_task(void *) {
   uActor::BoardFunctions::NODE_ID = CONFIG_NODE_ID;
 #endif
 
+  testbed_log_rt_string("node_id", uActor::BoardFunctions::NODE_ID);
+
   uActor::ActorRuntime::ExecutorSettings executor_settings = {
       .node_id = uActor::BoardFunctions::NODE_ID, .instance_id = "1"};
 

@@ -125,11 +125,12 @@ add_compile_options(-Werror -Wall -Wextra -pedantic)
 target_compile_options(uActor PUBLIC -DCONFIG_UACTOR_ENABLE_TELEMETRY=1)
 
 # Eval: Disable
+# target_compile_options(uActor PUBLIC -DCONFIG_UACTOR_ENABLE_HEAP_TRACKING=1)
+# target_compile_options(uActor PUBLIC -DCONFIG_UACTOR_ENABLE_SECONDS_TELEMETRY=1)
+
+
 #EVAL: Enable
 #target_compile_options(uActor PUBLIC -DCONFIG_BENCHMARK_ENABLED=1)
-#target_compile_options(uActor PUBLIC -DCONFIG_UACTOR_ENABLE_HEAP_TRACKING=1)
-#target_compile_options(uActor PUBLIC -DCONFIG_UACTOR_ENABLE_SECONDS_TELEMETRY=1)
-
 #Not needed in most situations
 #target_compile_options(uActor PUBLIC -DCONFIG_UACTOR_HIBERNATION=1)
 

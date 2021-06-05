@@ -1,0 +1,6 @@
+sdkconfig.microbenchmarks
+sdkconfig.microbenchmarks_ble
+!sdkconfig.microbenchmarks.no_wifi
+!sdkconfig.microbenchmarks_ble.no_wifi
+!sdkconfig.defaults
+!sdkconfig.defaults.ble

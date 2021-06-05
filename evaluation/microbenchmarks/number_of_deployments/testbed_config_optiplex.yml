@@ -1,0 +1,22 @@
+boards:
+  node_1:
+    type: "UNIX-GENERIC"
+    runtime_configuration:
+      binary_path: "/home/hetzel/uActorEVAL"
+      parameters:
+        - "--node-id=96A679"
+        - "--tcp-external-address=1.2.3.4" # Public IP
+      remote:
+        host: "cm-optiplex"
+        root_directory: "/home/hetzel/"
+    build_configuration:
+      configuration_name: "example"
+experiments:
+  default:
+    hooks:
+       _all:
+        _ready: '/bin/bash $TESTBED_ROOT_DIR/../evaluation/tools/local_per_node_ready_hook.sh evaluation_local_number_of_deployments.yml'
+    limits:
+      default:
+        count_received: 10000
+  check_pi_num_actors: {}

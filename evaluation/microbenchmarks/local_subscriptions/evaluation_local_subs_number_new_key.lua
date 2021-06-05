@@ -2,7 +2,7 @@ MAX_SUB_COUNT = 800
 
 function receive(message)
 
-  if(message.foo == "bar") then
+  if(message.exp_1 == "ping") then
     testbed_stop_timekeeping(1, "latency")
     if(iteration % 5 == 0) then
       enqueue_wakeup(1000 + math.random(0, 199), "setup")
@@ -12,23 +12,21 @@ function receive(message)
   end
 
   if(message.type == "init") then
-    subscribe({foo="bar", baz=qux})
+    subscribe({exp_1="ping", exp_2="foo"})
     math.randomseed(now()*1379)
     for i=1,3 do
       math.random()
     end
-    iteration = 0
     count = - 1
   end
 
   if(message.type == "init" or (message.type == "wakeup" and message.wakeup_id == "setup")) then
-
     iteration = 0
-    
+
     if(count == -1) then
-      for i=1,340 do
+      for i=1,339 do
         local sub = {}
-        sub["baz_1_"..i] = "value_1_"..i
+        sub["unused_"..i] = "value_"..i
         subscribe(sub) 
       end 
       count = 340
@@ -43,7 +41,7 @@ function receive(message)
 
     if count > 0 then
       local sub = {}
-      sub["baz_1_"..count] = "value_1_"..count
+      sub["unused_"..count] = "value_1_"..count
       subscribe(sub)
     end
 
@@ -56,7 +54,7 @@ function receive(message)
   if(message.type == "wakeup" and message.wakeup_id == "trigger") then
     iteration = iteration + 1
 
-    local publication = Publication.new("foo", "bar", "baz", "qux")
+    local publication = Publication.new("exp_1", "ping", "exp_2", "foo")
     
     collectgarbage()
     testbed_start_timekeeping(1)

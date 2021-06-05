@@ -41,7 +41,7 @@ class TopologyManager : public ActorRuntime::NativeActor {
 
   void receive_peer_update(const PubSub::Publication& publication);
 
-  bool should_connect(const std::string& peer_id);
+  bool should_connect(const std::string& peer_id, bool forced_mode);
 
   void publish_persistent_peers();
 };

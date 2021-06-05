@@ -1,10 +1,10 @@
-MAX_SIZE = 131072
+MAX_SIZE = 32768
 
 function receive(message)
 
-  if(message.foo == "bar") then
+  if(message.exp_1 == "ping") then
     testbed_stop_timekeeping(1, "latency")
-    if(iteration % 5 == 0) then
+    if(iteration % 25 == 0) then
       enqueue_wakeup(1000 + math.random(0, 199), "setup")
     else
       enqueue_wakeup(1000 + math.random(0, 199), "trigger")
@@ -12,12 +12,11 @@ function receive(message)
   end
 
   if(message.type == "init") then
-    subscribe({foo="bar", baz="qux"})
+    subscribe({exp_1="ping", exp_2="foo"})
     math.randomseed(now()*1379)
     for i=1,3 do
       math.random()
     end
-    iteration = 0
     size = -256
   end
 
@@ -39,7 +38,7 @@ function receive(message)
     
     iteration = iteration + 1
 
-    local publication = Publication.new("foo", "bar", "baz", "qux")
+    local publication = Publication.new("exp_1", "ping", "exp_2", "foo")
   
     if (size > 0) then
       local elem_256 = "A"
@@ -55,7 +54,6 @@ function receive(message)
 
     collectgarbage()
     testbed_start_timekeeping(1)
-    
     publish(publication)
   end
 end

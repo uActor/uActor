@@ -62,7 +62,9 @@ void TopologyManager::receive_peer_announcement(
       publication.has_attr("peer_node_id")) {
     std::string peer_node_id =
         std::string(*publication.get_str_attr("peer_node_id"));
-    if (should_connect(peer_node_id)) {
+
+    bool forced_mode = publication.get_str_attr("forced") == node_id();
+    if (should_connect(peer_node_id, forced_mode)) {
       PubSub::Publication connect{};
       connect.set_attr("type", "tcp_client_connect");
       connect.set_attr("node_id", node_id());
@@ -143,7 +145,8 @@ void TopologyManager::publish_persistent_peers() {
   enqueue_wakeup(30000, "trigger_static_peer");
 }
 
-bool TopologyManager::should_connect(const std::string& peer_id) {
+bool TopologyManager::should_connect(const std::string& peer_id,
+                                     bool forced_mode) {
   auto connection_attempt = connection_in_progress.find(peer_id);
   if (connection_attempt != connection_in_progress.end()) {
     if (connection_attempt->second < BoardFunctions::timestamp()) {
@@ -155,9 +158,9 @@ bool TopologyManager::should_connect(const std::string& peer_id) {
   if (reachable_peers.find(peer_id) == reachable_peers.end()) {
     // todo(raphaelhetzel) Store the server nodes directly in the topology
     // manager (message-based interface)
-    if (std::find(BoardFunctions::SERVER_NODES.begin(),
-                  BoardFunctions::SERVER_NODES.end(),
-                  peer_id) != BoardFunctions::SERVER_NODES.end()) {
+    if (forced_mode || std::find(BoardFunctions::SERVER_NODES.begin(),
+                                 BoardFunctions::SERVER_NODES.end(), peer_id) !=
+                           BoardFunctions::SERVER_NODES.end()) {
       return true;
     }
   }

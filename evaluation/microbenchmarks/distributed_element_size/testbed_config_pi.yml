@@ -1,13 +1,28 @@
 boards:
   node_1:
-    type: "ESP32-IDF"
+    type: "UNIX-GENERIC"
     runtime_configuration:
-      serial_device: "/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_TUM01-if00-port0"
+      binary_path: "/home/pi/uActorEVAL"
+      parameters:
+        - "--node-id=96A679"
+        - "--tcp-external-address=192.168.50.231"
       remote:
-        host: "cm-pi1"
-        root_directory: "/home/pi/remote_testbed"
+        host: "cm-pi3"
+        root_directory: "/home/pi/"
     build_configuration:
-      sdkconfig: {{TESTBED_CONFIG_DIR}}/../sdkconfig.microbenchmarks
+      configuration_name: "example"
+  node_2:
+    type: "UNIX-GENERIC"
+    runtime_configuration:
+      binary_path: "/home/pi/uActorEVAL"
+      parameters:
+        - "--node-id=979E51"
+        - "--tcp-external-address=192.168.50.232"
+      remote:
+        host: "cm-pi4"
+        root_directory: "/home/pi/"
+    build_configuration:
+      configuration_name: "example"
   node_2:
     type: "ESP32-IDF"
     runtime_configuration:
@@ -181,18 +196,23 @@ boards:
         root_directory: "/home/pi/remote_testbed"
 experiments:
   default:
+    required_limit_count: 1
     limits:
       default:
-        oom: 1
-  no_match:
+        done: 1
+  1_hop_run_1:
     hooks:
-       _all:
-        _ready: '/bin/bash $TESTBED_ROOT_DIR/../evaluation/tools/per_node_ready_hook.sh evaluation_local_subs_latency_no_match.yml'
-  partial_match:
+      _all:
+        _ready: '/bin/bash $TESTBED_CONFIG_DIR/ready_hook.sh 1'
+  1_hop_run_2:
     hooks:
-       _all:
-        _ready: '/bin/bash $TESTBED_ROOT_DIR/../evaluation/tools/per_node_ready_hook.sh evaluation_local_subs_latency_partial_match.yml'
-  partial_optional:
+      _all:
+        _ready: '/bin/bash $TESTBED_CONFIG_DIR/ready_hook.sh 1'
+  1_hop_run_3:
     hooks:
-       _all:
-        _ready: '/bin/bash $TESTBED_ROOT_DIR/../evaluation/tools/per_node_ready_hook.sh evaluation_local_subs_latency_optional.yml'
+      _all:
+        _ready: '/bin/bash $TESTBED_CONFIG_DIR/ready_hook.sh 1'
+  1_hop_run_4:
+    hooks:
+      _all:
+        _ready: '/bin/bash $TESTBED_CONFIG_DIR/ready_hook.sh 1'

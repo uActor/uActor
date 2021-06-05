@@ -1,9 +1,5 @@
 function receive(message)
-  -- if(message.type == "init") then
-  --   count = 0
-  --   testbed_log_string("_logger_test_postfix", 1)
-  -- end
-  if(message.type == "ping") then
+  if(message.exp_1 == "ping") then
     message["node_id"] = message.publisher_node_id
     message["actor_type"] = message.publisher_actor_type
     message["instance_id"] = message.publisher_instance_id
@@ -13,11 +9,9 @@ function receive(message)
     message["_internal_sequence_number"] = nil
     message["_internal_epoch_number"] = nil
     message["_internal_forwarded_by"] = nil
-    message["type"] = "pong"
+    message["exp_1"] = "pong"
     publish(message)
-    -- count = count + 1
-    -- if(count == 200) then
-    --   testbed_log_string("_logger_test_postfix", 20) 
-    -- end
+  elseif(message.type == "init") then
+    subscribe{exp_1="ping", node_id=node_id}
   end
 end

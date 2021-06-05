@@ -6,7 +6,7 @@ actor_runtime_type:  lua
 actor_version:  "0.1"
 actor_code_file:  "evaluation_multi_esp32_element_size_9_hop.lua"
 constraints:
-  - "node_id": "node_1"
+  - "node_id": "96A679"
 ---
 type: deployment
 name: test_deployment_echo

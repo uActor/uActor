@@ -393,6 +393,12 @@ int main(int arg_count, char** args) {
 
   auto lua_executor = start_lua_executor();
 
+#if CONFIG_BENCHMARK_ENABLED
+  sleep(1);
+  testbed_log_rt_string("node_id", uActor::BoardFunctions::NODE_ID);
+  testbed_log_rt_integer("_ready", 1);
+#endif
+
 #if CONFIG_UACTOR_ENABLE_SECONDS_TELEMETRY
   if (arguments.count("telemetry-file")) {
     sleep(2);

@@ -3,15 +3,14 @@ function receive(message)
   code = [[function receive(message)
     if(message.type == "init") then
       dummy_state = "dummy"
-      publish(Publication.new("type", "pong"))
+      publish(Publication.new("exp_1", "pong"))
     end
   end]]
 
   if(message.type == "init") then
     count_sent = 0
     count_received = 0
-    sub_id = subscribe({type="pong"})
-    delayed_publish(Publication.new("node_id", node_id, "actor_type", actor_type, "instance_id", instance_id, "type", "trigger"), 1000)
+    sub_id = subscribe({exp_1="pong"})
     enqueue_wakeup(1000, "trigger")
   end
 
@@ -30,7 +29,7 @@ function receive(message)
     testbed_log_integer("count_sent", count_sent)
   elseif(message.type == "pong") then
     count_received = count_received + 1
-    publish(Publication.new("node_id", node_id, "actor_type", actor_type, "instance_id", instance_id, "type", "wakeup", "wakeup_id", "trigger"))
     testbed_log_integer("count_received", count_received)
+    enqueue_wakeup(1000, "trigger")
   end
 end

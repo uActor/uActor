@@ -1,8 +1,9 @@
 MAX_SUB_COUNT = 800
+COUNT_INCREMENTS = 10
 
 function receive(message)
 
-  if(message.foo == "bar") then
+  if(message.exp_1 == "ping") then
     testbed_stop_timekeeping(1, "latency")
     if(iteration % 25 == 0) then
       enqueue_wakeup(1000 + math.random(0, 199), "setup")
@@ -12,36 +13,30 @@ function receive(message)
   end
 
   if(message.type == "init") then
-
-    subscribe({foo="bar", baz="qux"})
+    subscribe({exp_1="ping", exp_2="foo"})
     math.randomseed(now()*1379)
     for i=1,3 do
       math.random()
     end
     iteration = 0
-    count = - 1
+    count = -COUNT_INCREMENTS
   end
 
   if(message.type == "init" or (message.type == "wakeup" and message.wakeup_id == "setup")) then
-
     iteration = 0
-    
-    if(count == -1) then
-      count = 0
-    else
-      count = count + 4
-    end
-
+    count = count + COUNT_INCREMENTS
     if(count > MAX_SUB_COUNT) then
       testbed_log_string("done" , "true")
       return
     end
 
-    if count > 0 then
-      subscribe({foo="bar", baz="value_1_"..count})
-      subscribe({foo="bar", baz="value_2_"..count})
-      subscribe({foo="bar", baz="value_3_"..count})
-      subscribe({foo="bar", baz="value_4_"..count})
+    if(count > 0) then
+      for x=1,COUNT_INCREMENTS,1 do
+        local base_id = count - COUNT_INCREMENTS
+        local sub_id = base_id + x
+        local sub = {exp_1="ping", exp_2="value_"..sub_id}
+        subscribe(sub)
+      end
     end
 
     testbed_log_string("_logger_test_postfix", count)
@@ -53,7 +48,7 @@ function receive(message)
   if(message.type == "wakeup" and message.wakeup_id == "trigger") then
     iteration = iteration + 1
 
-    local publication = Publication.new("foo", "bar", "baz", "qux")
+    local publication = Publication.new("exp_1", "ping", "exp_2", "foo")
     
     collectgarbage()
     testbed_start_timekeeping(1)

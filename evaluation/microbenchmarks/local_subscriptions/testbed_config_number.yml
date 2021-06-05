@@ -7,8 +7,7 @@ boards:
         host: "cm-pi1"
         root_directory: "/home/pi/remote_testbed"
     build_configuration:
-      sdkconfig: {{TESTBED_ROOT_DIR}}/sdkconfig
-      sdkconfig_overrides: {{TESTBED_ROOT_DIR}}/../evaluation/base_topologies/linear/sdkconfig.overrides.1_linear
+      sdkconfig: {{TESTBED_CONFIG_DIR}}/../sdkconfig.microbenchmarks
   node_2:
     type: "ESP32-IDF"
     runtime_configuration:
@@ -17,8 +16,7 @@ boards:
         host: "cm-pi1"
         root_directory: "/home/pi/remote_testbed"
     build_configuration:
-      sdkconfig: {{TESTBED_ROOT_DIR}}/sdkconfig
-      sdkconfig_overrides: {{TESTBED_ROOT_DIR}}/../evaluation/base_topologies/linear/sdkconfig.overrides.1_linear
+      sdkconfig: {{TESTBED_CONFIG_DIR}}/../sdkconfig.microbenchmarks
   node_3:
     type: "ESP32-IDF"
     runtime_configuration:
@@ -27,8 +25,7 @@ boards:
         host: "cm-pi1"
         root_directory: "/home/pi/remote_testbed"
     build_configuration:
-      sdkconfig: {{TESTBED_ROOT_DIR}}/sdkconfig
-      sdkconfig_overrides: {{TESTBED_ROOT_DIR}}/../evaluation/base_topologies/linear/sdkconfig.overrides.1_linear
+      sdkconfig: {{TESTBED_CONFIG_DIR}}/../sdkconfig.microbenchmarks
   node_4:
     type: "ESP32-IDF"
     runtime_configuration:
@@ -37,8 +34,7 @@ boards:
         host: "cm-pi1"
         root_directory: "/home/pi/remote_testbed"
     build_configuration:
-      sdkconfig: {{TESTBED_ROOT_DIR}}/sdkconfig
-      sdkconfig_overrides: {{TESTBED_ROOT_DIR}}/../evaluation/base_topologies/linear/sdkconfig.overrides.1_linear
+      sdkconfig: {{TESTBED_CONFIG_DIR}}/../sdkconfig.microbenchmarks
   node_5:
     type: "ESP32-IDF"
     runtime_configuration:
@@ -47,8 +43,7 @@ boards:
         host: "cm-pi1"
         root_directory: "/home/pi/remote_testbed"
     build_configuration:
-      sdkconfig: {{TESTBED_ROOT_DIR}}/sdkconfig
-      sdkconfig_overrides: {{TESTBED_ROOT_DIR}}/../evaluation/base_topologies/linear/sdkconfig.overrides.1_linear
+      sdkconfig: {{TESTBED_CONFIG_DIR}}/../sdkconfig.microbenchmarks
   node_6:
     type: "ESP32-IDF"
     runtime_configuration:
@@ -57,8 +52,7 @@ boards:
         host: "cm-pi1"
         root_directory: "/home/pi/remote_testbed"
     build_configuration:
-      sdkconfig: {{TESTBED_ROOT_DIR}}/sdkconfig
-      sdkconfig_overrides: {{TESTBED_ROOT_DIR}}/../evaluation/base_topologies/linear/sdkconfig.overrides.1_linear
+      sdkconfig: {{TESTBED_CONFIG_DIR}}/../sdkconfig.microbenchmarks
   node_7:
     type: "ESP32-IDF"
     runtime_configuration:
@@ -67,8 +61,7 @@ boards:
         host: "cm-pi1"
         root_directory: "/home/pi/remote_testbed"
     build_configuration:
-      sdkconfig: {{TESTBED_ROOT_DIR}}/sdkconfig
-      sdkconfig_overrides: {{TESTBED_ROOT_DIR}}/../evaluation/base_topologies/linear/sdkconfig.overrides.1_linear
+      sdkconfig: {{TESTBED_CONFIG_DIR}}/../sdkconfig.microbenchmarks
   node_8:
     type: "ESP32-IDF"
     runtime_configuration:
@@ -77,8 +70,7 @@ boards:
         host: "cm-pi1"
         root_directory: "/home/pi/remote_testbed"
     build_configuration:
-      sdkconfig: {{TESTBED_ROOT_DIR}}/sdkconfig
-      sdkconfig_overrides: {{TESTBED_ROOT_DIR}}/../evaluation/base_topologies/linear/sdkconfig.overrides.1_linear
+      sdkconfig: {{TESTBED_CONFIG_DIR}}/../sdkconfig.microbenchmarks
   node_9:
     type: "ESP32-IDF"
     runtime_configuration:
@@ -87,8 +79,7 @@ boards:
         host: "cm-pi1"
         root_directory: "/home/pi/remote_testbed"
     build_configuration:
-      sdkconfig: {{TESTBED_ROOT_DIR}}/sdkconfig
-      sdkconfig_overrides: {{TESTBED_ROOT_DIR}}/../evaluation/base_topologies/linear/sdkconfig.overrides.1_linear
+      sdkconfig: {{TESTBED_CONFIG_DIR}}/../sdkconfig.microbenchmarks
   node_10:
     type: "ESP32-IDF"
     runtime_configuration:
@@ -97,13 +88,11 @@ boards:
         host: "cm-pi1"
         root_directory: "/home/pi/remote_testbed"
     build_configuration:
-      sdkconfig: {{TESTBED_ROOT_DIR}}/sdkconfig
-      sdkconfig_overrides: {{TESTBED_ROOT_DIR}}/../evaluation/base_topologies/linear/sdkconfig.overrides.1_linear
+      sdkconfig: {{TESTBED_CONFIG_DIR}}/../sdkconfig.microbenchmarks
   node_11:
     type: "ESP32-IDF"
     build_configuration:
-      sdkconfig: {{TESTBED_ROOT_DIR}}/sdkconfig
-      sdkconfig_overrides: {{TESTBED_ROOT_DIR}}/../evaluation/base_topologies/linear/sdkconfig.overrides.1_linear
+      sdkconfig: {{TESTBED_CONFIG_DIR}}/../sdkconfig.microbenchmarks
     runtime_configuration:
       serial_device: "/dev/serial/by-id/usb-Silicon_Labs_CP2102N_USB_to_UART_Bridge_Controller_609ee56fd469e91198ae6dd63ca6d3af-if00-port0"
       remote:
@@ -112,8 +101,7 @@ boards:
   node_12:
     type: "ESP32-IDF"
     build_configuration:
-      sdkconfig: {{TESTBED_ROOT_DIR}}/sdkconfig
-      sdkconfig_overrides: {{TESTBED_ROOT_DIR}}/../evaluation/base_topologies/linear/sdkconfig.overrides.1_linear
+      sdkconfig: {{TESTBED_CONFIG_DIR}}/../sdkconfig.microbenchmarks
     runtime_configuration:
       serial_device: "/dev/serial/by-id/usb-Silicon_Labs_CP2102N_USB_to_UART_Bridge_Controller_2634494dc969e911b0fd6ad63ca6d3af-if00-port0"
       remote:
@@ -122,8 +110,7 @@ boards:
   node_13:
     type: "ESP32-IDF"
     build_configuration:
-      sdkconfig: {{TESTBED_ROOT_DIR}}/sdkconfig
-      sdkconfig_overrides: {{TESTBED_ROOT_DIR}}/../evaluation/base_topologies/linear/sdkconfig.overrides.1_linear
+      sdkconfig: {{TESTBED_CONFIG_DIR}}/../sdkconfig.microbenchmarks
     runtime_configuration:
       serial_device: "/dev/serial/by-id/usb-Silicon_Labs_CP2102N_USB_to_UART_Bridge_Controller_6cf086e6c368e9119e476dd63ca6d3af-if00-port0"
       remote:
@@ -132,8 +119,7 @@ boards:
   node_14:
     type: "ESP32-IDF"
     build_configuration:
-      sdkconfig: {{TESTBED_ROOT_DIR}}/sdkconfig
-      sdkconfig_overrides: {{TESTBED_ROOT_DIR}}/../evaluation/base_topologies/linear/sdkconfig.overrides.1_linear
+      sdkconfig: {{TESTBED_CONFIG_DIR}}/../sdkconfig.microbenchmarks
     runtime_configuration:
       serial_device: "/dev/serial/by-id/usb-Silicon_Labs_CP2102N_USB_to_UART_Bridge_Controller_a8a1f6d9d669e9119d266fd63ca6d3af-if00-port0"
       remote:
@@ -142,8 +128,7 @@ boards:
   node_15:
     type: "ESP32-IDF"
     build_configuration:
-      sdkconfig: {{TESTBED_ROOT_DIR}}/sdkconfig
-      sdkconfig_overrides: {{TESTBED_ROOT_DIR}}/../evaluation/base_topologies/linear/sdkconfig.overrides.1_linear
+      sdkconfig: {{TESTBED_CONFIG_DIR}}/../sdkconfig.microbenchmarks
     runtime_configuration:  
       serial_device: "/dev/serial/by-id/usb-Silicon_Labs_CP2102N_USB_to_UART_Bridge_Controller_865b07a4c468e911b54f70d63ca6d3af-if00-port0"
       remote:
@@ -152,8 +137,7 @@ boards:
   node_16:
     type: "ESP32-IDF"
     build_configuration:
-      sdkconfig: {{TESTBED_ROOT_DIR}}/sdkconfig
-      sdkconfig_overrides: {{TESTBED_ROOT_DIR}}/../evaluation/base_topologies/linear/sdkconfig.overrides.1_linear
+      sdkconfig: {{TESTBED_CONFIG_DIR}}/../sdkconfig.microbenchmarks
     runtime_configuration:
       serial_device: "/dev/serial/by-id/usb-Silicon_Labs_CP2102N_USB_to_UART_Bridge_Controller_32975bc3d268e9119c546ad63ca6d3af-if00-port0"
       remote:
@@ -162,8 +146,7 @@ boards:
   node_17:
     type: "ESP32-IDF"
     build_configuration:
-      sdkconfig: {{TESTBED_ROOT_DIR}}/sdkconfig
-      sdkconfig_overrides: {{TESTBED_ROOT_DIR}}/../evaluation/base_topologies/linear/sdkconfig.overrides.1_linear
+      sdkconfig: {{TESTBED_CONFIG_DIR}}/../sdkconfig.microbenchmarks
     runtime_configuration:
       serial_device: "/dev/serial/by-id/usb-Silicon_Labs_CP2102N_USB_to_UART_Bridge_Controller_bc5513fbdf69e91190d2280c3da6d3af-if00-port0"
       remote:
@@ -172,8 +155,7 @@ boards:
   node_18:
     type: "ESP32-IDF"
     build_configuration:
-      sdkconfig: {{TESTBED_ROOT_DIR}}/sdkconfig
-      sdkconfig_overrides: {{TESTBED_ROOT_DIR}}/../evaluation/base_topologies/linear/sdkconfig.overrides.1_linear
+      sdkconfig: {{TESTBED_CONFIG_DIR}}/../sdkconfig.microbenchmarks
     runtime_configuration:
       serial_device: "/dev/serial/by-id/usb-Silicon_Labs_CP2102N_USB_to_UART_Bridge_Controller_6448cac7cc68e911bae56dd63ca6d3af-if00-port0"
       remote:
@@ -182,8 +164,7 @@ boards:
   node_19:
     type: "ESP32-IDF"
     build_configuration:
-      sdkconfig: {{TESTBED_ROOT_DIR}}/sdkconfig
-      sdkconfig_overrides: {{TESTBED_ROOT_DIR}}/../evaluation/base_topologies/linear/sdkconfig.overrides.1_linear
+      sdkconfig: {{TESTBED_CONFIG_DIR}}/../sdkconfig.microbenchmarks
     runtime_configuration:
       serial_device: "/dev/serial/by-id/usb-Silicon_Labs_CP2102N_USB_to_UART_Bridge_Controller_ca84950ce269e9118e68300c3da6d3af-if00-port0"
       remote:
@@ -192,113 +173,45 @@ boards:
   node_20:
     type: "ESP32-IDF"
     build_configuration:
-      sdkconfig: {{TESTBED_ROOT_DIR}}/sdkconfig
-      sdkconfig_overrides: {{TESTBED_ROOT_DIR}}/../evaluation/base_topologies/linear/sdkconfig.overrides.1_linear
+      sdkconfig: {{TESTBED_CONFIG_DIR}}/../sdkconfig.microbenchmarks
     runtime_configuration:
       serial_device: "/dev/serial/by-id/usb-Silicon_Labs_CP2102N_USB_to_UART_Bridge_Controller_5697eeb2db68e911943c6fd63ca6d3af-if00-port0"
       remote:
         host: "cm-pi2"
         root_directory: "/home/pi/remote_testbed"
 experiments:
-  default:
-    # hooks:
-    #    _all:
-    #     _ready: '/bin/bash $TESTBED_ROOT_DIR/../evaluation/esp32_local/_tools/per_node_ready_hook.sh evaluation_local_subs_small.yml'
     limits:
       default:
         oom: 1
-  # known_key_1:
-  #   hooks:
-  #      _all:
-  #       _ready: '/bin/bash $TESTBED_ROOT_DIR/../evaluation/esp32_local/_tools/per_node_ready_hook.sh evaluation_local_subs_small_known_key.yml'
-  # new_key_1:
-  #   hooks:
-  #      _all:
-  #       _ready: '/bin/bash $TESTBED_ROOT_DIR/../evaluation/esp32_local/_tools/per_node_ready_hook.sh evaluation_local_subs_small_new_key.yml'
-  # optional_1:
-  #   hooks:
-  #      _all:
-  #       _ready: '/bin/bash $TESTBED_ROOT_DIR/../evaluation/esp32_local/_tools/per_node_ready_hook.sh evaluation_local_subs_small_optional.yml'
-  # known_key_2:
-  #   hooks:
-  #      _all:
-  #       _ready: '/bin/bash $TESTBED_ROOT_DIR/../evaluation/esp32_local/_tools/per_node_ready_hook.sh evaluation_local_subs_small_known_key.yml'
-  # new_key_2:
-  #   hooks:
-  #      _all:
-  #       _ready: '/bin/bash $TESTBED_ROOT_DIR/../evaluation/esp32_local/_tools/per_node_ready_hook.sh evaluation_local_subs_small_new_key.yml'
-  # optional_2:
-  #   hooks:
-  #      _all:
-  #       _ready: '/bin/bash $TESTBED_ROOT_DIR/../evaluation/esp32_local/_tools/per_node_ready_hook.sh evaluation_local_subs_small_optional.yml'
-  # known_key_3:
-  #   hooks:
-  #      _all:
-  #       _ready: '/bin/bash $TESTBED_ROOT_DIR/../evaluation/esp32_local/_tools/per_node_ready_hook.sh evaluation_local_subs_small_known_key.yml'
-  # new_key_3:
-  #   hooks:
-  #      _all:
-  #       _ready: '/bin/bash $TESTBED_ROOT_DIR/../evaluation/esp32_local/_tools/per_node_ready_hook.sh evaluation_local_subs_small_new_key.yml'
-  # optional_3:
-  #   hooks:
-  #      _all:
-  #       _ready: '/bin/bash $TESTBED_ROOT_DIR/../evaluation/esp32_local/_tools/per_node_ready_hook.sh evaluation_local_subs_small_optional.yml'
-  # known_key_4:
-  #   hooks:
-  #      _all:
-  #       _ready: '/bin/bash $TESTBED_ROOT_DIR/../evaluation/esp32_local/_tools/per_node_ready_hook.sh evaluation_local_subs_small_known_key.yml'
-  # new_key_4:
-  #   hooks:
-  #      _all:
-  #       _ready: '/bin/bash $TESTBED_ROOT_DIR/../evaluation/esp32_local/_tools/per_node_ready_hook.sh evaluation_local_subs_small_new_key.yml'
-  # optional_4:
-  #   hooks:
-  #      _all:
-  #       _ready: '/bin/bash $TESTBED_ROOT_DIR/../evaluation/esp32_local/_tools/per_node_ready_hook.sh evaluation_local_subs_small_optional.yml'
-  # single_known_1:
-  #   hooks:
-  #      _all:
-  #       _ready: '/bin/bash $TESTBED_ROOT_DIR/../evaluation/esp32_local/_tools/per_node_ready_hook.sh evaluation_local_subs_number_known_key.yml'
-  # single_unknown_1:
-  #   hooks:
-  #      _all:
-  #       _ready: '/bin/bash $TESTBED_ROOT_DIR/../evaluation/esp32_local/_tools/per_node_ready_hook.sh evaluation_local_subs_number_new_key.yml'
-  # single_known_2:
-  #   hooks:
-  #      _all:
-  #       _ready: '/bin/bash $TESTBED_ROOT_DIR/../evaluation/esp32_local/_tools/per_node_ready_hook.sh evaluation_local_subs_number_known_key.yml'
-  # single_unknown_2:
-  #   hooks:
-  #      _all:
-  #       _ready: '/bin/bash $TESTBED_ROOT_DIR/../evaluation/esp32_local/_tools/per_node_ready_hook.sh evaluation_local_subs_number_new_key.yml' 
-  # single_known_3:
-  #   hooks:
-  #      _all:
-  #       _ready: '/bin/bash $TESTBED_ROOT_DIR/../evaluation/esp32_local/_tools/per_node_ready_hook.sh evaluation_local_subs_number_known_key.yml'
-  # single_unknown_3:
-  #   hooks:
-  #      _all:
-  #       _ready: '/bin/bash $TESTBED_ROOT_DIR/../evaluation/esp32_local/_tools/per_node_ready_hook.sh evaluation_local_subs_number_new_key.yml' 
-  single_known_4:
+  known_run_1:
     hooks:
        _all:
-        _ready: '/bin/bash $TESTBED_ROOT_DIR/../evaluation/esp32_local/_tools/per_node_ready_hook.sh evaluation_local_subs_number_known_key.yml'
-  single_unknown_4:
+        _ready: '/bin/bash $TESTBED_ROOT_DIR/../evaluation/tools//per_node_ready_hook.sh evaluation_local_subs_number_known_key.yml'
+  unknown_run_1:
     hooks:
        _all:
-        _ready: '/bin/bash $TESTBED_ROOT_DIR/../evaluation/esp32_local/_tools/per_node_ready_hook.sh evaluation_local_subs_number_new_key.yml'
-  # single_2:
-  #   hooks:
-  #      _all:
-  #       _ready: '/bin/bash $TESTBED_ROOT_DIR/../evaluation/esp32_local/_tools/per_node_ready_hook.sh evaluation_local_subs_small_single_new_key.yml' 
-  # single_3:
-  #   hooks:
-  #      _all:
-  #       _ready: '/bin/bash $TESTBED_ROOT_DIR/../evaluation/esp32_local/_tools/per_node_ready_hook.sh evaluation_local_subs_small_single_new_key.yml' 
-  # single_4:
-  #   hooks:
-  #      _all:
-  #       _ready: '/bin/bash $TESTBED_ROOT_DIR/../evaluation/esp32_local/_tools/per_node_ready_hook.sh evaluation_local_subs_small_single_new_key.yml' 
-  # run_2: {}
-  # run_3: {}
-  # run_4: {}
+        _ready: '/bin/bash $TESTBED_ROOT_DIR/../evaluation/tools//per_node_ready_hook.sh evaluation_local_subs_number_new_key.yml'
+  known_run_2:
+    hooks:
+       _all:
+        _ready: '/bin/bash $TESTBED_ROOT_DIR/../evaluation/tools//per_node_ready_hook.sh evaluation_local_subs_number_known_key.yml'
+  unknown_run_2:
+    hooks:
+       _all:
+        _ready: '/bin/bash $TESTBED_ROOT_DIR/../evaluation/tools//per_node_ready_hook.sh evaluation_local_subs_number_new_key.yml'
+  known_run_3:
+    hooks:
+       _all:
+        _ready: '/bin/bash $TESTBED_ROOT_DIR/../evaluation/tools//per_node_ready_hook.sh evaluation_local_subs_number_known_key.yml'
+  unknown_run_3:
+    hooks:
+       _all:
+        _ready: '/bin/bash $TESTBED_ROOT_DIR/../evaluation/tools//per_node_ready_hook.sh evaluation_local_subs_number_new_key.yml'
+  known_run_4:
+    hooks:
+       _all:
+        _ready: '/bin/bash $TESTBED_ROOT_DIR/../evaluation/tools//per_node_ready_hook.sh evaluation_local_subs_number_known_key.yml'
+  unknown_run_4:
+    hooks:
+       _all:
+        _ready: '/bin/bash $TESTBED_ROOT_DIR/../evaluation/tools//per_node_ready_hook.sh evaluation_local_subs_number_new_key.yml'
