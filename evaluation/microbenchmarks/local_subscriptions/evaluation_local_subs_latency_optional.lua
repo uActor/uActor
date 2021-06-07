@@ -33,7 +33,8 @@ function receive(message)
       for x=1,COUNT_INCREMENTS,1 do
         local base_id = count - COUNT_INCREMENTS
         local sub_id = base_id + x
-        local sub = {exp_1="ping", exp_2={1, "value_"..sub_id, optional=true}}
+        local distribution_string = string.char(string.byte("a") + (sub_id-1) % 26)
+        local sub = {exp_1="ping", exp_2={1, distribution_string.."_v_"..sub_id, optional=true}}
         subscribe(sub)
       end
     end

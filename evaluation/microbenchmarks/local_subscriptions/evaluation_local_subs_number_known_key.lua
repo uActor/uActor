@@ -25,7 +25,8 @@ function receive(message)
 
     if(count == -1) then
       for i=1,339 do
-        subscribe({exp_2="value_"..i})
+        local distribution_string = string.char(string.byte("a") + (i-1) % 26)
+        subscribe({exp_2=distribution_string.."_v_"..i})
       end 
       count = 340
     else
@@ -38,7 +39,8 @@ function receive(message)
     end
 
     if count > 0 then
-      subscribe({exp_2="value_"..count})
+      local distribution_string = string.char(string.byte("a") + (count-1) % 26)
+      subscribe({exp_2=distribution_string.."_v_"..count})
     end
 
     testbed_log_string("_logger_test_postfix", count)

@@ -33,8 +33,9 @@ function receive(message)
       for x=1,COUNT_INCREMENTS,1 do
         local base_id = count - COUNT_INCREMENTS
         local sub_id = base_id + x
-        local sub = {}
-        sub["unused"..sub_id] = "value_"..sub_id
+        local distribution_string = string.char(string.byte("a") + (sub_id-1) % 26)
+        local sub = {unused="bar"}
+        sub[distribution_string.."_k_"..sub_id] = distribution_string.."_v_"..sub_id
         subscribe(sub)
       end
     end

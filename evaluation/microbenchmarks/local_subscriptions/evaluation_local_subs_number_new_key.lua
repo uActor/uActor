@@ -25,8 +25,9 @@ function receive(message)
 
     if(count == -1) then
       for i=1,339 do
+        local distribution_string = string.char(string.byte("a") + (i-1) % 26)
         local sub = {}
-        sub["unused_"..i] = "value_"..i
+        sub[distribution_string.."_k_"..i] = distribution_string.."_v_"..i
         subscribe(sub) 
       end 
       count = 340
@@ -40,8 +41,9 @@ function receive(message)
     end
 
     if count > 0 then
+      local distribution_string = string.char(string.byte("a") + (count-1) % 26)
       local sub = {}
-      sub["unused_"..count] = "value_1_"..count
+      sub[distribution_string.."_k_"..count] = distribution_string.."_v_"..count
       subscribe(sub)
     end
 
