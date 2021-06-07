@@ -1,11 +1,11 @@
 function receive(message)
   
   code = [[function receive(message)
-    if(message.type == "init") then
-      dummy_state = "dummy"
-      publish(Publication.new("exp_1", "pong"))
-    end
-  end]]
+if(message.type == "init") then
+dummy_state = "dummy"
+publish(Publication.new("exp_1", "pong"))
+end
+end]]
 
   if(message.type == "init") then
     count_sent = 0
@@ -27,7 +27,7 @@ function receive(message)
       "deployment_ttl", 9999999
     ))
     testbed_log_integer("count_sent", count_sent)
-  elseif(message.type == "pong") then
+  elseif(message.exp_1 == "pong") then
     count_received = count_received + 1
     testbed_log_integer("count_received", count_received)
     enqueue_wakeup(1000, "trigger")
