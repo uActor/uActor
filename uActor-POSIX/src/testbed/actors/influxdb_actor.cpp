@@ -1,3 +1,4 @@
+#if CONFIG_UACTOR_ENABLE_INFLUXDB_ACTOR
 #include "actors/influxdb_actor.hpp"
 
 #include <InfluxDBException.h>
@@ -68,3 +69,4 @@ void InfluxDBActor::receive_data_point(const PubSub::Publication& publication) {
   }
 }
 }  // namespace uActor::Database
+#endif

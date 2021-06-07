@@ -16,7 +16,6 @@
 #include "actor_runtime/managed_actor.hpp"
 #include "actor_runtime/managed_native_actor.hpp"
 #include "actor_runtime/native_executor.hpp"
-#include "actors/influxdb_actor.hpp"
 #include "controllers/deployment_manager.hpp"
 #include "controllers/topology_manager.hpp"
 #include "remote/remote_connection.hpp"
@@ -31,6 +30,9 @@
 #include "support/testbed.h"
 #endif
 
+#if CONFIG_UACTOR_ENABLE_INFLUXDB_ACTOR
+#include "actors/influxdb_actor.hpp"
+#endif
 /*
  *  Offset to be subtracted from the current timestamp to
  *  set the epoch number
@@ -145,10 +147,12 @@ boost::program_options::variables_map parse_arguments(int arg_count,
     "tcp-external-port", boost::program_options::value<uint16_t>(),
     "Provide a hint on the external port this node can be reached at."
   )
+#if CONFIG_UACTOR_ENABLE_INFLUXDB_ACTOR
   (
     "influxdb-url", boost::program_options::value<std::string>(),
     "InfluxDB host"
   )
+#endif
   (
     "enable-code-server", boost::program_options::bool_switch(),
     "Add subscription that lets the node respond to remote code fetch requests."
@@ -246,8 +250,10 @@ int main(int arg_count, char** args) {
       uActor::Controllers::DeploymentManager>("deployment_manager");
   uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
       uActor::ActorRuntime::CodeStoreActor>("code_store");
+#if CONFIG_UACTOR_ENABLE_INFLUXDB_ACTOR
   uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
       uActor::Database::InfluxDBActor>("influxdb_connector");
+#endif
   auto nativeexecutor = start_native_executor();
 #if CONFIG_UACTOR_ENABLE_TELEMETRY
   uActor::Controllers::TelemetryActor::telemetry_fetch_hook =
@@ -299,6 +305,7 @@ int main(int arg_count, char** args) {
   create_code_store.set_attr("instance_id", "1");
   uActor::PubSub::Router::get_instance().publish(std::move(create_code_store));
 
+#if CONFIG_UACTOR_ENABLE_INFLUXDB_ACTOR
   if (arguments.count("influxdb-url")) {
     uActor::Database::InfluxDBActor::server_url =
         arguments["influxdb-url"].as<std::string>();
@@ -316,6 +323,7 @@ int main(int arg_count, char** args) {
     uActor::PubSub::Router::get_instance().publish(
         std::move(create_influxdb_actor));
   }
+#endif
 
 #if CONFIG_UACTOR_ENABLE_TELEMETRY
   {

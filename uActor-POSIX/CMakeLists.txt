@@ -8,6 +8,9 @@ endif()
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# TODO(raphaelhetzel) this needs to be reenabled, requires code updates, was previsously in the wrong location in the configuration file
+#add_compile_options(-Werror -Wall -Wextra -pedantic)
+
 option(BUILD_SHARED_LIBS "Build shared versions of libraries" OFF)
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_BINARY_DIR})
@@ -118,19 +121,18 @@ target_include_directories(uActorBin PRIVATE ${Boost_INCLUDE_DIRS})
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../uActor ${CMAKE_CURRENT_BINARY_DIR}/uActor)
 
-set(CMAKE_CXX_FLAGS_RELEASE "-O3")
-add_compile_options(-Werror -Wall -Wextra -pedantic)
-
 #TODO: Add build configuation utility
-target_compile_options(uActor PUBLIC -DCONFIG_UACTOR_ENABLE_TELEMETRY=1)
-
 # Eval: Disable
-# target_compile_options(uActor PUBLIC -DCONFIG_UACTOR_ENABLE_HEAP_TRACKING=1)
-# target_compile_options(uActor PUBLIC -DCONFIG_UACTOR_ENABLE_SECONDS_TELEMETRY=1)
+target_compile_options(uActor PUBLIC -DCONFIG_UACTOR_ENABLE_TELEMETRY=1)
+target_compile_options(uActor PUBLIC -DCONFIG_UACTOR_ENABLE_HEAP_TRACKING=1)
+target_compile_options(uActor PUBLIC -DCONFIG_UACTOR_ENABLE_INFLUXDB_ACTOR=1)
 
+# Large Scale Eval: Enable
+# target_compile_options(uActor PUBLIC -DCONFIG_UACTOR_ENABLE_SECONDS_TELEMETRY=1)
 
 #EVAL: Enable
 #target_compile_options(uActor PUBLIC -DCONFIG_BENCHMARK_ENABLED=1)
+
 #Not needed in most situations
 #target_compile_options(uActor PUBLIC -DCONFIG_UACTOR_HIBERNATION=1)
 
