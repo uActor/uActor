@@ -34,7 +34,7 @@ function receive(message)
         local base_id = count - COUNT_INCREMENTS
         local sub_id = base_id + x
         local distribution_string = string.char(string.byte("a") + (sub_id-1) % 26)
-        local sub = {unused="bar"}
+        local sub = {}
         sub[distribution_string.."_k_"..sub_id] = distribution_string.."_v_"..sub_id
         subscribe(sub)
       end
