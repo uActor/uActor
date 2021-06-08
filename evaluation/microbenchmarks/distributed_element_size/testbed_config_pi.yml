@@ -23,15 +23,6 @@ boards:
         root_directory: "/home/pi/"
     build_configuration:
       configuration_name: "example"
-  node_2:
-    type: "ESP32-IDF"
-    runtime_configuration:
-      serial_device: "/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_TUM02-if00-port0"
-      remote:
-        host: "cm-pi1"
-        root_directory: "/home/pi/remote_testbed"
-    build_configuration:
-      sdkconfig: {{TESTBED_CONFIG_DIR}}/../sdkconfig.microbenchmarks
   node_3:
     type: "ESP32-IDF"
     runtime_configuration:
@@ -213,6 +204,10 @@ experiments:
       _all:
         _ready: '/bin/bash $TESTBED_CONFIG_DIR/ready_hook.sh 1'
   1_hop_run_4:
+    hooks:
+      _all:
+        _ready: '/bin/bash $TESTBED_CONFIG_DIR/ready_hook.sh 1'
+  1_hop_run_5:
     hooks:
       _all:
         _ready: '/bin/bash $TESTBED_CONFIG_DIR/ready_hook.sh 1'
