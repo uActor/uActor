@@ -41,7 +41,8 @@ function receive(message)
     local publication = Publication.new("exp_1", "ping", "exp_2", "foo")
     
     for x=1,count,1 do
-        publication["payload_"..tostring(x)] = "ABCD"
+        local distribution_string = string.char(string.byte("a") + (x-1) % 26)
+        publication[distribution_string.."p_"..tostring(x)] = "ABCD"
     end
 
     collectgarbage()
