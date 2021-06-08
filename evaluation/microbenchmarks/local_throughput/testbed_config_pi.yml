@@ -30,7 +30,7 @@ experiments:
         _ready: '/bin/bash $TESTBED_ROOT_DIR/../evaluation/tools/per_node_ready_hook.sh evaluation_local_troughput.yml'
     limits:
       default:
-        time_for_10000: 25
+        time_for_10000: 10
   run_1: {}
   run_2: {}
   run_3: {}
