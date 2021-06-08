@@ -180,6 +180,7 @@ boards:
         host: "cm-pi2"
         root_directory: "/home/pi/remote_testbed"
 experiments:
+  default:
     limits:
       default:
         oom: 1
