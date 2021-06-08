@@ -183,7 +183,7 @@ experiments:
   default:
     hooks:
        _all:
-        _ready: '/bin/bash $TESTBED_ROOT_DIR/../evaluation/per_node_ready_hook.sh evaluation_local_troughput.yml'
+        _ready: '/bin/bash $TESTBED_ROOT_DIR/../evaluation/tools/per_node_ready_hook.sh evaluation_local_troughput.yml'
     limits:
       default:
         time_for_10000: 25
