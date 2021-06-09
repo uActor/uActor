@@ -62,12 +62,12 @@ class TestBed {
   }
 
   void start_timekeeping(size_t variable) {
-    timekeeping[variable] = std::chrono::high_resolution_clock::now();
+    timekeeping[variable] = std::chrono::steady_clock::now();
   }
 
 #if CONFIG_TESTBED_NESTED_TIMEKEEPING
   void stop_timekeeping_inner(size_t variable, const char* name) {
-    uint64_t timestamp = std::chrono::high_resolution_clock::now();
+    uint64_t timestamp = std::chrono::steady_clock::now();
     times.emplace_back(std::string(name),
                        std::chrono::duration_cast<std::chrono::microseconds>(
                            timestamp - timekeeping[variable])
@@ -76,7 +76,7 @@ class TestBed {
 #endif
 
   void stop_timekeeping(size_t variable, const char* name) {
-    auto timestamp = std::chrono::high_resolution_clock::now();
+    auto timestamp = std::chrono::steady_clock::now();
 
 #if CONFIG_TESTBED_NESTED_TIMEKEEPING
     for (const auto t : times) {
@@ -94,7 +94,7 @@ class TestBed {
 
  private:
   uint64_t sequence_number = 0;
-  std::array<std::chrono::time_point<std::chrono::high_resolution_clock>, 10>
+  std::array<std::chrono::time_point<std::chrono::steady_clock>, 10>
       timekeeping;
 #if CONFIG_TESTBED_NESTED_TIMEKEEPING
   std::vector<std::pair<std::string, uint64_t>> times;
