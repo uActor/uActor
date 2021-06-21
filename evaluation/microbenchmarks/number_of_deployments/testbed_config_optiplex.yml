@@ -19,4 +19,4 @@ experiments:
     limits:
       default:
         count_received: 10000
-  check_pi_num_actors: {}
+  check_optiplex_num_actors: {}

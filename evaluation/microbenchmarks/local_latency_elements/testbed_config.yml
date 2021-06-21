@@ -186,5 +186,5 @@ experiments:
         _ready: '/bin/bash $TESTBED_ROOT_DIR/../evaluation/tools/per_node_ready_hook.sh evaluation_local_element_latency.yml'
     limits:
       default:
-        oom: 1
+        oom: 1 # Some nodes run to the maximum, but there is no OR in the tooling.
   num_elements: {}
