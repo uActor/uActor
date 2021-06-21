@@ -24,7 +24,7 @@ end]]
       "deployment_actor_version", "0.1",
       "deployment_actor_code", code,
       "deployment_required_actors", "",
-      "deployment_ttl", 9999999
+      "deployment_ttl", 999999999
     ))
     testbed_log_integer("count_sent", count_sent)
   elseif(message.exp_1 == "pong") then
