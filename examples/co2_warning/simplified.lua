@@ -1,9 +1,3 @@
-
-
-
-
-
-
 function receive(message)
   if(message.type == "init") then
     subscribe({type="sensor_update_co2",

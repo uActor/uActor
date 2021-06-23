@@ -34,8 +34,7 @@ class Publication {
 
   // TODO(raphaelhetzel) implement custom iterator to allow for a more efficient
   // implementation later
-  using const_iterator =
-      std::unordered_map<AString, variant_type>::const_iterator;
+  using const_iterator = InternalType::const_iterator;
   [[nodiscard]] const_iterator begin() const { return attributes->begin(); }
   [[nodiscard]] const_iterator end() const { return attributes->end(); }
 
