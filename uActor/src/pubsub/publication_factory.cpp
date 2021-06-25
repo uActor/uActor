@@ -5,6 +5,8 @@
 
 #include <msgpack.hpp>
 
+#include "support/logger.hpp"
+
 namespace uActor::PubSub {
 
 PublicationFactory::PublicationFactory()
@@ -32,7 +34,7 @@ std::optional<Publication> PublicationFactory::build() {
   if (storage->unpacker.next(result)) {
     msgpack::object oh(result.get());
     if (!(oh.type == msgpack::type::object_type::MAP)) {
-      printf("not a map\n");
+      Support::Logger::warning("PUBLICATION-FACTORY", "Root type is not a map");
       return std::nullopt;
     }
     Publication p{};
@@ -55,7 +57,7 @@ std::optional<Publication> PublicationFactory::build() {
     }
     return std::move(p);
   } else {
-    printf("else\n");
+    Support::Logger::warning("PUBLICATION-FACTORY", "Empty msgpack data");
   }
   return std::nullopt;
 }

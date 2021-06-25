@@ -104,7 +104,8 @@ void telemetry_fetch_hook() {
 #endif
 
 void main_task(void *) {
-  printf("InitialHeap: %d \n", xPortGetFreeHeapSize());
+  uActor::Support::Logger::info("MAIN", "InitialHeap: %d",
+                                xPortGetFreeHeapSize());
 
   uActor::BoardFunctions::setup_hardware();
 
@@ -171,7 +172,7 @@ void main_task(void *) {
 
   size_t retries = 0;
   while (t < 1577836800) {
-    printf("waiting for time\n");
+    uActor::Support::Logger::info("MAIN", "waiting for time");
     vTaskDelay(1000 / portTICK_PERIOD_MS);
     time(&t);
     retries++;
@@ -180,9 +181,9 @@ void main_task(void *) {
   if (t > 1577836800) {
     t -= 1577836800;
     uActor::BoardFunctions::epoch = t;
-    printf("epoch %ld\n", t);
+    uActor::Support::Logger::info("MAIN", "Epoch %ld", t);
   } else {
-    printf("Epoch not set according to time\n");
+    uActor::Support::Logger::warning("MAIN", "Epoch not set according to time");
     uActor::BoardFunctions::epoch = 0;
   }
 
@@ -381,7 +382,8 @@ void main_task(void *) {
                           nullptr, 4, nullptr, 0);
 #endif
 
-  printf("StaticHeap: %d \n", xPortGetFreeHeapSize());
+  uActor::Support::Logger::info("MAIN", "StaticHeap: %d",
+                                xPortGetFreeHeapSize());
   testbed_log_rt_integer("boot_timestamp", t);
 
   vTaskDelay(2000);

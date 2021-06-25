@@ -8,6 +8,7 @@
 
 #include "managed_actor.hpp"
 #include "native_actor.hpp"
+#include "support/logger.hpp"
 
 namespace uActor::ActorRuntime {
 
@@ -32,7 +33,8 @@ class ManagedNativeActor : public ManagedActor {
       actor = std::move(
           actor_constructor_it->second(this, node_id, actor_type, instance_id));
     } else {
-      printf("Tried to spawn a native actor with unknown type.\n");
+      Support::Logger::warning(
+          "NATIVE-ACTOR", "Tried to spawn a native actor with unknown type.");
     }
   }
 

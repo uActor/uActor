@@ -268,7 +268,7 @@ class Executor : public ExecutorApi {
                   }
                 }
               } else {
-                printf("outdated reference\n");
+                Support::Logger::warning("EXECUTOR", "Outdated reference");
               }
             }
           } else {

@@ -64,7 +64,7 @@ void InfluxDBActor::receive_data_point(const PubSub::Publication& publication) {
           influxdb::InfluxDBFactory::Get(server_url);
       connection->write(std::move(p));
     } catch (const ::influxdb::InfluxDBException&) {
-      Support::Logger::error("INFLUXDB", "WRITE_DATAPOINT", "Connection error");
+      Support::Logger::error("INFLUXDB-ACTOR", "Write: Connection error");
     }
   }
 }

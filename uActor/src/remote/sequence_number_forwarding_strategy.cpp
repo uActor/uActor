@@ -16,7 +16,8 @@ bool SequenceNumberForwardingStrategy::should_accept(
     return false;
   }
 
-  uActor::Support::Logger::trace("FORWARDING-STRATEGY", "MESSAGE FROM",
+  uActor::Support::Logger::trace("FORWARDING-STRATEGY",
+                                 "Received message from: %s",
                                  publisher_node_id.c_str());
 
   std::unique_lock lck(incomming_mtx);
@@ -33,7 +34,7 @@ bool SequenceNumberForwardingStrategy::should_accept(
       if (*epoch_number >= sequence_info.epoch &&
           *sequence_number - sequence_info.sequence_number > 1) {
         Support::Logger::debug(
-            "REMOTE-CONNECTION", "RECEIVE", "Potentially lost %d message(s)",
+            "REMOTE-CONNECTION", "Potentially lost %d message(s)",
             *sequence_number - sequence_info.sequence_number);
       }
       sequence_info = Remote::SequenceInfo(*sequence_number, *epoch_number,

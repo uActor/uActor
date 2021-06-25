@@ -4,6 +4,8 @@
 #include <cstddef>
 #include <utility>
 
+#include "support/logger.hpp"
+
 namespace uActor::PubSub {
 
 bool Constraint::operator()(std::string_view input) const {
@@ -124,7 +126,8 @@ ConstraintPredicates::Predicate Constraint::predicate() const {
     const auto& ct = std::get<Container<float>>(_operand);
     return ct.operation_name;
   }
-  printf("warning: requested predicate of undefined constraint\n");
+  Support::Logger::warning("CONSTRAINT",
+                           "Requested predicate of undefined constraint");
   return ConstraintPredicates::Predicate::EQ;
 }
 
@@ -167,7 +170,8 @@ ConstraintPredicates::from_string(std::string_view name) {
   if (name == "LE") {
     return Predicate::LE;
   } else {
-    printf("Deserialization error %s\n", name.data());
+    Support::Logger::warning("CONSTRAINT", "Deserialization error %s",
+                             name.data());
     return std::nullopt;
   }
 }

@@ -184,14 +184,15 @@ std::ofstream telemetry_file;
 #endif
 
 int main(int arg_count, char** args) {
-  std::cout << "starting uActor" << std::endl;
-
   auto arguments = parse_arguments(arg_count, args);
 
   if (arguments.count("node-id") != 0u) {
     uActor::BoardFunctions::NODE_ID =
         (new std::string(arguments["node-id"].as<std::string>()))->data();
   }
+
+  uActor::Support::Logger::info("MAIN", "Starting uActor. Node ID: %s",
+                                uActor::BoardFunctions::NODE_ID);
 
   if (arguments.count("server-node") != 0u) {
     uActor::BoardFunctions::SERVER_NODES =
@@ -207,7 +208,8 @@ int main(int arg_count, char** args) {
      * The timestamp is not set correctly.
      * If this only happens once, this will cause problems.
      */
-    std::cout << "WARNING: Timestamp lower than the magic offset!" << std::endl;
+    uActor::Support::Logger::warning("MAIN",
+                                     "Timestamp lower than the magic offset!");
     uActor::BoardFunctions::epoch = boot_timestamp;
   }
 

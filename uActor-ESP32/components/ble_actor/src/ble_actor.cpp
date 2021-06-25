@@ -7,6 +7,7 @@
 #include "ble_actor.hpp"
 #include "pubsub/publication.hpp"
 #include "pubsub/router.hpp"
+#include "support/logger.hpp"
 
 namespace uActor::ESP32::BLE {
 
@@ -180,7 +181,8 @@ void BLEActor::host_task(void* param) {
 }
 
 void BLEActor::on_reset(int reason) {
-  printf("Called unimplemented on_reset callback!\n");
+  Support::Logger::warning("BLE-ACTOR",
+                           "Called unimplemented on_reset callback!");
 }
 
 void BLEActor::on_sync(void) {
@@ -267,7 +269,8 @@ int BLEActor::discovery_callback(ble_gap_event* event, void* arg) {
       handle_discovery_event(event);
       return 0;
     default:
-      printf("Unhandles event: %d\n", event->type);
+      Support::Logger::warning("BLE-ACTOR", "Unhandles event: %d\n",
+                               event->type);
       return 0;
   }
 }

@@ -22,7 +22,7 @@
 namespace uActor::ActorRuntime {
 
 ManagedLuaActor::~ManagedLuaActor() {
-  uActor::Support::Logger::trace("LUA-ACTOR", "STOP", "LUA Actor Stopped.");
+  uActor::Support::Logger::trace("MANAGED-LUA-ACTOR", "LUA Actor Stopped.");
   lua_pushnil(state);
   lua_setglobal(state, std::to_string(id()).data());
   lua_pushnil(state);
@@ -38,15 +38,16 @@ ManagedActor::RuntimeReturnValue ManagedLuaActor::receive(
   }
 #endif
   if (!initialized()) {
-    Support::Logger::warning("MANAGED-LUA-ACTOR", "RECEIVE",
-                             "Actor not initialized, can't process message");
+    Support::Logger::warning(
+        "MANAGED-LUA-ACTOR",
+        "Receive: Actor not initialized, can't process message");
     return RuntimeReturnValue::NOT_READY;
   }
 
   lua_getglobal(state, std::to_string(id()).data());
   lua_getfield(state, -1, "receive");
   if (!lua_isfunction(state, -1)) {
-    printf("receive is not a function\n");
+    Support::Logger::error("MANAGED-LUA-ACTOR", "Receive is not a function");
   }
   lua_replace(state, 1);
 
@@ -70,9 +71,9 @@ ManagedActor::RuntimeReturnValue ManagedLuaActor::receive(
 
   int error_code = lua_pcall(state, 1, 0, 0);
   if (error_code != 0) {
-    printf("LUA ERROR for actor %s.%s.%s\n", node_id(), actor_type(),
-           instance_id());
-    printf("ERROR: %s\n", lua_tostring(state, -1));
+    Support::Logger::info("MANAGED-LUA-ACTOR",
+                          "LUA ERROR for actor %s.%s.%s: %s", node_id(),
+                          actor_type(), instance_id(), lua_tostring(state, -1));
     lua_pop(state, 1);
     return RuntimeReturnValue::RUNTIME_ERROR;
   }
@@ -98,7 +99,8 @@ int ManagedLuaActor::publish_wrapper(lua_State* state) {
         reinterpret_cast<PubSub::Publication*>(lua_touserdata(state, 1));
     actor->publish(std::move(*pub));
   } else if (lua_istable(state, -1)) {
-    printf("using outdated API!\n");
+    Support::Logger::warning("MANAGED-LUA-ACTOR",
+                             "Using deprecated publication API!\n");
     actor->publish(parse_publication(actor, state, 1));
   }
   return 0;
@@ -136,7 +138,8 @@ int ManagedLuaActor::delayed_publish_wrapper(lua_State* state) {
     actor->delayed_publish(std::move(*pub), delay);
   }
   if (lua_istable(state, 1)) {
-    printf("using outdated API!\n");
+    Support::Logger::warning("MANAGED-LUA-ACTOR",
+                             "Using deprecated publication API!\n");
     actor->delayed_publish(parse_publication(actor, state, 1), delay);
   }
   return 0;
@@ -210,8 +213,8 @@ int ManagedLuaActor::unix_timestamp_wrapper(lua_State* state) {
   uint32_t seconds = upper.count();
   uint32_t nanoseconds = lower.count();
   if (seconds < MIN_ACCEPTED_TIMESTAMP) {
-    Support::Logger::warning("LUA-ACTOR", "UNIX-TIMESTAMP",
-                             "Tried to fetch outdated timestamp\n");
+    Support::Logger::warning("MANAGED-LUA-ACTOR",
+                             "Tried to fetch outdated UNIX timestamp\n");
     lua_pushinteger(state, 0);
     lua_pushinteger(state, 0);
   } else {
@@ -268,6 +271,63 @@ int ManagedLuaActor::blake2s_wrapper(lua_State* state) {
                             .data());
 
   return 1;
+}
+
+int ManagedLuaActor::log_wrapper(lua_State* state) {
+  ManagedLuaActor* actor = reinterpret_cast<ManagedLuaActor*>(
+      lua_touserdata(state, lua_upvalueindex(1)));
+
+  static std::set<std::string_view> valid_levels = {
+      "TRACE", "DEBUG", "INFO", "WARNING", "ERROR", "FATAL"};
+  auto message = lua_tostring(state, 1);
+  std::string level = "INFO";
+  if (lua_gettop(state) > 1) {
+    level = std::string(lua_tostring(state, 2));
+    std::transform(level.begin(), level.end(), level.begin(), ::toupper);
+    if (valid_levels.find(level) == valid_levels.end()) {
+      level = "INFO";
+    }
+  }
+  std::string actor_identifier =
+      std::string(actor->actor_type()) + "." + actor->instance_id();
+  // The message is user defined, this needs to ensure safety:
+  // https://owasp.org/www-community/attacks/Format_string_attack
+  Support::Logger::log(level, actor_identifier, "%s", message);
+  return 0;
+}
+
+// Overwrite Lua "print" to use the system's logging infrastructure
+int ManagedLuaActor::print_wrapper(lua_State* state) {
+  ManagedLuaActor* actor = reinterpret_cast<ManagedLuaActor*>(
+      lua_touserdata(state, lua_upvalueindex(1)));
+  std::string buffer = "";
+
+  // Adapted from luaB_print function in Lua's lbaselib.c (license: MIT)
+  int n = lua_gettop(state); /* number of arguments */
+  lua_getglobal(state, "tostring");
+  for (int i = 1; i <= n; i++) {
+    const char* s;
+    size_t l;
+    lua_pushvalue(state, -1); /* function to be called */
+    lua_pushvalue(state, i);  /* value to print */
+    lua_call(state, 1, 1);
+    s = lua_tolstring(state, -1, &l); /* get result */
+    if (s == NULL) {
+      return luaL_error(state, "'tostring' must return a string to 'print'");
+    }
+    if (i > 1) {
+      buffer += "\t";
+    }
+    buffer += std::string(s, l);
+    lua_pop(state, 1); /* pop result */
+  }
+
+  std::string actor_identifier =
+      std::string(actor->actor_type()) + "." + actor->instance_id();
+  // The message is user defined, this needs to ensure safety:
+  // https://owasp.org/www-community/attacks/Format_string_attack
+  Support::Logger::log("INFO", actor_identifier, "%s", buffer.c_str());
+  return 0;
 }
 
 #if CONFIG_BENCHMARK_ENABLED
@@ -358,9 +418,9 @@ bool ManagedLuaActor::createActorEnvironment(
 
   if (luaL_loadbuffer(state, receive_function.data(), receive_function.size(),
                       actor_type())) {
-    printf("LUA LOAD ERROR for actor %s.%s.%s\n", node_id(), actor_type(),
-           instance_id());
-    printf("ERROR: %s\n", lua_tostring(state, -1));
+    Support::Logger::warning(
+        "MANAGED-LUA-ACTOR", "LUA LOAD ERROR for actor %s.%s.%s: %s", node_id(),
+        actor_type(), instance_id(), lua_tostring(state, -1));
     lua_pop(state, 2);
     return false;
   }
@@ -372,9 +432,9 @@ bool ManagedLuaActor::createActorEnvironment(
 
   int error_code = lua_pcall(state, 0, 0, 0);
   if (error_code != 0) {
-    printf("LUA LOAD ERROR for actor %s.%s.%s\n", node_id(), actor_type(),
-           instance_id());
-    printf("ERROR: %s\n", lua_tostring(state, -1));
+    Support::Logger::warning(
+        "MANAGED-LUA-ACTOR", "LUA LOAD ERROR for actor %s.%s.%s: %s", node_id(),
+        actor_type(), instance_id(), lua_tostring(state, -1));
     lua_pop(state, 3);
     return false;
   }

@@ -47,23 +47,24 @@ ManagedActor::ReceiveResult ManagedActor::receive_next_internal() {
             std::string(*next_message.get_str_attr("fetch_actor_code")));
       } else {
         Support::Logger::fatal(
-            "MANAGED-ACTOR", "CODE-FETCH",
-            "Received wrong code package. Received: %s Expected: %s\n",
+            "MANAGED-ACTOR",
+            "CODE FETCH: Received wrong code package. Received: %s Expected: "
+            "%s\n",
             next_message.get_str_attr("fetch_actor_type")->data(),
             actor_type());
       }
     } else {
-      Support::Logger::info("MANAGED-ACTOR", "CODE-FETCH", "Delayed Code");
+      Support::Logger::info("MANAGED-ACTOR", "CODE FETCH: Delayed Code");
     }
   } else if (next_message.get_str_attr("type") == "timeout" &&
              waiting_for_code) {
     if (code_fetch_retries < 20) {
-      Support::Logger::warning("MANAGED-ACTOR", "CODE-FETCH", "RETRY");
+      Support::Logger::debug("MANAGED-ACTOR", "CODE FETCH: RETRY");
       trigger_code_fetch();
       code_fetch_retries++;
       return ManagedActor::ReceiveResult(false, _timeout);
     } else {
-      Support::Logger::warning("MANAGED-ACTOR", "CODE-FETCH", "FAILED");
+      Support::Logger::warning("MANAGED-ACTOR", "CODE FETCH: FAILED");
       ret = RuntimeReturnValue::INITIALIZATION_ERROR;
     }
   } else {
@@ -76,7 +77,7 @@ ManagedActor::ReceiveResult ManagedActor::receive_next_internal() {
     if (ret == RuntimeReturnValue::NONE || ret == RuntimeReturnValue::OK) {
       ret = receive(std::move(next_message));
       if (ret == RuntimeReturnValue::NOT_READY) {
-        Support::Logger::error("MANAGED-ACTOR", "RECEIVE",
+        Support::Logger::error("MANAGED-ACTOR",
                                "Receive called on inactive actor");
         ret = RuntimeReturnValue::RUNTIME_ERROR;
       }
@@ -164,23 +165,22 @@ ManagedActor::early_initialize() {
 ManagedActor::RuntimeReturnValue ManagedActor::late_initialize(
     std::string&& code) {
   // We need to wrap the runtime-specific initialization.
-  Support::Logger::trace("MANAGED-ACTOR", "LATE-INIT", "called");
+  Support::Logger::trace("MANAGED-ACTOR", "Late init called");
   auto ret = late_internal_initialize(std::move(code));
   _initialized = ret == RuntimeReturnValue::OK;
   if (_initialized) {
-    Support::Logger::trace("MANAGED-ACTOR", "LATE-INIT", "success");
+    Support::Logger::trace("MANAGED-ACTOR", "Late init success");
     return RuntimeReturnValue::OK;
   } else {
     publish_exit_message("initialization_failure");
-    Support::Logger::trace("MANAGED-ACTOR", "LATE-INIT", "failure");
+    Support::Logger::trace("MANAGED-ACTOR", "Late init failure");
     return RuntimeReturnValue::INITIALIZATION_ERROR;
   }
 }
 
 void ManagedActor::trigger_code_fetch() {
   waiting_for_code = true;
-  Support::Logger::info("MANAGED-ACTOR", "LATE-CODE-FETCH",
-                        "trigger code fetch\n");
+  Support::Logger::info("MANAGED-ACTOR", "Trigger code fetch\n");
   deffered_block_for(
       PubSub::Filter{PubSub::Constraint("type", "code_fetch_response")}, 1000);
   PubSub::Publication fetch_code(node_id(), actor_type(), instance_id());

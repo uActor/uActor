@@ -159,8 +159,6 @@ void RemoteConnection::process_data(uint32_t len, char* data) {
         std::optional<PubSub::Publication> p;
         if (publicaton_full_size > 0) {
           p = publication_buffer.build();
-        } else {
-          // printf("null message\n");
         }
         if (p) {
           process_remote_publication(std::move(*p));
@@ -177,7 +175,7 @@ void RemoteConnection::process_remote_publication(PubSub::Publication&& p) {
   if (p.has_attr("publisher_node_id") &&
       p.get_str_attr("publisher_node_id") != BoardFunctions::NODE_ID) {
     auto publisher_node_id = std::string(*p.get_str_attr("publisher_node_id"));
-    uActor::Support::Logger::trace("REMOTE-CONNECTION", "MESSAGE from",
+    uActor::Support::Logger::trace("REMOTE-CONNECTION", "MESSAGE from: %s",
                                    publisher_node_id.c_str());
 
     if (forwarding_strategy->should_accept(p)) {
@@ -245,10 +243,10 @@ void RemoteConnection::process_remote_publication(PubSub::Publication&& p) {
         PubSub::Router::get_instance().publish(std::move(p));
       }
     } else {
-      Support::Logger::debug("REMOTE-CONNECTION", "RECEIVE",
-                             "Message Dropped from %s, forwarded-by: %s",
-                             publisher_node_id.c_str(),
-                             partner_node_id.c_str());
+      Support::Logger::debug(
+          "REMOTE-CONNECTION"
+          "Received message dropped. From: %s, Forwarded-by: %s",
+          publisher_node_id.c_str(), partner_node_id.c_str());
 #if CONFIG_UACTOR_ENABLE_TELEMETRY
       Controllers::TelemetryData::increase("dropped_traffic_size",
                                            publicaton_full_size);
@@ -454,8 +452,9 @@ void RemoteConnection::handle_remote_hello(PubSub::Publication&& p) {
                return false;
              },
              1000)) {
-      uActor::Support::Logger::info("REMOTE-CONNECTION", "INIT",
-                                    "Send Chunk, size: %d", chunk.size());
+      uActor::Support::Logger::info("REMOTE-CONNECTION",
+                                    "Send initial subscription chunk. Size: %d",
+                                    chunk.size());
       PubSub::Publication p{BoardFunctions::NODE_ID, "remote_connection",
                             std::to_string(local_id)};
       p.set_attr("type", "subscriptions_added");

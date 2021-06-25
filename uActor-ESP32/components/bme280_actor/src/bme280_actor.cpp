@@ -35,7 +35,7 @@ void BME280Actor::receive(const PubSub::Publication &publication) {
        publication.get_str_attr("wakeup_id") == "trigger_sensor_wait")) {
     auto ret = bme280_init(&dev);
     if (ret != BME280_OK) {
-      Support::Logger::warning("BME280", "INIT", "Sensor init error %d\n", ret);
+      Support::Logger::warning("BME280", "Sensor init error %d", ret);
       ready_retries++;
       if (ready_retries < 5) {
         enqueue_wakeup(1000, "trigger_sensor_wait");
@@ -59,12 +59,12 @@ void BME280Actor::receive(const PubSub::Publication &publication) {
       settings_sel |= BME280_FILTER_SEL;
 
       if (bme280_set_sensor_settings(settings_sel, &dev)) {
-        Support::Logger::warning("BME280", "INIT", "Sensor settings error\n");
+        Support::Logger::warning("BME280", "Sensor init settings error");
         send_exit_message();
         return;
       }
       if (bme280_set_sensor_mode(BME280_FORCED_MODE, &dev)) {
-        Support::Logger::warning("BME280", "INIT", "Sensor mode error\n");
+        Support::Logger::warning("BME280", "Sensor init mode error");
         send_exit_message();
         return;
       }
@@ -88,13 +88,13 @@ void BME280Actor::receive(const PubSub::Publication &publication) {
 void BME280Actor::fetch_send_updates() {
   bme280_data comp_data;
   if (bme280_set_sensor_mode(BME280_FORCED_MODE, &dev)) {
-    Support::Logger::warning("BME280", "INIT", "Sensor mode error\n");
+    Support::Logger::warning("BME280", "Sensor fetch mode error");
     send_exit_message();
     return;
   }
   BoardFunctions::sleep(bme280_cal_meas_delay(&dev.settings));
   if (bme280_get_sensor_data(BME280_ALL, &comp_data, &dev)) {
-    Support::Logger::warning("BME280", "FETCH", "Ready error\n");
+    Support::Logger::warning("BME280", "Fetch ready error");
     send_failure_notification();
   } else {
     send_update("temperature", "degree_celsius", comp_data.temperature,

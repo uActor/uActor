@@ -52,8 +52,6 @@ void DeploymentManager::receive(const PubSub::Publication& publication) {
 
 void DeploymentManager::receive_deployment(
     const PubSub::Publication& publication) {
-  uActor::Support::Logger::info("DEPLOYMENT-MANAGER", "RECEIVE-DEPLOYMENT",
-                                "Deployment Message");
   if (auto executor_it = executors.find(std::string(
           *publication.get_str_attr("deployment_actor_runtime_type")));
       executor_it != executors.end()) {
@@ -100,8 +98,10 @@ void DeploymentManager::receive_deployment(
       Deployment& deployment = deployment_iterator->second;
 
       if (inserted) {
-        uActor::Support::Logger::debug("DEPLOYMENT-MANAGER",
-                                       "RECEIVE-DEPLOYMENT", "New Deployment");
+        uActor::Support::Logger::info(
+            "DEPLOYMENT-MANAGER", "Received new deployment from %s",
+            std::string(*publication.get_str_attr("publisher_node_id"))
+                .c_str());
 
         deployment.cancelation_subscription_id = subscribe(PubSub::Filter{
             PubSub::Constraint{"type", "deployment_cancelation"},
@@ -122,8 +122,6 @@ void DeploymentManager::receive_deployment(
           publish_code_lifetime_update(deployment);
 #endif
         }
-        // printf("Receive deployment from: %s\n",
-        //       publication.get_str_attr("publisher_node_id")->data());
         add_deployment_dependencies(&deployment);
         if (requirements_check(&deployment)) {
           activate_deployment(&deployment, &ExecutorIdentifier);
@@ -133,9 +131,9 @@ void DeploymentManager::receive_deployment(
         }
       } else {
         uActor::Support::Logger::debug(
-            "DEPLOYMENT-MANAGER", "RECEIVE-DEPLOYMENT", "Deployment Update");
-        // printf("Receive deployment update from: %s\n",
-        //       publication.get_str_attr("publisher_node_id")->data());
+            "DEPLOYMENT-MANAGER", "Received deployment update from %s",
+            std::string(*publication.get_str_attr("publisher_node_id"))
+                .c_str());
 
         if (actor_version != deployment.actor_version ||
             actor_type != deployment.actor_type) {
@@ -191,8 +189,8 @@ void DeploymentManager::receive_deployment_cancelation(
 
 void DeploymentManager::receive_lifetime_event(
     const PubSub::Publication& publication) {
-  uActor::Support::Logger::trace("DEPLOYMENT-MANAGER", "RECEIVE-LIFETIME-EVENT",
-                                 "Lifetime Event");
+  uActor::Support::Logger::trace("DEPLOYMENT-MANAGER",
+                                 "Received Lifetime Event");
   if (publication.get_str_attr("type") == "actor_exit") {
     std::string deployment_id =
         std::string(*publication.get_str_attr("lifetime_instance_id"));
@@ -226,8 +224,7 @@ void DeploymentManager::receive_lifetime_event(
 
 void DeploymentManager::receive_ttl_timeout(
     const PubSub::Publication& /*publication*/) {
-  uActor::Support::Logger::trace("DEPLOYMENT-MANAGER", "RECEIVE-TTL-TIMEOUT",
-                                 "TTL-TIMEOUT");
+  uActor::Support::Logger::trace("DEPLOYMENT-MANAGER", "Received TTL timeout");
   while (ttl_end_times.begin() != ttl_end_times.end() &&
          ttl_end_times.begin()->first < now()) {
     for (const auto& deployment_id : ttl_end_times.begin()->second) {
@@ -250,8 +247,7 @@ void DeploymentManager::receive_ttl_timeout(
 }
 
 void DeploymentManager::receive_label_update(const PubSub::Publication& pub) {
-  uActor::Support::Logger::trace("DEPLOYMENT-MANAGER", "RECEIVE-LABEL-UPDATE",
-                                 "LABEL-UPDATE");
+  uActor::Support::Logger::trace("DEPLOYMENT-MANAGER", "Received label update");
   auto key = pub.get_str_attr("key");
   auto value = pub.get_str_attr("value");
   if (pub.get_str_attr("command") == "upsert" && key && value) {
@@ -290,8 +286,7 @@ void DeploymentManager::receive_label_update(const PubSub::Publication& pub) {
 }
 
 void DeploymentManager::receive_label_get(const PubSub::Publication& pub) {
-  uActor::Support::Logger::trace("DEPLOYMENT-MANAGER", "RECEIVE-LABEL-GET",
-                                 "LABEL-GET");
+  uActor::Support::Logger::trace("DEPLOYMENT-MANAGER", "Received label get");
   auto key = pub.get_str_attr("key");
   auto publisher_node_id = pub.get_str_attr("publisher_node_id");
   auto publisher_actor_type = pub.get_str_attr("publisher_actor_type");
@@ -318,8 +313,7 @@ void DeploymentManager::receive_label_get(const PubSub::Publication& pub) {
 void DeploymentManager::receive_unmanaged_actor_update(
     const PubSub::Publication& pub) {
   uActor::Support::Logger::trace("DEPLOYMENT-MANAGER",
-                                 "RECEIVE-UNMANAGED-ACTOR-UPDATE",
-                                 "UNMANAGED-ACTOR-UPDATE");
+                                 "Received unmanaged actor update");
   if (pub.get_str_attr("command") == "register") {
     increment_deployed_actor_type_count(*pub.get_str_attr("update_actor_type"));
   } else if (pub.get_str_attr("command") == "deregister") {
@@ -330,7 +324,7 @@ void DeploymentManager::receive_unmanaged_actor_update(
 void DeploymentManager::receive_executor_update(
     const PubSub::Publication& pub) {
   uActor::Support::Logger::trace("DEPLOYMENT-MANAGER",
-                                 "RECEIVE-EXECUTOR-UPDATE", "EXECUTOR-UPDATE");
+                                 "Received executor update");
   auto actor_runtime_type = pub.get_str_attr("actor_runtime_type");
 
   auto update_node_id = pub.get_str_attr("update_node_id");
@@ -378,7 +372,8 @@ bool DeploymentManager::requirements_check(Deployment* deployment) {
 
 void DeploymentManager::activate_deployment(
     Deployment* deployment, ExecutorIdentifier* ExecutorIdentifier) {
-  // printf("DeploymentManager activate deployment\n");
+  Support::Logger::debug("DEPLOYMENT-MANANGER",
+                         "DeploymentManager activate deployment");
 
   increment_deployed_actor_type_count(deployment->actor_type);
   deployment->active = true;
@@ -397,7 +392,8 @@ void DeploymentManager::activate_deployment(
 }
 
 void DeploymentManager::deactivate_deployment(Deployment* deployment) {
-  // printf("DeploymentManager deactivate deployment\n");
+  Support::Logger::debug("DEPLOYMENT-MANANGER",
+                         "DeploymentManager deactivate deployment");
   if (deployment->active) {
     decrement_deployed_actor_type_count(deployment->actor_type);
     stop_deployment(deployment);
@@ -408,7 +404,8 @@ void DeploymentManager::deactivate_deployment(Deployment* deployment) {
 void DeploymentManager::start_deployment(Deployment* deployment,
                                          ExecutorIdentifier* ExecutorIdentifier,
                                          size_t delay) {
-  // printf("DeploymentManager start deployment\n");
+  Support::Logger::debug("DEPLOYMENT-MANANGER",
+                         "DeploymentManager start deployment");
   PubSub::Publication spawn_message{};
   spawn_message.set_attr("command", "spawn_lua_actor");
 
@@ -425,7 +422,8 @@ void DeploymentManager::start_deployment(Deployment* deployment,
 }
 
 void DeploymentManager::stop_deployment(Deployment* deployment) {
-  // printf("DeploymentManager stop deployment\n");
+  Support::Logger::debug("DEPLOYMENT-MANANGER",
+                         "DeploymentManager stop deployment");
   PubSub::Publication exit_message{};
   exit_message.set_attr("type", "exit");
   exit_message.set_attr("node_id", node_id());
@@ -444,7 +442,8 @@ void DeploymentManager::enqueue_lifetime_end_wakeup(Deployment* deployment) {
 }
 
 void DeploymentManager::remove_deployment(Deployment* deployment) {
-  // printf("DeploymentManager remove deployment\n");
+  Support::Logger::debug("DEPLOYMENT-MANANGER",
+                         "DeploymentManager remove deployment");
   assert(!deployment->active);
 
   if (deployment->lifetime_subscription_id > 0) {

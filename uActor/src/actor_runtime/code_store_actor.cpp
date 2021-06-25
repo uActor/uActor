@@ -12,7 +12,7 @@ CodeStoreActor::CodeStoreActor(ManagedNativeActor* actor_wrapper,
 
 void CodeStoreActor::receive(const PubSub::Publication& publication) {
   if (publication.get_str_attr("type") == "init") {
-    uActor::Support::Logger::trace("CODE-STORE", "INIT", "Init code store");
+    uActor::Support::Logger::trace("CODE-STORE-ACTOR", "Init code store");
     subscribe(PubSub::Filter{
         PubSub::Constraint{"publisher_node_id", std::string(node_id())},
         PubSub::Constraint{"type", "actor_code"}});
@@ -63,8 +63,7 @@ void CodeStoreActor::receive_code_store(
       publication.has_attr("actor_code_runtime_type") &&
       publication.has_attr("actor_code_lifetime_end") &&
       publication.has_attr("actor_code")) {
-    uActor::Support::Logger::trace("CODE-STORE", "STORE",
-                                   "Received code package");
+    uActor::Support::Logger::trace("CODE-STORE-ACTOR", "Received code package");
     CodeStore::get_instance().insert_or_refresh(
         CodeIdentifier(*publication.get_str_attr("actor_code_type"),
                        *publication.get_str_attr("actor_code_version"),
@@ -101,7 +100,7 @@ void CodeStoreActor::receive_code_unavailable_notification(
     return;
   }
   Support::Logger::info(
-      "CODE_STORE_ACTOR", "MISSING_CODE", "Code for actor %s missing",
+      "CODE-STORE-ACTOR", "Code for actor %s missing",
       publication.get_str_attr("unavailable_actor_type")->data());
   std::string_view actor_type =
       *publication.get_str_attr("unavailable_actor_type");
@@ -125,7 +124,7 @@ void CodeStoreActor::receive_code_unavailable_notification(
     code_fetch.set_attr("last_cache_miss_node_id", node_id());
     publish(std::move(code_fetch));
   } else {
-    printf("Debounce\n");
+    Support::Logger::debug("CODE-STORE-ACTOR", "Debounce\n");
   }
 }
 
@@ -151,8 +150,8 @@ void CodeStoreActor::receive_code_fetch_request(
         CodeIdentifier(actor_type, actor_version, actor_runtime_type), false);
 
     if (local_code) {
-      Support::Logger::info("CODE_STORE_ACTOR", "CODE_FETCH",
-                            "Code available locally");
+      Support::Logger::info("CODE-STORE-ACTOR",
+                            "Code Fetch: Code available locally");
       response.set_attr("fetch_actor_code", local_code->code);
     } else {
       auto [debounce_it, inserted] = code_miss_debounce.try_emplace(
@@ -160,8 +159,8 @@ void CodeStoreActor::receive_code_fetch_request(
           (now() + 5000));
       if (inserted || debounce_it->second < now()) {
         debounce_it->second = now() + 5000;
-        Support::Logger::info("CODE_STORE_ACTOR", "CODE_FETCH",
-                              "Code Missing, resubmitting");
+        Support::Logger::info("CODE-STORE-ACTOR",
+                              "Code Fetch: Code Missing, resubmitting");
         // publication.set_attr("last_cache_miss_node_id", node_id());
         // republish(std::move(publication));
 

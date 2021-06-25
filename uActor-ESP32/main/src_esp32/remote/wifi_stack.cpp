@@ -133,7 +133,7 @@ void WifiStack::event_handler(esp_event_base_t event_base, int32_t event_id,
     // ESP_ERROR_CHECK(esp_wifi_sta_wpa2_ent_enable());
     auto ret = esp_wifi_connect();
     if (ret) {
-      uActor::Support::Logger::error("WiFi", "Connect", "Error %d", ret);
+      uActor::Support::Logger::error("WiFi", "Connection error: %d", ret);
     }
     xEventGroupClearBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
   } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {

@@ -90,7 +90,8 @@ void TopologyManager::receive_peer_update(
       publication.has_attr("update_type") &&
       publication.has_attr("peer_node_id")) {
     if (publication.get_str_attr("update_type") == "peer_added") {
-      Support::Logger::info("TOPOLOGY-MANAGER", "PEER-UPDATE", "Peer added %s",
+      Support::Logger::info("TOPOLOGY-MANAGER",
+                            "Received peer update: Peer added %s",
                             publication.get_str_attr("peer_node_id")->data());
       reachable_peers.emplace(*publication.get_str_attr("peer_node_id"));
       connection_in_progress.erase(
@@ -106,8 +107,8 @@ void TopologyManager::receive_peer_update(
         publish(std::move(p));
       }
     } else if (publication.get_str_attr("update_type") == "peer_removed") {
-      Support::Logger::info("TOPOLOGY-MANAGER", "PEER-UPDATE",
-                            "Peer removed %s",
+      Support::Logger::info("TOPOLOGY-MANAGER",
+                            "Received peer update: Peer removed %s",
                             publication.get_str_attr("peer_node_id")->data());
       {
         PubSub::Publication p{};

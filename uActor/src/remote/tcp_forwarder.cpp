@@ -76,7 +76,6 @@ void TCPForwarder::os_task(void* args) {
   task_args->tcp_forwarder = &fwd;
   while (true) {
     auto result = fwd.handle.receive(10000);
-    Logger::trace("TCP-FORWARDER", "ALIVE", "os_task");
     if (result) {
       fwd.receive(std::move(*result));
     }
@@ -93,13 +92,12 @@ void TCPForwarder::receive(PubSub::MatchedPublication&& m) {
   std::unique_lock remote_lock(remote_mtx);
 
   if (m.subscription_id == forwarder_subscription_id) {
-    Logger::warning("TCP-FORWARDER", "ACTOR-RECEIVE",
-                    "Forwarder received unhandled message!");
+    Logger::warning("TCP-FORWARDER", "Received unhandled message!");
     return;
   }
 
   if (m.subscription_id == subscription_update_subscription_id) {
-    Logger::trace("TCP-FORWARDER", "ACTOR-RECEIVE", "subscription update");
+    Logger::trace("TCP-FORWARDER", "Received subscription update");
     if (m.publication.get_str_attr("type") == "local_subscription_update") {
       for (auto& receiver : remotes) {
         receiver.second.handle_subscription_update_notification(m.publication);
@@ -136,7 +134,7 @@ void TCPForwarder::receive(PubSub::MatchedPublication&& m) {
   }
 
   if (m.subscription_id == peer_announcement_subscription_id) {
-    Logger::trace("TCP-FORWARDER", "ACTOR-RECEIVE", "peer announcement");
+    Logger::trace("TCP-FORWARDER", "Received peer announcement");
     if (m.publication.get_str_attr("type") == "tcp_client_connect" &&
         m.publication.get_str_attr("node_id") == BoardFunctions::NODE_ID) {
       if (m.publication.get_str_attr("peer_node_id") !=
@@ -153,8 +151,9 @@ void TCPForwarder::receive(PubSub::MatchedPublication&& m) {
   auto receivers = subscription_mapping.find(m.subscription_id);
   if (receivers != subscription_mapping.end()) {
     auto sub_ids = receivers->second;
-    Logger::trace("TCP-FORWARDER", "ACTOR-RECEIVE",
-                  "regualar publication, %d subscribers", sub_ids.size());
+    Logger::trace("TCP-FORWARDER",
+                  "Received regualar publication. Subscribers: %d",
+                  sub_ids.size());
 
     std::shared_ptr<std::vector<char>> serialized;
 
@@ -174,14 +173,12 @@ void TCPForwarder::receive(PubSub::MatchedPublication&& m) {
           auto result = write(&remote, serialized, std::move(remote_lock));
           remote_lock = std::move(result.second);
           if (result.first) {
-            Logger::info(
-                "TCP-FORWARDER", "ACTOR-RECEIVE",
-                "Publication write failed - shutdown connection - %s:%d",
-                remote_it->second.partner_ip.data(),
-                remote_it->second.partner_port);
+            Logger::info("TCP-FORWARDER",
+                         "Receive: Publication write failed - shutdown "
+                         "connection - %s:%d",
+                         remote_it->second.partner_ip.data(),
+                         remote_it->second.partner_port);
             continue;
-          } else {
-            Logger::trace("TCP-FORWARDER", "RECEIVE", "write successful");
           }
         }
       }
@@ -259,15 +256,15 @@ std::pair<bool, std::unique_lock<std::mutex>> TCPForwarder::write(
              remote->write_buffer.front()->data() + remote->write_offset,
              remaining_size, flag);
     if (written < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
-      Logger::debug("TCP-FORWARDER", "WRITE", "write error");
+      Logger::debug("TCP-FORWARDER", "Write error");
       shutdown(remote->sock, SHUT_RDWR);
       return std::make_pair(true, std::move(lock));
     } else if (written == remaining_size) {
-      Logger::trace("TCP-FORWARDER", "WRITE", "completed");
+      Logger::trace("TCP-FORWARDER", "Write completed");
       remote->write_buffer.pop();
       remote->write_offset = 0;
     } else {
-      Logger::trace("TCP-FORWARDER", "WRITE", "progress");
+      Logger::trace("TCP-FORWARDER", "Write progress");
       if (written > 0) {
         remote->write_offset += written;
       }
@@ -294,8 +291,8 @@ void TCPForwarder::tcp_reader() {
 
   listen_sock = socket(addr_family, SOCK_STREAM, ip_protocol);
   if (listen_sock < 0) {
-    Logger::warning("TCP-FORWARDER", "SERVER",
-                    "Unable to create socket - error %d", errno);
+    Logger::warning("TCP-FORWARDER",
+                    "Unable to create server socket - error %d", errno);
     return;
   }
 
@@ -308,13 +305,13 @@ void TCPForwarder::tcp_reader() {
   int err = bind(listen_sock, reinterpret_cast<sockaddr*>(&dest_addr),
                  sizeof(dest_addr));
   if (err != 0) {
-    Logger::error("TCP-FORWARDER", "SERVER",
-                  "Socket unable to bind - error %d\n", errno);
+    Logger::error("TCP-FORWARDER", "Server socket unable to bind - error %d\n",
+                  errno);
     close(listen_sock);
     listen_sock = 0;
   }
 
-  Logger::info("TCP-FORWARDER", "SERVER", "Socket bound: %s:%d\n",
+  Logger::info("TCP-FORWARDER", "Server socket bound: %s:%d",
                _address_arguments.listen_ip.data(), _address_arguments.port);
 
   if (_address_arguments.external_port_hint > 0 ||
@@ -326,8 +323,8 @@ void TCPForwarder::tcp_reader() {
     uint16_t external_port = _address_arguments.external_port_hint > 0
                                  ? _address_arguments.external_port_hint
                                  : _address_arguments.port;
-    Logger::info("TCP-FORWARDER", "SERVER",
-                 "TCP Socket externally reachable at: %s:%d",
+    Logger::info("TCP-FORWARDER",
+                 "TCP Server socket externally reachable at: %s:%d",
                  external_address.data(), external_port);
   }
 
@@ -348,15 +345,14 @@ void TCPForwarder::tcp_reader() {
 
   err = listen(listen_sock, 1);
   if (err != 0) {
-    Logger::error("TCP-FORWARDER", "SERVER", "Socket listen error - %d", errno);
+    Logger::error("TCP-FORWARDER", "Server socket listen error - %d", errno);
     close(listen_sock);
     listen_sock = 0;
   }
 
   signal_socket = socket(addr_family, SOCK_DGRAM, ip_protocol);
   if (signal_socket < 0) {
-    Logger::error("TCP-FORWARDER", "SERVER",
-                  "Signal socket creation error - %d", errno);
+    Logger::error("TCP-FORWARDER", "Signal socket creation error - %d", errno);
   }
   // NOLINTNEXTLINE (cppcoreguidelines-pro-type-member-init, hicpp-member-init)
   sockaddr_in signal_dest_addr;
@@ -366,14 +362,13 @@ void TCPForwarder::tcp_reader() {
   err = bind(signal_socket, (struct sockaddr*)&signal_dest_addr,
              sizeof(dest_addr));
   if (err != 0) {
-    Logger::error("TCP-FORWARDER", "SERVER", "Signal socket bind error - %d",
-                  errno);
+    Logger::error("TCP-FORWARDER", "Signal socket bind error - %d", errno);
   } else {
-    Logger::debug("TCP-FORWARDER", "SERVER", "Signal socket bound");
+    Logger::debug("TCP-FORWARDER", "Signal socket bound");
   }
   signal_socket_write_handler = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
   if (signal_socket_write_handler < 0) {
-    Logger::error("TCP-FORWARDER", "SERVER",
+    Logger::error("TCP-FORWARDER",
                   "Signal socket write handle creation error - %d", errno);
   }
 
@@ -403,7 +398,6 @@ void TCPForwarder::tcp_reader() {
     remote_lock.unlock();
     int num_ready = select(max_val + 1, &read_sockets, &write_sockets,
                            &error_sockets, &timeout);
-    Logger::trace("TCP-FORWARDER", "ALIVE", "tcp_reader_task");
     remote_lock.lock();
 
     if (num_ready > 0) {
@@ -412,18 +406,18 @@ void TCPForwarder::tcp_reader() {
         uActor::Remote::RemoteConnection& remote = remote_pair.second;
         if (remote.sock > 0) {
           if (FD_ISSET(remote.sock, &error_sockets)) {
-            Logger::debug("TCP-FORWARDER", "EVENT-LOOP", "SELCT - error");
+            Logger::debug("TCP-FORWARDER", "Event Loop: Error");
             shutdown(remote.sock, SHUT_RDWR);
             close(remote.sock);
             to_delete.push_back(remote_pair.first);
             continue;
           }
           if (FD_ISSET(remote.sock, &read_sockets)) {
-            Logger::trace("TCP-FORWARDER", "EVENT-LOOP", "SELECT - read");
+            Logger::trace("TCP-FORWARDER", "Event Loop: Read");
             if (data_handler(&remote)) {
               Logger::info(
-                  "TCP-FORWARDER", "EVENT-LOOP",
-                  "Read error/ zero length message. Closing connection - %s:%d",
+                  "TCP-FORWARDER",
+                  "Read error/zero length message. Closing connection - %s:%d",
                   remote.partner_ip.data(), remote.partner_port);
               shutdown(remote.sock, SHUT_RDWR);
               close(remote.sock);
@@ -432,10 +426,10 @@ void TCPForwarder::tcp_reader() {
             }
           }
           if (FD_ISSET(remote.sock, &write_sockets)) {
-            Logger::trace("TCP-FORWARDER", "EVENT-LOOP", "SELECT - write");
+            Logger::trace("TCP-FORWARDER", "Event Loop: Write");
             if (write_handler(&remote)) {
-              Logger::info("TCP-FORWARDER", "EVENT-LOOP",
-                           "Closing connection - %s:%d",
+              Logger::info("TCP-FORWARDER",
+                           "Event Loop: Closing connection - %s:%d",
                            remote.partner_ip.data(), remote.partner_port);
               shutdown(remote.sock, SHUT_RDWR);
               close(remote.sock);
@@ -443,9 +437,10 @@ void TCPForwarder::tcp_reader() {
             }
           }
         } else {
-          Logger::error("TCP-FORWARDER", "RECEIVE",
-                        "Socket should have already been deleted %s:%d!",
-                        remote.partner_ip.data(), remote.partner_port);
+          Logger::error(
+              "TCP-FORWARDER",
+              "Event Loop: Socket should have already been deleted %s:%d!",
+              remote.partner_ip.data(), remote.partner_port);
           to_delete.push_back(remote_pair.first);
         }
       }
@@ -457,18 +452,18 @@ void TCPForwarder::tcp_reader() {
       }
 
       if (FD_ISSET(listen_sock, &write_sockets)) {
-        Logger::info("TCP-FORWARDER", "RECEIVE", "Listen sock wants to write");
+        Logger::info("TCP-FORWARDER", "Event Loop: Listen sock wants to write");
       }
 
       if (FD_ISSET(listen_sock, &error_sockets)) {
-        Logger::fatal("TCP-FORWARDER", "RECEIVE", "Listen sock error");
+        Logger::fatal("TCP-FORWARDER", "Event Loop: Listen sock error");
       }
       if (FD_ISSET(signal_socket, &read_sockets)) {
         char buf[8];
         recv(signal_socket, buf, sizeof(buf), MSG_DONTWAIT);
       }
       if (FD_ISSET(signal_socket, &error_sockets)) {
-        Logger::fatal("TCP-FORWARDER", "RECEIVE", "Signal socket error");
+        Logger::fatal("TCP-FORWARDER", "Event Loop: Signal socket error");
       }
     }
   }
@@ -486,19 +481,18 @@ void TCPForwarder::create_tcp_client(std::string_view peer_ip, uint32_t port) {
 
   int sock_id = socket(addr_family, SOCK_STREAM, ip_protocol);
   if (sock_id < 0) {
-    Logger::error("TCP-FORWARDER", "CLIENT", "Socker create error - %d", errno);
+    Logger::error("TCP-FORWARDER", "Client socker create error - %d", errno);
     return;
   }
   int err = connect(sock_id, reinterpret_cast<sockaddr*>(&dest_addr),
                     sizeof(dest_addr));
   if (err != 0) {
-    Logger::error("TCP-FORWARDER", "CLIENT",
-                  "Socket connect error - %s:%d - %d", peer_ip.data(), port,
-                  errno);
+    Logger::error("TCP-FORWARDER", "Client socket connect error - %s:%d - %d",
+                  peer_ip.data(), port, errno);
     close(sock_id);
     return;
   }
-  Logger::info("TCP-FORWARDER", "CLIENT", "Socket connected - %s:%d",
+  Logger::info("TCP-FORWARDER", "Client socket connected - %s:%d",
                peer_ip.data(), port);
 
   set_socket_options(sock_id);
@@ -515,11 +509,11 @@ void TCPForwarder::listen_handler() {
       accept(listen_sock, reinterpret_cast<sockaddr*>(&source_addr), &addr_len);
 
   if (sock_id < 0) {
-    Logger::error("TCP-FORWARDER", "SERVER",
-                  "Unable to accept connection - error %d", errno);
+    Logger::error("TCP-FORWARDER",
+                  "Server unable to accept connection - error %d", errno);
     return;
   } else if (sock_id == 0) {
-    Logger::error("TCP-FORWARDER", "SERVER", "Accept failed");
+    Logger::error("TCP-FORWARDER", "Accept failed");
     return;
   }
 
@@ -534,8 +528,8 @@ void TCPForwarder::listen_handler() {
               INET6_ADDRSTRLEN);
     remote_port = ntohs(source_addr.sin6_port);
   }
-  Logger::info("TCP-FORWARDER", "SERVER", "Connection accepted - %s:%d",
-               addr_string, remote_port);
+  Logger::info("TCP-FORWARDER", "Connection accepted - %s:%d", addr_string,
+               remote_port);
 
   set_socket_options(sock_id);
   add_remote_connection(sock_id, std::string(addr_string), remote_port,
@@ -547,11 +541,10 @@ bool TCPForwarder::data_handler(uActor::Remote::RemoteConnection* remote) {
   remote->len =
       recv(remote->sock, remote->rx_buffer.data(), remote->rx_buffer.size(), 0);
   if (remote->len < 0) {
-    Logger::error("TCP-FORWARDER", "RECEIVE",
-                  "Error occurred during receive - %d", errno);
+    Logger::error("TCP-FORWARDER", "Error occurred during receive - %d", errno);
     return true;
   } else if (remote->len == 0) {
-    Logger::info("TCP-FORWARDER", "RECEIVE", "Connection closed - %s:%d",
+    Logger::info("TCP-FORWARDER", "Connection closed - %s:%d",
                  remote->partner_ip.data(), remote->partner_port);
     return true;
   } else {
@@ -574,14 +567,14 @@ bool TCPForwarder::write_handler(uActor::Remote::RemoteConnection* remote) {
              remote->write_buffer.front()->data() + remote->write_offset,
              remaining_size, flag);
     if (written < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
-      Logger::debug("TCP-FORWARDER", "WRITE-HANDLER", "write error");
+      Logger::debug("TCP-FORWARDER", "Write error");
       return true;
     } else if (written == remaining_size) {
-      Logger::trace("TCP-FORWARDER", "WRITE-HANDLER", "completed");
+      Logger::trace("TCP-FORWARDER", "Write completed");
       remote->write_buffer.pop();
       remote->write_offset = 0;
     } else {
-      Logger::trace("TCP-FORWARDER", "WRITE-HANDLER", "progress");
+      Logger::trace("TCP-FORWARDER", "Write progress");
       if (written > 0) {
         remote->write_offset += written;
       }
@@ -602,8 +595,7 @@ void TCPForwarder::keepalive() {
             120 &&
         remote.second.last_read_contact > 0) {
       Logger::info(
-          "TCP-FORWARDER", "KEEPALIVE",
-          "Read check failed: %s - last contact: %d",
+          "TCP-FORWARDER", "Read check failed: %s - last contact: %d",
           remote.second.partner_node_id.c_str(),
           BoardFunctions::timestamp() - remote.second.last_read_contact);
       shutdown(remote.second.sock, SHUT_RDWR);
@@ -625,9 +617,9 @@ void TCPForwarder::keepalive() {
     auto result = write(&remote_it->second, buffer, std::move(lock));
     lock = std::move(result.second);
     if (result.first) {
-      Logger::info("TCP-FORWARDER", "KEEPALIVE", "Write check failed");
+      Logger::info("TCP-FORWARDER", "Write check failed");
     } else {
-      Logger::trace("TCP-FORWARDER", "KEEPALIVE", "Write check %s",
+      Logger::trace("TCP-FORWARDER", "Write check %s",
                     remote_it->second.partner_node_id.c_str());
       remote_it->second.last_write_contact =
           BoardFunctions::seconds_timestamp();
@@ -648,10 +640,10 @@ void TCPForwarder::add_remote_connection(int socket_id, std::string remote_addr,
       remote_it->second.send_routing_info();
     }
     signal_select_change();
-    Logger::trace("TCP-FORWARDER", "ADD-CONNECTION", "Remote connection added");
+    Logger::trace("TCP-FORWARDER", "Remote connection added");
   } else {
-    Logger::warning("TCP-FORWARDER", "ADD-CONNECTION",
-                    "Remote not inserted, closing "
+    Logger::warning("TCP-FORWARDER",
+                    "Remote connection not inserted, closing "
                     "connection - "
                     "%s:%d!",
                     remote_addr.c_str(), remote_port);

@@ -29,13 +29,13 @@ void SCD30Actor::receive(const PubSub::Publication& publication) {
       auto [is_temp_calibrated, temp_calibration_value] =
           read_temperature_calibrarion_value();
       if (is_temp_calibrated) {
-        Support::Logger::info("SCD30", "INIT",
-                              "Temperature calibrated with offset: %d.\n",
+        Support::Logger::info("SCD30-ACTOR",
+                              "Temperature calibrated with offset: %d.",
                               temp_calibration_value);
         calibrated_temp = true;
         current_offset_temp = temp_calibration_value;
       } else {
-        Support::Logger::info("SCD30", "INIT", "Temperature not calibrated.\n");
+        Support::Logger::info("SCD30-ACTOR", "Temperature not calibrated.\n");
         scd30_set_temperature_offset(0);
         fetch_calibration_data();
       }
@@ -44,13 +44,13 @@ void SCD30Actor::receive(const PubSub::Publication& publication) {
       auto [is_co2_calibrated, co2_calibration_timestamp] =
           read_co2_configuration_timestamp();
       if (is_co2_calibrated) {
-        Support::Logger::info("SCD30", "INIT",
+        Support::Logger::info("SCD30-ACTOR",
                               "CO2 sensor was last calibrated: %d.\n",
                               co2_calibration_timestamp);
         calibrated_co2 = true;
       } else {
-        Support::Logger::info("SCD30", "INIT",
-                              "CO2 Sensor needs to be calibrated.\n");
+        Support::Logger::info("SCD30-ACTOR",
+                              "CO2 Sensor needs to be calibrated.");
         subscribe(PubSub::Filter{
             PubSub::Constraint("command", "initialize_outdoor_calibration"),
             PubSub::Constraint("sensor", "scd30_co2"),
@@ -65,7 +65,7 @@ void SCD30Actor::receive(const PubSub::Publication& publication) {
       (publication.get_str_attr("type") == "wakeup" &&
        publication.get_str_attr("wakeup_id") == "trigger_sensor_wait")) {
     if (scd30_probe() != STATUS_OK) {
-      Support::Logger::warning("SCD30", "INIT", "Sensor not found\n");
+      Support::Logger::warning("SCD30-ACTOR", "Sensor not found\n");
       if (ready_retries < 5) {
         enqueue_wakeup(1000, "trigger_sensor_wait");
       } else {
@@ -123,20 +123,20 @@ void SCD30Actor::fetch_send_updates() {
   uint32_t counter = 0;
   while (!ready && counter < 5) {
     if (scd30_get_data_ready(&ready)) {
-      Support::Logger::warning("SCD30", "FETCH", "Ready error\n");
+      Support::Logger::warning("SCD30-ACTOR", "Fetch: Ready error");
       send_failure_notification();
     }
     counter++;
   }
   if (!ready) {
-    Support::Logger::info("SCD30", "FETCH",
-                          "Sensor not ready, waiting 100ms\n");
+    Support::Logger::info("SCD30-ACTOR",
+                          "Fetch: Sensor not ready, waiting 100ms");
     enqueue_wakeup(100, "trigger_measurement");
     return;
   }
   if (scd30_read_measurement(&co2, &temperature, &relative_humidity) !=
       STATUS_OK) {
-    Support::Logger::warning("SCD30", "FETCH", "Read error\n");
+    Support::Logger::warning("SCD30-ACTOR", "Fetch: Read error");
     send_failure_notification();
     enqueue_wakeup(20000, "trigger_measurement");
   } else {
@@ -198,7 +198,7 @@ void SCD30Actor::deregister_managed_actor(std::string type) {
 }
 
 void SCD30Actor::fetch_calibration_data() {
-  Support::Logger::info("SCD30", "Fetch Calibration",
+  Support::Logger::info("SCD30-ACTOR", "Fetch Calibration",
                         "Fetch calibration data\n");
   PubSub::Publication fetch_calibration;
   fetch_calibration.set_attr("command", "fetch_calibration_data");
@@ -208,8 +208,7 @@ void SCD30Actor::fetch_calibration_data() {
 }
 
 void SCD30Actor::calibrate_temperature(float server_offset) {
-  Support::Logger::info("SCD30", "CALIBRATE_TEMPERATURE",
-                        " Start calibration\n");
+  Support::Logger::info("SCD30-ACTOR", "Start calibration\n");
 
   uint16_t temperature_offset = static_cast<uint16_t>(server_offset * -100);
 
@@ -218,19 +217,17 @@ void SCD30Actor::calibrate_temperature(float server_offset) {
   }
 
   if (scd30_probe() != STATUS_OK) {
-    Support::Logger::info("SCD30", "CALIBRATE_TEMPERATURE",
-                          "Sensor not found\n");
+    Support::Logger::info("SCD30-ACTOR", "Calibration: Sensor not found");
     send_failure_notification();
   }
 
   if (scd30_set_temperature_offset(temperature_offset) != STATUS_OK) {
-    Support::Logger::info("SCD30", "CALIBRATE_TEMPERATURE",
-                          "Could not set offset\n");
+    Support::Logger::info("SCD30-ACTOR", "Could not set calibration offset");
     send_failure_notification();
   }
 
-  Support::Logger::info("SCD30", "CALIBRATE_TEMPERATURE",
-                        "Calibrated: Offset: %d\n", temperature_offset);
+  Support::Logger::info("SCD30-ACTOR", "Calibrated. Offset: %d",
+                        temperature_offset);
 
   calibrated_temp = true;
   current_offset_temp = temperature_offset;
@@ -241,27 +238,28 @@ void SCD30Actor::calibrate_temperature(float server_offset) {
 }
 
 void SCD30Actor::co2_forced_calibration(uint16_t ppm) {
-  Support::Logger::info("SCD30", "CALIBRATE_CO2", " Start CO2 calibration\n");
+  Support::Logger::info("SCD30-ACTOR", "Start CO2 calibration");
   update_calibration_notification("calibration\nstart");
 
   int uptime = BoardFunctions::seconds_timestamp() - init_timestamp;
 
   if (uptime < 300) {
-    Support::Logger::info("SCD30", "CALIBRATE_CO2",
-                          " Sensor not warmed up yet (Uptime: %d)\n", uptime);
+    Support::Logger::info("SCD30-ACTOR",
+                          "Calibration: Sensor not warmed up yet (Uptime: %d)",
+                          uptime);
     update_calibration_notification("calibration\nfailure:\nuptime");
     return;
   }
 
   if (scd30_probe() != STATUS_OK) {
-    Support::Logger::error("SCD30", "CALIBRATE_CO2", "Sensor not found\n");
+    Support::Logger::error("SCD30-ACTOR", "Calibration: Sensor not found");
     update_calibration_notification("calibration\nfailure:\nprobe");
     return;
   }
   // return;
 
   if (scd30_set_forced_recalibration(ppm) != STATUS_OK) {
-    Support::Logger::error("SCD30", "CALIBRATE_CO2", "FRC failed\n");
+    Support::Logger::error("SCD30-ACTOR", "Calibration: FRC failed");
     update_calibration_notification("calibration\nfailure:\nfrc");
     return;
   }
@@ -277,7 +275,7 @@ void SCD30Actor::co2_forced_calibration(uint16_t ppm) {
 std::pair<bool, uint16_t> SCD30Actor::read_temperature_calibrarion_value() {
   nvs_handle_t storage_handle;
   if (nvs_open("sensor_c", NVS_READWRITE, &storage_handle) != ESP_OK) {
-    Support::Logger::error("SCD30", "NVS", "Read Error\n");
+    Support::Logger::error("SCD30-ACTOR", "Stored calibration read error");
     send_exit_message();
     nvs_close(storage_handle);
     return std::make_pair(false, 0);
@@ -289,7 +287,7 @@ std::pair<bool, uint16_t> SCD30Actor::read_temperature_calibrarion_value() {
     return std::make_pair(true, calibration_value);
   } else {
     if (err != ESP_ERR_NVS_NOT_FOUND) {
-      Support::Logger::error("SCD30", "NVS", "Read Error\n");
+      Support::Logger::error("SCD30-ACTOR", "Stored calibration read error");
       send_exit_message();
     }
     nvs_close(storage_handle);
@@ -301,13 +299,13 @@ void SCD30Actor::write_temperature_calibration_value(
     uint16_t calibration_value) {
   nvs_handle_t storage_handle;
   if (nvs_open("sensor_c", NVS_READWRITE, &storage_handle) != ESP_OK) {
-    Support::Logger::error("SCD30", "NVS", "Write Error: Open\n");
+    Support::Logger::error("SCD30-ACTOR", "Calibration write error: Open");
   }
   if (nvs_set_u16(storage_handle, "scd30_t_o", calibration_value) != ESP_OK) {
-    Support::Logger::error("SCD30", "NVS", "Write Error: Write\n");
+    Support::Logger::error("SCD30-ACTOR", "Calibration write error: Write");
   }
   if (nvs_commit(storage_handle) != ESP_OK) {
-    Support::Logger::error("SCD30", "NVS", "Write Error: Commit\n");
+    Support::Logger::error("SCD30-ACTOR", "Calibration write error: Commit");
   }
   nvs_close(storage_handle);
 }
@@ -315,7 +313,8 @@ void SCD30Actor::write_temperature_calibration_value(
 std::pair<bool, uint32_t> SCD30Actor::read_co2_configuration_timestamp() {
   nvs_handle_t storage_handle;
   if (nvs_open("sensor_c", NVS_READWRITE, &storage_handle) != ESP_OK) {
-    Support::Logger::error("SCD30", "NVS-CO2", "Read Error\n");
+    Support::Logger::error("SCD30-ACTOR",
+                           "Stored calibration timestamp read error");
     send_exit_message();
     nvs_close(storage_handle);
     return std::make_pair(false, 0);
@@ -327,7 +326,8 @@ std::pair<bool, uint32_t> SCD30Actor::read_co2_configuration_timestamp() {
     return std::make_pair(true, calibration_value);
   } else {
     if (err != ESP_ERR_NVS_NOT_FOUND) {
-      Support::Logger::error("SCD30", "NVS-CO2", "Read Error\n");
+      Support::Logger::error("SCD30-ACTOR",
+                             "Stored calibration timestamp read error");
       send_exit_message();
     }
     nvs_close(storage_handle);
@@ -339,14 +339,17 @@ void SCD30Actor::write_co2_calibration_timestamp(
     uint32_t calibration_timestamp) {
   nvs_handle_t storage_handle;
   if (nvs_open("sensor_c", NVS_READWRITE, &storage_handle) != ESP_OK) {
-    Support::Logger::error("SCD30", "NVS-CO2", "Write Error: Open\n");
+    Support::Logger::error("SCD30-ACTOR",
+                           "Calibration timestamp write error: Open");
   }
   if (nvs_set_u32(storage_handle, "scd30_c_t", calibration_timestamp) !=
       ESP_OK) {
-    Support::Logger::error("SCD30", "NVS-CO2", "Write Error: Write\n");
+    Support::Logger::error("SCD30-ACTOR",
+                           "Calibration timestamp write error: Write");
   }
   if (nvs_commit(storage_handle) != ESP_OK) {
-    Support::Logger::error("SCD30", "NVS-CO2", "Write Error: Commit\n");
+    Support::Logger::error("SCD30-ACTOR",
+                           "Calibration timestamp write error: Commit");
   }
   nvs_close(storage_handle);
 }

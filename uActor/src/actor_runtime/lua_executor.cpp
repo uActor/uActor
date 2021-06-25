@@ -131,8 +131,6 @@ void LuaExecutor::open_lua_string_optimized(lua_State* lua_state) {
     lua_CFunction fun = lua_tocfunction(tmp_state, -1);
     if (fun != nullptr) {
       *value = fun;
-    } else {
-      printf("%d\n", lua_type(tmp_state, -1));
     }
     lua_pop(tmp_state, 1);
   }

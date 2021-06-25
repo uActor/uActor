@@ -72,7 +72,7 @@ bool Publication::operator==(const Publication& other) {
 std::shared_ptr<std::vector<char>> Publication::to_msg_pack() {
   try {
     if (!attributes) {
-      Support::Logger::warning("PUBLICATION", "TO_MP", "MOVED");
+      Support::Logger::warning("PUBLICATION", "TO MSG PCK: MOVED");
       return std::make_shared<std::vector<char>>(4);
     }
     VectorBuffer buffer;
@@ -102,7 +102,7 @@ std::shared_ptr<std::vector<char>> Publication::to_msg_pack() {
 std::variant<std::monostate, std::string_view, int32_t, float>
 Publication::get_attr(std::string_view name) const {
   if (!attributes) {
-    Support::Logger::warning("PUBLICATION", "GET", "MOVED");
+    Support::Logger::warning("PUBLICATION", "Get: moved");
     return std::variant<std::monostate, std::string_view, int32_t, float>();
   }
   auto result = attributes->find(AString(name));
@@ -121,7 +121,7 @@ Publication::get_attr(std::string_view name) const {
 std::optional<const std::string_view> Publication::get_str_attr(
     std::string_view name) const {
   if (!attributes) {
-    Support::Logger::warning("PUBLICATION", "GET", "MOVED");
+    Support::Logger::warning("PUBLICATION", "Get: moved");
     return std::nullopt;
   }
   auto result = attributes->find(AString(name, make_allocator<AString>()));
@@ -135,7 +135,7 @@ std::optional<const std::string_view> Publication::get_str_attr(
 
 std::optional<int32_t> Publication::get_int_attr(std::string_view name) const {
   if (!attributes) {
-    Support::Logger::warning("PUBLICATION", "GET", "MOVED");
+    Support::Logger::warning("PUBLICATION", "Get: moved");
     return std::nullopt;
   }
   auto result = attributes->find(AString(name, make_allocator<AString>()));
@@ -149,7 +149,7 @@ std::optional<int32_t> Publication::get_int_attr(std::string_view name) const {
 
 std::optional<float> Publication::get_float_attr(std::string_view name) const {
   if (!attributes) {
-    Support::Logger::warning("PUBLICATION", "GET", "MOVED");
+    Support::Logger::warning("PUBLICATION", "Get: moved");
     return std::nullopt;
   }
   auto result = attributes->find(AString(name));
@@ -163,7 +163,7 @@ std::optional<float> Publication::get_float_attr(std::string_view name) const {
 
 void Publication::set_attr(std::string_view name, std::string_view value) {
   if (!attributes) {
-    Support::Logger::warning("PUBLICATION", "SET", "MOVED");
+    Support::Logger::warning("PUBLICATION", "Get: moved");
     return;
   }
   if (shallow_copy) {
@@ -180,7 +180,7 @@ void Publication::set_attr(std::string_view name, std::string_view value) {
 
 void Publication::set_attr(std::string_view name, int32_t value) {
   if (!attributes) {
-    Support::Logger::warning("PUBLICATION", "SET", "MOVED");
+    Support::Logger::warning("PUBLICATION", "Set: moved");
     return;
   }
   if (shallow_copy) {
@@ -193,7 +193,7 @@ void Publication::set_attr(std::string_view name, int32_t value) {
 
 void Publication::set_attr(std::string_view name, float value) {
   if (!attributes) {
-    Support::Logger::warning("PUBLICATION", "SET", "MOVED");
+    Support::Logger::warning("PUBLICATION", "Set: moved");
     return;
   }
   if (shallow_copy) {
@@ -206,7 +206,7 @@ void Publication::set_attr(std::string_view name, float value) {
 
 void Publication::erase_attr(std::string_view name) {
   if (!attributes) {
-    Support::Logger::warning("PUBLICATION", "ERASE", "MOVED");
+    Support::Logger::warning("PUBLICATION", "Erase: moved");
     return;
   }
   if (shallow_copy) {

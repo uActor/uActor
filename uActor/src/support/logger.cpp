@@ -4,9 +4,4 @@
 #include <cstdio>
 #include <mutex>
 
-namespace uActor::Support {
-
-std::mutex
-    Logger::mtx;  // NOLINT (cppcoreguidelines-avoid-non-const-global-variables)
-
-}  // namespace uActor::Support
+namespace uActor::Support {}  // namespace uActor::Support
