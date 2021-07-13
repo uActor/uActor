@@ -1,6 +1,5 @@
 function receive(message)
   if(message.type == "init") then
-    subscribe({type="http_response", request_id=0})
     publish(Publication.new(
       "type", "http_request",
       "http_method", "POST",

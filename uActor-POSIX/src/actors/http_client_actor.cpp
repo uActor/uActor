@@ -90,23 +90,23 @@ void HTTPClientActor::thread_function() {
   }
 }
 
-void HTTPClientActor::handle_publication(PubSub::Publication&& p) {
-  assert(p.get_str_attr("type").has_value());
-  assert("http_request" == p.get_str_attr("type").value());
-  auto request_type = p.get_str_attr("http_method");
+void HTTPClientActor::handle_publication(PubSub::Publication&& p_outer) {
+  assert(p_outer.get_str_attr("type").has_value());
+  assert("http_request" == p_outer.get_str_attr("type").value());
+  auto request_type = p_outer.get_str_attr("http_method");
   if (!request_type.has_value()) {
     Support::Logger::warning("http_client_actor", "No request_type given");
     return;
   }
 
-  auto request_id = p.get_int_attr("request_id");
+  auto request_id = p_outer.get_int_attr("request_id");
   if (!request_id.has_value()) {
     Support::Logger::warning("http_client_actor", "No request_id given");
     return;
   }
 
-  const std::string request_url{[&p]() {
-    const auto request_url = p.get_str_attr("request_url");
+  const std::string request_url{[&p_outer]() {
+    const auto request_url = p_outer.get_str_attr("request_url");
     return request_url.has_value() ? request_url.value() : "";
   }()};
 
@@ -115,8 +115,8 @@ void HTTPClientActor::handle_publication(PubSub::Publication&& p) {
     return;
   }
 
-  std::optional<std::string> request_header{[&p]() {
-    const auto request_header = p.get_str_attr("headers");
+  std::optional<std::string> request_header{[&p_outer]() {
+    const auto request_header = p_outer.get_str_attr("headers");
     return request_header.has_value()
                ? std::make_optional(request_header.value())
                : std::nullopt;
@@ -128,6 +128,11 @@ void HTTPClientActor::handle_publication(PubSub::Publication&& p) {
         get_request(request_url, request_header, &http_response);
 
     PubSub::Publication p(BoardFunctions::NODE_ID, HTTP_ACTOR_NAME, "1");
+    p.set_attr("node_id", p_outer.get_str_attr("publisher_node_id").value());
+    p.set_attr("actor_type",
+               p_outer.get_str_attr("publisher_actor_type").value());
+    p.set_attr("instance_id",
+               p_outer.get_str_attr("publisher_instance_id").value());
     p.set_attr("type", "http_response");
     p.set_attr("body", std::move(http_response));
     p.set_attr("http_code", response_code);
@@ -138,14 +143,14 @@ void HTTPClientActor::handle_publication(PubSub::Publication&& p) {
   }
   if (request_type.value() == "POST") {
     std::string request_payload;
-    if (p.has_attr("attributes")) {
-      const std::string_view attrs = p.get_str_attr("attributes").value();
+    if (p_outer.has_attr("attributes")) {
+      const std::string_view attrs = p_outer.get_str_attr("attributes").value();
 
       const std::list<std::string_view> attrs_list =
           Support::StringHelper::string_split(attrs);
 
       for (const std::string_view& attr : attrs_list) {
-        const auto value = p.get_str_attr(attr);
+        const auto value = p_outer.get_str_attr(attr);
         if (value.has_value()) {
           request_payload =
               fmt::format("{}&{}={}", request_payload, attr, value.value());
@@ -153,8 +158,8 @@ void HTTPClientActor::handle_publication(PubSub::Publication&& p) {
           request_payload = fmt::format("{}&{}", request_payload, attr);
         }
       }
-    } else if (p.has_attr("body")) {
-      request_payload = p.get_str_attr("body").value();
+    } else if (p_outer.has_attr("body")) {
+      request_payload = p_outer.get_str_attr("body").value();
     }
 
     std::string http_response;
@@ -162,11 +167,15 @@ void HTTPClientActor::handle_publication(PubSub::Publication&& p) {
                                          request_payload, &http_response);
 
     PubSub::Publication p(BoardFunctions::NODE_ID, HTTP_ACTOR_NAME, "1");
+    p.set_attr("node_id", p_outer.get_str_attr("publisher_node_id").value());
+    p.set_attr("actor_type",
+               p_outer.get_str_attr("publisher_actor_type").value());
+    p.set_attr("instance_id",
+               p_outer.get_str_attr("publisher_instance_id").value());
     p.set_attr("type", "http_response");
     p.set_attr("body", std::move(http_response));
     p.set_attr("http_code", response_code);
     p.set_attr("request_id", request_id.value());
-
     PubSub::Router::get_instance().publish(std::move(p));
     return;
   }

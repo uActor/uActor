@@ -31,7 +31,7 @@ class HTTPClientActor {
  private:
   void thread_function();
 
-  static void handle_publication(PubSub::Publication&& p);
+  static void handle_publication(PubSub::Publication&& p_outer);
 
   [[nodiscard]] static inline curl_slist* build_header(
       const std::optional<std::string>& request_header);
