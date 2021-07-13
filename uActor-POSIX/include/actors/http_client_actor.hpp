@@ -38,10 +38,10 @@ class HTTPClientActor {
   [[nodiscard]] static inline uint8_t perform_request(void* curl);
   [[nodiscard]] static uint8_t get_request(
       const std::string& url, const std::optional<std::string>& request_header,
-      std::string* response_payload);
+      std::string* request_payload);
   [[nodiscard]] static uint8_t post_request(
       const std::string& url, const std::optional<std::string>& request_header,
-      const std::string& payload);
+      const std::string& payload, std::string* response_payload);
 };
 
 }  // namespace uActor::HTTP

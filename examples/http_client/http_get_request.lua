@@ -12,7 +12,7 @@ function receive(message)
      "http_method", "GET",
      "request_id", 1,
      "request_url", "http://webhookinbox.com/",
-     "headers", "Accept-Charset: utf-8|Accept-Language: en-US"))
+     "headers", "Accept-Charset: utf-8;Accept-Language: en-US"))
   elseif(message.type == "http_response") then
     if (message.http_code == 200) then
       print(tostring(message.request_id)..  ": "  ..message.body)

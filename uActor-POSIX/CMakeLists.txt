@@ -133,18 +133,19 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../uActor ${CMAKE_CURRENT_BINARY_DI
 
 #TODO: Add build configuation utility
 # Eval: Disable
-target_compile_options(uActor PUBLIC -DCONFIG_UACTOR_ENABLE_TELEMETRY=1)
-target_compile_options(uActor PUBLIC -DCONFIG_UACTOR_ENABLE_HEAP_TRACKING=1)
-target_compile_options(uActor PUBLIC -DCONFIG_UACTOR_ENABLE_INFLUXDB_ACTOR=1)
+target_compile_definitions(uActor PUBLIC CONFIG_UACTOR_ENABLE_TELEMETRY=1)
+target_compile_definitions(uActor PUBLIC CONFIG_UACTOR_ENABLE_HEAP_TRACKING=1)
+target_compile_definitions(uActor PUBLIC CONFIG_UACTOR_ENABLE_INFLUXDB_ACTOR=1)
+target_compile_definitions(uActor PUBLIC CONFIG_UACTOR_ENABLE_HTTP_CLIENT_ACTOR=1)
 
 # Large Scale Eval: Enable
-# target_compile_options(uActor PUBLIC -DCONFIG_UACTOR_ENABLE_SECONDS_TELEMETRY=1)
+# target_compile_definitions(uActor PUBLIC CONFIG_UACTOR_ENABLE_SECONDS_TELEMETRY=1)
 
 #EVAL: Enable
-#target_compile_options(uActor PUBLIC -DCONFIG_BENCHMARK_ENABLED=1)
+#target_compile_definitions(uActor PUBLIC CONFIG_BENCHMARK_ENABLED=1)
 
 #Not needed in most situations
-#target_compile_options(uActor PUBLIC -DCONFIG_UACTOR_HIBERNATION=1)
+#target_compile_definitions(uActor PUBLIC CONFIG_UACTOR_HIBERNATION=1)
 
 if (NOT TARGET InfluxData::InfluxDB)
   set(INFLUXCXX_TESTING OFF CACHE INTERNAL "" FORCE)
