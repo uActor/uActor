@@ -110,6 +110,7 @@ conan_cmake_install(PATH_OR_REFERENCE .
                       arch=${CONAN_SYSTEM_PROCESSOR}
                       os=${CONAN_SYSTEM_NAME}
                     SETTINGS_BUILD 
+                      ${settings}
                       arch=${CONAN_HOST_SYSTEM_PROCESSOR}
                       os=${CONAN_HOST_SYSTEM_NAME}
                     ENV CC=${CMAKE_C_COMPILER}
