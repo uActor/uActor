@@ -1,7 +1,5 @@
 #include "actors/http_client_actor.hpp"
 
-#include <bits/stdint-intn.h>
-#include <bits/stdint-uintn.h>
 #include <curl/curl.h>
 #include <curl/easy.h>
 #include <curl/options.h>
