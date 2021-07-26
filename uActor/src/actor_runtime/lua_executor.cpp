@@ -6,6 +6,7 @@
 
 #include "actor_runtime/lua_functions.hpp"
 #include "actor_runtime/lua_publication_wrapper.hpp"
+#include "support/logger.hpp"
 #include "support/memory_manager.hpp"
 
 namespace uActor::ActorRuntime {
@@ -56,6 +57,8 @@ void LuaExecutor::open_lua_base_optimized(lua_State* lua_state) {
     lua_CFunction fun = lua_tocfunction(tmp_state, -1);
     if (fun != nullptr) {
       *(value.second) = fun;
+    } else {
+      Support::Logger::error("LUA-EXECUTOR", "Table function not found.\n");
     }
     lua_pop(tmp_state, 1);
   }
@@ -91,6 +94,8 @@ void LuaExecutor::open_lua_math_optimized(lua_State* lua_state) {
     lua_CFunction fun = lua_tocfunction(tmp_state, -1);
     if (fun != nullptr) {
       *value = fun;
+    } else {
+      Support::Logger::error("LUA-EXECUTOR", "Math function not found.\n");
     }
     lua_pop(tmp_state, 1);
   }
@@ -131,6 +136,8 @@ void LuaExecutor::open_lua_string_optimized(lua_State* lua_state) {
     lua_CFunction fun = lua_tocfunction(tmp_state, -1);
     if (fun != nullptr) {
       *value = fun;
+    } else {
+      Support::Logger::error("LUA-EXECUTOR", "String function not found.\n");
     }
     lua_pop(tmp_state, 1);
   }
@@ -150,6 +157,38 @@ void LuaExecutor::open_lua_string_optimized(lua_State* lua_state) {
   lua_pop(lua_state, 1);
 
   lua_setglobal(lua_state, "string");
+}
+
+void LuaExecutor::open_lua_table_optimized(lua_State* lua_state) {
+  // The Lua base methods are declared static.
+  // This is our current way of accessing them without patching the Lua
+  // codebase.
+  lua_State* tmp_state = luaL_newstate();
+  luaL_requiref(tmp_state, "_G", luaopen_base, 1);
+  lua_pop(tmp_state, 1);
+  luaL_requiref(tmp_state, "table", luaopen_table, 1);
+  lua_pop(tmp_state, 1);
+
+  lua_getglobal(tmp_state, "table");
+  for (auto [key, value] : table_functions) {
+    lua_getfield(tmp_state, -1, key.data());
+    lua_CFunction fun = lua_tocfunction(tmp_state, -1);
+    if (fun != nullptr) {
+      *value = fun;
+    } else {
+      Support::Logger::error("LUA-EXECUTOR", "Table function not found.\n");
+    }
+    lua_pop(tmp_state, 1);
+  }
+
+  lua_close(tmp_state);
+
+  lua_newtable(lua_state);
+  lua_newtable(lua_state);
+  lua_pushcfunction(lua_state, table_index);
+  lua_setfield(lua_state, -2, "__index");
+  lua_setmetatable(lua_state, -2);
+  lua_setglobal(lua_state, "table");
 }
 
 int LuaExecutor::base_index(lua_State* state) {
@@ -188,8 +227,20 @@ int LuaExecutor::string_index(lua_State* state) {
   return 1;
 }
 
+int LuaExecutor::table_index(lua_State* state) {
+  const auto* key = lua_tostring(state, 2);
+
+  if (function != table_functions.end()) {
+    lua_pushcfunction(state, *(function->second));
+  } else {
+    lua_pushnil(state);
+  }
+  return 1;
+} 
+
 lua_CFunction LuaExecutor::math_function_store[];
 lua_CFunction LuaExecutor::string_function_store[];
+lua_CFunction LuaExecutor::table_function_store[];
 
 lua_State* LuaExecutor::create_lua_state() {
   lua_State* lua_state =
@@ -197,6 +248,7 @@ lua_State* LuaExecutor::create_lua_state() {
   open_lua_base_optimized(lua_state);
   open_lua_math_optimized(lua_state);
   open_lua_string_optimized(lua_state);
+  open_lua_table_optimized(lua_state);
   luaL_requiref(lua_state, "Publication", LuaPublicationWrapper::luaopen, 1);
   lua_pop(lua_state, 1);
   lua_gc(lua_state, LUA_GCSETSTEPMUL, 200);

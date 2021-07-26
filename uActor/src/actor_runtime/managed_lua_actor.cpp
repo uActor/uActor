@@ -496,6 +496,11 @@ int ManagedLuaActor::actor_index(lua_State* state) {
     return 1;
   }
 
+  if (key == "table") {
+    lua_getglobal(state, "table");
+    return 1;
+  }
+
   if (key == "Publication") {
     lua_getglobal(state, "Publication");
     return 1;

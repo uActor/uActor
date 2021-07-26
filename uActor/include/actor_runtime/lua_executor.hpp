@@ -32,10 +32,12 @@ class LuaExecutor : public Executor<ManagedLuaActor, LuaExecutor> {
   void open_lua_base_optimized(lua_State* state);
   void open_lua_math_optimized(lua_State* state);
   void open_lua_string_optimized(lua_State* state);
+  void open_lua_table_optimized(lua_State* state);
 
   static int base_index(lua_State* state);
   static int math_index(lua_State* state);
   static int string_index(lua_State* state);
+  static int table_index(lua_State* state);
 
   static lua_CFunction math_function_store[23];
   constexpr static frozen::unordered_map<frozen::string, lua_CFunction*, 23>
@@ -84,6 +86,18 @@ class LuaExecutor : public Executor<ManagedLuaActor, LuaExecutor> {
           {"packsize", string_function_store + 15},
           {"unpack", string_function_store + 16},
       };
+
+  static lua_CFunction table_function_store[7];
+  constexpr static frozen::unordered_map<frozen::string, lua_CFunction*, 7>
+      table_functions = {
+          {"concat", table_function_store},
+          {"insert", table_function_store + 1},
+          {"move", table_function_store + 2},
+          {"pack", table_function_store + 3},
+          {"remove", table_function_store + 4},
+          {"sort", table_function_store + 5},
+          {"unpack", table_function_store + 6}
+      }; 
 
   friend Executor;
 };
