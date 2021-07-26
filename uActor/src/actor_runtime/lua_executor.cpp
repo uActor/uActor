@@ -89,7 +89,7 @@ void LuaExecutor::open_lua_math_optimized(lua_State* lua_state) {
   lua_pop(tmp_state, 1);
 
   lua_getglobal(tmp_state, "math");
-  for (auto [key, value] : math_functions) {
+  for (auto [key, value] : LuaFunctions::math_functions) {
     lua_getfield(tmp_state, -1, key.data());
     lua_CFunction fun = lua_tocfunction(tmp_state, -1);
     if (fun != nullptr) {
@@ -131,7 +131,7 @@ void LuaExecutor::open_lua_string_optimized(lua_State* lua_state) {
   lua_pop(tmp_state, 1);
 
   lua_getglobal(tmp_state, "string");
-  for (auto [key, value] : string_functions) {
+  for (auto [key, value] : LuaFunctions::string_functions) {
     lua_getfield(tmp_state, -1, key.data());
     lua_CFunction fun = lua_tocfunction(tmp_state, -1);
     if (fun != nullptr) {
@@ -170,7 +170,7 @@ void LuaExecutor::open_lua_table_optimized(lua_State* lua_state) {
   lua_pop(tmp_state, 1);
 
   lua_getglobal(tmp_state, "table");
-  for (auto [key, value] : table_functions) {
+  for (auto [key, value] : LuaFunctions::table_functions) {
     lua_getfield(tmp_state, -1, key.data());
     lua_CFunction fun = lua_tocfunction(tmp_state, -1);
     if (fun != nullptr) {
@@ -206,8 +206,8 @@ int LuaExecutor::base_index(lua_State* state) {
 int LuaExecutor::math_index(lua_State* state) {
   const auto* key = lua_tostring(state, 2);
 
-  const auto* function = math_functions.find(frozen::string(key));
-  if (function != math_functions.end()) {
+  const auto* function = LuaFunctions::math_functions.find(frozen::string(key));
+  if (function != LuaFunctions::math_functions.end()) {
     lua_pushcfunction(state, *(function->second));
   } else {
     lua_pushnil(state);
@@ -218,8 +218,9 @@ int LuaExecutor::math_index(lua_State* state) {
 int LuaExecutor::string_index(lua_State* state) {
   const auto* key = lua_tostring(state, 2);
 
-  const auto* function = string_functions.find(frozen::string(key));
-  if (function != string_functions.end()) {
+  const auto* function =
+      LuaFunctions::string_functions.find(frozen::string(key));
+  if (function != LuaFunctions::string_functions.end()) {
     lua_pushcfunction(state, *(function->second));
   } else {
     lua_pushnil(state);
@@ -230,18 +231,15 @@ int LuaExecutor::string_index(lua_State* state) {
 int LuaExecutor::table_index(lua_State* state) {
   const auto* key = lua_tostring(state, 2);
 
-  if (function != table_functions.end()) {
+  const auto* function =
+      LuaFunctions::table_functions.find(frozen::string(key));
+  if (function != LuaFunctions::table_functions.end()) {
     lua_pushcfunction(state, *(function->second));
   } else {
     lua_pushnil(state);
   }
   return 1;
-} 
-
-lua_CFunction LuaExecutor::math_function_store[];
-lua_CFunction LuaExecutor::string_function_store[];
-lua_CFunction LuaExecutor::table_function_store[];
-
+}
 lua_State* LuaExecutor::create_lua_state() {
   lua_State* lua_state =
       lua_newstate(uActor::Support::MemoryManager::allocate_lua, nullptr);

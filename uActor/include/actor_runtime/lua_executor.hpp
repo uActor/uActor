@@ -39,66 +39,6 @@ class LuaExecutor : public Executor<ManagedLuaActor, LuaExecutor> {
   static int string_index(lua_State* state);
   static int table_index(lua_State* state);
 
-  static lua_CFunction math_function_store[23];
-  constexpr static frozen::unordered_map<frozen::string, lua_CFunction*, 23>
-      math_functions = {{"abs", math_function_store},
-                        {"acos", math_function_store + 1},
-                        {"asin", math_function_store + 2},
-                        {"atan", math_function_store + 3},
-                        {"ceil", math_function_store + 4},
-                        {"cos", math_function_store + 5},
-                        {"deg", math_function_store + 6},
-                        {"exp", math_function_store + 7},
-                        {"tointeger", math_function_store + 8},
-                        {"floor", math_function_store + 9},
-                        {"fmod", math_function_store + 10},
-                        {"ult", math_function_store + 11},
-                        {"log", math_function_store + 12},
-                        {"max", math_function_store + 13},
-                        {"min", math_function_store + 14},
-                        {"modf", math_function_store + 15},
-                        {"rad", math_function_store + 16},
-                        {"random", math_function_store + 17},
-                        {"randomseed", math_function_store + 18},
-                        {"sin", math_function_store + 19},
-                        {"sqrt", math_function_store + 20},
-                        {"tan", math_function_store + 21},
-                        {"type", math_function_store + 22}};
-
-  static lua_CFunction string_function_store[23];
-  constexpr static frozen::unordered_map<frozen::string, lua_CFunction*, 17>
-      string_functions = {
-          {"byte", string_function_store},
-          {"char", string_function_store + 1},
-          {"dump", string_function_store + 2},
-          {"find", string_function_store + 3},
-          {"format", string_function_store + 4},
-          {"gmatch", string_function_store + 5},
-          {"gsub", string_function_store + 6},
-          {"len", string_function_store + 7},
-          {"lower", string_function_store + 8},
-          {"match", string_function_store + 9},
-          {"rep", string_function_store + 10},
-          {"reverse", string_function_store + 11},
-          {"sub", string_function_store + 12},
-          {"upper", string_function_store + 13},
-          {"pack", string_function_store + 14},
-          {"packsize", string_function_store + 15},
-          {"unpack", string_function_store + 16},
-      };
-
-  static lua_CFunction table_function_store[7];
-  constexpr static frozen::unordered_map<frozen::string, lua_CFunction*, 7>
-      table_functions = {
-          {"concat", table_function_store},
-          {"insert", table_function_store + 1},
-          {"move", table_function_store + 2},
-          {"pack", table_function_store + 3},
-          {"remove", table_function_store + 4},
-          {"sort", table_function_store + 5},
-          {"unpack", table_function_store + 6}
-      }; 
-
   friend Executor;
 };
 
