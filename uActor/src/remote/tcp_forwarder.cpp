@@ -358,7 +358,7 @@ void TCPForwarder::tcp_reader() {
   sockaddr_in signal_dest_addr;
   signal_dest_addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
   signal_dest_addr.sin_family = AF_INET;
-  signal_dest_addr.sin_port = htons(12345);
+  signal_dest_addr.sin_port = htons(_address_arguments.port);
   err = bind(signal_socket, (struct sockaddr*)&signal_dest_addr,
              sizeof(dest_addr));
   if (err != 0) {
@@ -657,7 +657,7 @@ void TCPForwarder::signal_select_change() {
   sockaddr_in signal_dest_addr;
   signal_dest_addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
   signal_dest_addr.sin_family = AF_INET;
-  signal_dest_addr.sin_port = htons(12345);
+  signal_dest_addr.sin_port = htons(_address_arguments.port);
   sendto(signal_socket_write_handler, "A", strlen("A"), 0,
          (struct sockaddr*)&signal_dest_addr, sizeof(signal_dest_addr));
 }
