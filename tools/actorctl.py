@@ -15,6 +15,9 @@ import yaml
 
 INTER_DEPLOYMENT_WAIT_TIME_MS = 5000
 MIN_DEPLOYMENT_LIFETIME = 10000
+# List of extensions which will be identified as binary code files
+BINARY_FILE_EXTENSIONS = [".wasm", ".o"]
+
 
 def main():
     """Loads the configuration file and
@@ -34,7 +37,7 @@ def main():
     deployments = []
     min_ttl_ms = 0
 
-    sequence_number =  0
+    sequence_number = 0
     epoch = int(time.time())
 
     publish_code_count = arguments.publish_code_count
@@ -107,6 +110,7 @@ def main():
 
         time.sleep(2)
 
+
 def _parse_deployment(configuration_file_path, raw_deployment, minify):
     if "type" not in raw_deployment or not raw_deployment["type"] == "deployment":
         return None
@@ -124,14 +128,17 @@ def _parse_deployment(configuration_file_path, raw_deployment, minify):
 
     configuration_dir = os.path.dirname(configuration_file_path)
     code_file = os.path.join(configuration_dir, raw_deployment["actor_code_file"])
+    is_binary = True if os.path.splitext(code_file)[1] in BINARY_FILE_EXTENSIONS else False
+    code = load_code_file(code_file, is_binary)
 
-    code = load_code_file(code_file)
-    
-    if minify:
+    if not is_binary and minify:
         import minifier.minifier
         minified_code = minifier.minifier.minify(code)
 
-    code_hash = base64.b64encode(hashlib.blake2s(code.encode()).digest()).decode()
+    if is_binary:
+        code_hash = base64.b64encode(hashlib.blake2s(code).digest()).decode()
+    else:
+        code_hash = base64.b64encode(hashlib.blake2s(code.encode()).digest()).decode()
 
     print(f"Code Size: {raw_deployment['name']} Before: {len(code)} After: {len(minified_code) if minify else 'not minified'}")
 
@@ -151,7 +158,7 @@ def _parse_deployment(configuration_file_path, raw_deployment, minify):
     }
 
     deployment_constraints = []
-    
+
     if "constraints" in raw_deployment:
         for constraint in raw_deployment["constraints"]:
             for key, value in constraint.items():
@@ -160,13 +167,17 @@ def _parse_deployment(configuration_file_path, raw_deployment, minify):
 
     if(len(deployment_constraints) > 0):
         deployment["deployment_constraints"] = ",".join(deployment_constraints)
-    
+
     return deployment
 
 
-def load_code_file(code_file):
+def load_code_file(code_file, is_binary):
     if not os.path.isfile(code_file):
         raise SystemExit("Code file does not exist.")
+    if is_binary:
+        code = io.open(code_file, "rb").read()
+        return code
+
     code_pre = io.open(code_file, "r", encoding="utf-8").read()
 
     code = ""
@@ -176,7 +187,6 @@ def load_code_file(code_file):
             code += load_code_file(os.path.join(os.path.dirname(code_file), f"{match.group(1)}.lua")) + "\n"
         else:
             code += line + "\n"
-    
     return code
 
 
@@ -187,17 +197,19 @@ def code_msg(deployment, node_id):
         "node_id": node_id,
         "type": "actor_code",
         "actor_code_type": deployment["deployment_actor_code"],
-       "actor_code_runtime_type": "lua",
-       "actor_code_version": deployment["deployment_actor_version"],
-       "actor_code_lifetime_end": 0,
-       "actor_code":  deployment["deployment_actor_code"]
+        "actor_code_runtime_type": "lua",
+        "actor_code_version": deployment["deployment_actor_version"],
+        "actor_code_lifetime_end": 0,
+        "actor_code":  deployment["deployment_actor_code"]
     }
+
 
 def _publish(sckt, publication, epoch, sequence_number):
     publication["_internal_sequence_number"] = sequence_number
     publication["_internal_epoch"] = epoch
     msg = msgpack.packb(publication)
     sckt.send(struct.pack("!i", len(msg)) + msg)
+
 
 if __name__ == "__main__":
     main()
