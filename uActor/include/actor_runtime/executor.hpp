@@ -183,7 +183,7 @@ class Executor : public ExecutorApi {
   AString _actor_type;
   AString _instance_id;
   uint32_t next_id = 1;
-  std::map<uint32_t, std::set<uint32_t>, std::less<uint32_t>,
+  std::map<uint32_t, std::set<uint32_t>, std::less<>,
            std::scoped_allocator_adaptor<
                Allocator<std::pair<const uint32_t, std::set<uint32_t>>>>>
       subscription_mapping;
@@ -226,7 +226,7 @@ class Executor : public ExecutorApi {
   };
   std::set<Timeout, std::less<Timeout>, Allocator<Timeout>> timeouts;
 
-  std::multimap<uint32_t, PubSub::Publication, std::less<uint32_t>,
+  std::multimap<uint32_t, PubSub::Publication, std::less<>,
                 Allocator<std::pair<const uint32_t, PubSub::Publication>>>
       delayed_messages;
   uint32_t executor_subscription_id;
@@ -263,7 +263,7 @@ class Executor : public ExecutorApi {
           auto receivers =
               subscription_mapping.find(publication->subscription_id);
           if (receivers != subscription_mapping.end()) {
-            int receiver_count = receivers->second.size();
+            size_t receiver_count = receivers->second.size();
             for (uint32_t receiver_id : receivers->second) {
               auto actor = actors.find(receiver_id);
               if (actor != actors.end()) {

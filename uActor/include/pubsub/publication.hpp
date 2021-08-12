@@ -30,9 +30,9 @@ class Publication {
 
   class Map : std::enable_shared_from_this<Map> {
    public:
+    using BinType = std::vector<char>;
     using VariantType =
-        std::variant<AString, int32_t, float, std::shared_ptr<Map>>;
-
+        std::variant<AString, int32_t, float, BinType, std::shared_ptr<Map>>;
     // TODO(raphaelhetzel) It might be beneficial to use a
     // datastructure with less overhead (size+allocations) here.
     using DataType =
@@ -154,11 +154,14 @@ class Publication {
       std::string_view name) const;
   [[nodiscard]] std::optional<std::shared_ptr<Map>> get_nested_component(
       std::string_view name) const;
+  [[nodiscard]] std::optional<bin_type&> get_bin_attr(
+
 
   void set_attr(std::string_view name, std::string_view value);
   void set_attr(std::string_view name, int32_t value);
   void set_attr(std::string_view name, float value);
   void set_attr(std::string_view name, std::shared_ptr<Map> value);
+  void set_attr(std::string_view name, bin_type value);
 
   void erase_attr(std::string_view name);
 

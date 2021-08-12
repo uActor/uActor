@@ -44,17 +44,21 @@ def main():
 
     raw_deployments = []
     for configuration_file_r_path in arguments.file:
-        configuration_file_path = os.path.join(os.getcwd(), configuration_file_r_path)
+        configuration_file_path = os.path.join(
+            os.getcwd(), configuration_file_r_path)
         if not os.path.isfile(configuration_file_path):
             raise SystemExit("Configuration file does not exist.")
-        configuration_file = io.open(configuration_file_path, "r", encoding="utf-8")
+        configuration_file = io.open(
+            configuration_file_path, "r", encoding="utf-8")
         raw_deployments = yaml.safe_load_all(configuration_file)
 
         for raw_deployment in raw_deployments:
-            deployment = _parse_deployment(configuration_file_path, raw_deployment, arguments.minify)
+            deployment = _parse_deployment(
+                configuration_file_path, raw_deployment, arguments.minify)
             if deployment:
                 if deployment["deployment_ttl"] > 0 and deployment["deployment_ttl"] < MIN_DEPLOYMENT_LIFETIME:
-                    print(f"Increased deployment ttl to the minimum value of {MIN_DEPLOYMENT_LIFETIME/1000} seconds")
+                    print(
+                        f"Increased deployment ttl to the minimum value of {MIN_DEPLOYMENT_LIFETIME/1000} seconds")
                     deployment["deployment_ttl"] = MIN_DEPLOYMENT_LIFETIME
                 if min_ttl_ms == 0 or (deployment["deployment_ttl"] > 0 and deployment["deployment_ttl"] < min_ttl_ms):
                     min_ttl_ms = deployment["deployment_ttl"]
@@ -64,7 +68,8 @@ def main():
                 deployments.append(deployment)
 
     total_required_time = sum(
-        [(INTER_DEPLOYMENT_WAIT_TIME_MS/1000) for deployment in deployments] # if deployment["deployment_ttl"] > 0 else 0
+        # if deployment["deployment_ttl"] > 0 else 0
+        [(INTER_DEPLOYMENT_WAIT_TIME_MS/1000) for deployment in deployments]
     )
 
     last_iterations = {}
@@ -77,21 +82,23 @@ def main():
             last_iterations[deployment["deployment_name"]] = time.time()
             if arguments.upload_code_node_id:
                 print("Upload Code")
-                _publish(sckt, code_msg(deployment, arguments.upload_code_node_id), epoch, sequence_number)
+                _publish(sckt, code_msg(
+                    deployment, arguments.upload_code_node_id), epoch, sequence_number)
                 sequence_number += 1
 
             if publish_code_count == 0 and "deployment_actor_code" in deployment:
                 del deployment["deployment_actor_code"]
             start_publish = time.time()
             _publish(sckt, deployment, epoch, sequence_number)
-            print(f"Publish: {deployment['deployment_name']} {time.time() - start_publish}")
+            print(
+                f"Publish: {deployment['deployment_name']} {time.time() - start_publish}")
             time.sleep(INTER_DEPLOYMENT_WAIT_TIME_MS/1000)
             sequence_number += 1
         if publish_code_count > 0:
             publish_code_count = publish_code_count - 1
 
         if arguments.refresh:
-            wait_time = max((min_ttl_ms/1000  - (time.time() - before)  - 10), 0)
+            wait_time = max((min_ttl_ms/1000 - (time.time() - before) - 10), 0)
             time.sleep(wait_time)
 
         while min_ttl_ms > 0 and arguments.refresh:
@@ -100,7 +107,8 @@ def main():
                 if publish_code_count == 0 and "deployment_actor_code" in deployment:
                     del deployment["deployment_actor_code"]
                 _publish(sckt, deployment, epoch, sequence_number)
-                print(f"Refresh: {deployment['deployment_name']} Interval: {time.time() - last_iterations[deployment['deployment_name']]}")
+                print(
+                    f"Refresh: {deployment['deployment_name']} Interval: {time.time() - last_iterations[deployment['deployment_name']]}")
                 last_iterations[deployment["deployment_name"]] = time.time()
                 time.sleep(INTER_DEPLOYMENT_WAIT_TIME_MS/1000)
                 sequence_number += 1
@@ -127,23 +135,30 @@ def _parse_deployment(configuration_file_path, raw_deployment, minify):
             raise SystemExit("required actors is not a list")
 
     configuration_dir = os.path.dirname(configuration_file_path)
-    code_file = os.path.join(configuration_dir, raw_deployment["actor_code_file"])
-    is_binary = True if os.path.splitext(code_file)[1] in BINARY_FILE_EXTENSIONS else False
+    code_file = os.path.join(
+        configuration_dir, raw_deployment["actor_code_file"])
+    is_binary = True if os.path.splitext(
+        code_file)[1] in BINARY_FILE_EXTENSIONS else False
     code = load_code_file(code_file, is_binary)
 
-    if not is_binary and minify:
+    # do only minify if code is not a binary file
+    minify = minify and not is_binary
+
+    if minify:
         import minifier.minifier
         minified_code = minifier.minifier.minify(code)
 
     if is_binary:
         code_hash = base64.b64encode(hashlib.blake2s(code).digest()).decode()
     else:
-        code_hash = base64.b64encode(hashlib.blake2s(code.encode()).digest()).decode()
+        code_hash = base64.b64encode(
+            hashlib.blake2s(code.encode()).digest()).decode()
 
-    print(f"Code Size: {raw_deployment['name']} Before: {len(code)} After: {len(minified_code) if minify else 'not minified'}")
+    print(
+        f"Code Size: {raw_deployment['name']} Before: {len(code)} After: {len(minified_code) if minify else 'not minified'}")
 
     deployment = {
-        "type" : "deployment",
+        "type": "deployment",
         "publisher_node_id": "actorctl_tmp_node_2",
         "publisher_actor_type": "core.tools.actor_ctl",
         "publisher_instance_id": "1",
@@ -184,7 +199,8 @@ def load_code_file(code_file, is_binary):
     for line in code_pre.splitlines():
         match = re.compile(r"^--include\s+\<([\w\./]+)\>").match(line)
         if match:
-            code += load_code_file(os.path.join(os.path.dirname(code_file), f"{match.group(1)}.lua")) + "\n"
+            code += load_code_file(os.path.join(os.path.dirname(code_file),
+                                   f"{match.group(1)}.lua")) + "\n"
         else:
             code += line + "\n"
     return code
@@ -197,7 +213,7 @@ def code_msg(deployment, node_id):
         "node_id": node_id,
         "type": "actor_code",
         "actor_code_type": deployment["deployment_actor_code"],
-        "actor_code_runtime_type": "lua",
+        "actor_code_runtime_type": deployment["deployment_actor_runtime_type"],
         "actor_code_version": deployment["deployment_actor_version"],
         "actor_code_lifetime_end": 0,
         "actor_code":  deployment["deployment_actor_code"]
