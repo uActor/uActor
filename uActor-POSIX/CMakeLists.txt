@@ -42,6 +42,7 @@ include(${CMAKE_BINARY_DIR}/conan.cmake)
 conan_cmake_configure(REQUIRES 
                 boost/1.75.0
                 libcurl/7.75.0
+                uwebsockets/19.2.0
                 fmt/7.1.3
                       GENERATORS cmake_find_package
                       OPTIONS
@@ -124,6 +125,10 @@ conan_cmake_install(PATH_OR_REFERENCE .
                     )
 
 find_package(Threads REQUIRED)
+
+set(usocket_WITH_LIBUV False)
+find_package(uwebsockets REQUIRED)
+
 set(Boost_USE_STATIC_LIBS ON)
 find_package(Boost COMPONENTS program_options REQUIRED)
 find_package(CURL REQUIRED)
@@ -132,7 +137,9 @@ find_package(fmt REQUIRED)
 add_executable(uActorBin ${SOURCES} ${HEADERS})
 target_include_directories(uActorBin PUBLIC "include")
 
-target_include_directories(uActorBin PRIVATE ${Boost_INCLUDE_DIRS}) 
+target_include_directories(uActorBin PRIVATE ${Boost_INCLUDE_DIRS})
+target_include_directories(uActorBin PRIVATE ${usockets_INCLUDE_DIRS}) 
+target_include_directories(uActorBin PRIVATE ${uwebsockets_INCLUDE_DIRS})
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../uActor ${CMAKE_CURRENT_BINARY_DIR}/uActor)
 
@@ -141,6 +148,7 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../uActor ${CMAKE_CURRENT_BINARY_DI
 target_compile_definitions(uActor PUBLIC CONFIG_UACTOR_ENABLE_TELEMETRY=1)
 target_compile_definitions(uActor PUBLIC CONFIG_UACTOR_ENABLE_HEAP_TRACKING=1)
 target_compile_definitions(uActor PUBLIC CONFIG_UACTOR_ENABLE_INFLUXDB_ACTOR=1)
+target_compile_definitions(uActor PUBLIC CONFIG_UACTOR_ENABLE_HTTP_INGRESS=1)
 target_compile_definitions(uActor PUBLIC CONFIG_UACTOR_ENABLE_HTTP_CLIENT_ACTOR=1)
 
 # Large Scale Eval: Enable
@@ -159,7 +167,11 @@ endif()
 target_link_libraries(uActorBin InfluxData::InfluxDB)
 
 target_link_libraries(uActorBin uActor)
+
 target_link_libraries(uActorBin CURL::libcurl)
+
+target_link_libraries(uActorBin uwebsockets::uwebsockets)
+
 target_link_libraries(uActorBin Threads::Threads)
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "9.1")

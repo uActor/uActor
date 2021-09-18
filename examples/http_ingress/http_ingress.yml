@@ -1,0 +1,7 @@
+type: deployment
+name: de.tum.test.deployment.ingress
+ttl:  0
+actor_type:  de.tum.test.actor.ingress
+actor_runtime_type:  lua
+actor_version:  "0.1"
+actor_code_file:  "http_ingress_basic.lua"

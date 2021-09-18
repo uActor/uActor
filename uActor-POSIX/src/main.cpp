@@ -38,6 +38,10 @@
 #include "actors/http_client_actor.hpp"
 #endif
 
+#if CONFIG_UACTOR_ENABLE_HTTP_INGRESS
+#include "actors/http_ingress.hpp"
+#endif
+
 /*
  *  Offset to be subtracted from the current timestamp to
  *  set the epoch number
@@ -261,6 +265,11 @@ int main(int arg_count, char** args) {
   uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
       uActor::Database::InfluxDBActor>("influxdb_connector");
 #endif
+
+#if CONFIG_UACTOR_ENABLE_HTTP_INGRESS
+  uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
+      uActor::Ingress::HTTPIngress>("http_ingress");
+#endif
   auto nativeexecutor = start_native_executor();
 #if CONFIG_UACTOR_ENABLE_TELEMETRY
   uActor::Controllers::TelemetryActor::telemetry_fetch_hook =
@@ -270,6 +279,24 @@ int main(int arg_count, char** args) {
 #endif
 #if CONFIG_UACTOR_ENABLE_HTTP_CLIENT_ACTOR
   uActor::HTTP::HTTPClientActor http_client{};
+#endif
+
+  sleep(2);
+
+#if CONFIG_UACTOR_ENABLE_HTTP_INGRESS
+  auto create_http_ingress =
+      uActor::PubSub::Publication(uActor::BoardFunctions::NODE_ID, "root", "1");
+  create_http_ingress.set_attr("command", "spawn_native_actor");
+  create_http_ingress.set_attr("spawn_actor_version", "default");
+  create_http_ingress.set_attr("spawn_node_id",
+                               uActor::BoardFunctions::NODE_ID);
+  create_http_ingress.set_attr("spawn_actor_type", "http_ingress");
+  create_http_ingress.set_attr("spawn_instance_id", "1");
+  create_http_ingress.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
+  create_http_ingress.set_attr("actor_type", "native_executor");
+  create_http_ingress.set_attr("instance_id", "1");
+  uActor::PubSub::Router::get_instance().publish(
+      std::move(create_http_ingress));
 #endif
 
   sleep(2);

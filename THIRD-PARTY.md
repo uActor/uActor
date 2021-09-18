@@ -53,6 +53,9 @@ https://www.boost.org/
 libcurl:
 https://curl.se/libcurl/
 
+uWebSockets:
+https://github.com/uNetworking/uWebSockets
+
 :Tooling:
 
 Antlr4 (antlr4-python3-runtime):
