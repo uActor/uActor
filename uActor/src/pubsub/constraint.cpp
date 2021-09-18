@@ -145,6 +145,12 @@ const char* ConstraintPredicates::name(uint32_t tag) {
       return "GE";
     case 6:
       return "LE";
+    case 7:
+      return "PF";
+    case 8:
+      return "SF";
+    case 9:
+      return "CT";
     default:
       return nullptr;
   }
@@ -154,21 +160,22 @@ std::optional<ConstraintPredicates::Predicate>
 ConstraintPredicates::from_string(std::string_view name) {
   if (name == "EQ") {
     return Predicate::EQ;
-  }
-  if (name == "NE") {
+  } else if (name == "NE") {
     return Predicate::NE;
-  }
-  if (name == "LT") {
+  } else if (name == "LT") {
     return Predicate::LT;
-  }
-  if (name == "GT") {
+  } else if (name == "GT") {
     return Predicate::GT;
-  }
-  if (name == "GE") {
+  } else if (name == "GE") {
     return Predicate::GE;
-  }
-  if (name == "LE") {
+  } else if (name == "LE") {
     return Predicate::LE;
+  } else if (name == "PF") {
+    return Predicate::PF;
+  } else if (name == "SF") {
+    return Predicate::SF;
+  } else if (name == "CT") {
+    return Predicate::CT;
   } else {
     Support::Logger::warning("CONSTRAINT", "Deserialization error %s",
                              name.data());

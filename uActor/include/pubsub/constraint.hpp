@@ -14,8 +14,8 @@
 namespace uActor::PubSub {
 
 struct ConstraintPredicates {
-  constexpr static const uint32_t MAX_INDEX = 6;
-  enum Predicate : uint32_t { EQ = 1, NE, LT, GT, GE, LE };
+  constexpr static const uint32_t MAX_INDEX = 9;
+  enum Predicate : uint32_t { EQ = 1, NE, LT, GT, GE, LE, PF, SF, CT };
 
   static const char* name(uint32_t tag);
   static std::optional<Predicate> from_string(std::string_view name);
@@ -52,8 +52,9 @@ class Constraint {
           return std::less_equal<T>()(input, operand);
         case ConstraintPredicates::Predicate::NE:
           return std::not_equal_to<T>()(input, operand);
+        default:  // We ignore constraints that are not type-idenpendent.
+          return false;
       }
-      return false;
     }
 
     bool operator==(const Container<T>& other) const {
@@ -187,4 +188,38 @@ class Constraint {
       _operand;
   bool _optional;
 };
+
+// Add Prefix, Suffix, and Contains operators to the string constraints.
+template <>
+[[nodiscard]] inline bool Constraint::Container<Constraint::AString>::match(
+    AString input) const {
+  switch (operation_name) {
+    case ConstraintPredicates::Predicate::EQ:
+      return std::equal_to<AString>()(input, operand);
+    case ConstraintPredicates::Predicate::LT:
+      return std::less<AString>()(input, operand);
+    case ConstraintPredicates::Predicate::GT:
+      return std::greater<AString>()(input, operand);
+    case ConstraintPredicates::Predicate::GE:
+      return std::greater_equal<AString>()(input, operand);
+    case ConstraintPredicates::Predicate::LE:
+      return std::less_equal<AString>()(input, operand);
+    case ConstraintPredicates::Predicate::NE:
+      return std::not_equal_to<AString>()(input, operand);
+    case ConstraintPredicates::Predicate::PF:
+      // Adapted from https://stackoverflow.com/a/42844629
+      return input.size() >= operand.size() &&
+             0 == input.compare(0, operand.size(), operand);
+    case ConstraintPredicates::Predicate::SF: {
+      // Adapted from https://stackoverflow.com/a/42844629
+      return input.size() >= operand.size() &&
+             0 == input.compare(input.size() - operand.size(), operand.size(),
+                                operand);
+    }
+    case ConstraintPredicates::Predicate::CT:
+      return input.find(operand) != std::string::npos;
+  }
+  return false;
+}
+
 }  //  namespace uActor::PubSub

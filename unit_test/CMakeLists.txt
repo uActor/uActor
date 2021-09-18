@@ -22,7 +22,7 @@ endif()
 
 include_directories(../main/legacy/include)
 
-add_executable(uactor_test mock_board_functions.cpp mock_receiver.cpp pubsub_tests.cpp runtime_tests.cpp forwarding_tests.cpp routing_rule_test.cpp)
+add_executable(uactor_test mock_board_functions.cpp mock_receiver.cpp pubsub_tests.cpp runtime_tests.cpp forwarding_tests.cpp routing_rule_test.cpp constraint_test.cpp)
 target_link_libraries(uactor_test gtest_main)
 target_link_libraries(uactor_test uActor)
 add_test(NAME uactor_test COMMAND uactor_test)
