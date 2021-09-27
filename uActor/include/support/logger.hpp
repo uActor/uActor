@@ -9,55 +9,55 @@
 #include <mutex>
 #include <string_view>
 
-#define LOG_LEVEL_TRACE 6
-#define LOG_LEVEL_DEBUG 5
-#define LOG_LEVEL_INFO 4
-#define LOG_LEVEL_WARNING 3
-#define LOG_LEVEL_ERROR 2
-#define LOG_LEVEL_FATAL 1
+#define UACTOR_LOG_LEVEL_TRACE 6
+#define UACTOR_LOG_LEVEL_DEBUG 5
+#define UACTOR_LOG_LEVEL_INFO 4
+#define UACTOR_LOG_LEVEL_WARNING 3
+#define UACTOR_LOG_LEVEL_ERROR 2
+#define UACTOR_LOG_LEVEL_FATAL 1
 
-#define LOG_LEVEL LOG_LEVEL_INFO
+#define LOG_LEVEL UACTOR_LOG_LEVEL_INFO
 
 namespace uActor::Support {
 struct Logger {
   template <typename... Args>
   static void trace(std::string_view component, Args... args) {
-#if LOG_LEVEL >= LOG_LEVEL_TRACE
+#if LOG_LEVEL >= UACTOR_LOG_LEVEL_TRACE
     log("TRACE", component, args...);
 #endif
   }
 
   template <typename... Args>
   static void debug(std::string_view component, Args... args) {
-#if LOG_LEVEL >= LOG_LEVEL_DEBUG
+#if LOG_LEVEL >= UACTOR_LOG_LEVEL_DEBUG
     log("DEBUG", component, args...);
 #endif
   }
 
   template <typename... Args>
   static void info(std::string_view component, Args... args) {
-#if LOG_LEVEL >= LOG_LEVEL_INFO
+#if LOG_LEVEL >= UACTOR_LOG_LEVEL_INFO
     log("INFO", component, args...);
 #endif
   }
 
   template <typename... Args>
   static void warning(std::string_view component, Args... args) {
-#if LOG_LEVEL >= LOG_LEVEL_WARNING
+#if LOG_LEVEL >= UACTOR_LOG_LEVEL_WARNING
     log("WARNING", component, args...);
 #endif
   }
 
   template <typename... Args>
   static void error(std::string_view component, Args... args) {
-#if LOG_LEVEL >= LOG_LEVEL_ERROR
+#if LOG_LEVEL >= UACTOR_LOG_LEVEL_ERROR
     log("ERROR", component, args...);
 #endif
   }
 
   template <typename... Args>
   static void fatal(std::string_view component, Args... args) {
-#if LOG_LEVEL >= LOG_LEVEL_FATAL
+#if LOG_LEVEL >= UACTOR_LOG_LEVEL_FATAL
     log("FATAL", component, args...);
 #endif
   }
