@@ -28,12 +28,14 @@ extern "C" {
 namespace uActor::ESP32::BLE {
 
 template <typename Visitor>
-static void walk_ble_packet(uint8_t* data, size_t data_size, Visitor visitor) {
+static void walk_ble_packet(const uint8_t* data, size_t data_size,
+                            Visitor visitor) {
   uint8_t current_attribute_size = 0;
   uint8_t current_attribute_type = 0;
-  uint8_t* current_data_start = nullptr;
+  const uint8_t* current_data_start = nullptr;
 
-  for (uint8_t* attribute_start = data; attribute_start < (data + data_size);
+  for (const uint8_t* attribute_start = data;
+       attribute_start < (data + data_size);
        attribute_start = attribute_start + current_attribute_size + 1) {
     current_attribute_size = *attribute_start;
     if (current_attribute_size == 0) {
@@ -73,7 +75,7 @@ class BLEActor {
 
     const PubSub::Filter& filter() const { return _filter; }
 
-    bool sub_matches(uint8_t* data, size_t data_size) const {
+    bool sub_matches(const uint8_t* data, size_t data_size) const {
       if (match_all) {
         return true;
       }
