@@ -57,7 +57,7 @@ esp_netif_t* WifiStack::init(void) {
   esp_wifi_set_storage(WIFI_STORAGE_RAM);
 
   ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-  ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config));
+  ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
 
 #if CONFIG_WIFI_USE_EDUROAM
   extern uint8_t ca_pem_start[] asm("_binary_eduroam_pem_start");
