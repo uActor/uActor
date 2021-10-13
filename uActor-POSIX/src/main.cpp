@@ -11,15 +11,15 @@
 #include <vector>
 
 #include "actor_runtime/code_store_actor.hpp"
-#include "actor_runtime/executor.hpp"
 #include "actor_runtime/lua_executor.hpp"
 #include "actor_runtime/managed_actor.hpp"
 #include "actor_runtime/managed_native_actor.hpp"
 #include "actor_runtime/native_executor.hpp"
-#include "controllers/deployment_manager.hpp"
-#include "controllers/topology_manager.hpp"
 #include "remote/remote_connection.hpp"
 #include "remote/tcp_forwarder.hpp"
+#include "support/core_native_actors.hpp"
+#include "support/launch_utils.hpp"
+#include "support/posix_native_actors.hpp"
 
 #if CONFIG_UACTOR_ENABLE_TELEMETRY
 #include "controllers/telemetry_actor.hpp"
@@ -30,16 +30,8 @@
 #include "support/testbed.h"
 #endif
 
-#if CONFIG_UACTOR_ENABLE_INFLUXDB_ACTOR
-#include "actors/influxdb_actor.hpp"
-#endif
-
 #if CONFIG_UACTOR_ENABLE_HTTP_CLIENT_ACTOR
 #include "actors/http_client_actor.hpp"
-#endif
-
-#if CONFIG_UACTOR_ENABLE_HTTP_INGRESS
-#include "actors/http_ingress.hpp"
 #endif
 
 /*
@@ -95,24 +87,6 @@ void telemetry_fetch_hook() {
       uActor::PubSub::Router::get_instance().number_of_subscriptions());
 }
 #endif
-
-std::thread start_lua_executor() {
-  uActor::ActorRuntime::ExecutorSettings* params =
-      new uActor::ActorRuntime::ExecutorSettings{
-          .node_id = uActor::BoardFunctions::NODE_ID, .instance_id = "1"};
-  std::thread executor_thread =
-      std::thread(&uActor::ActorRuntime::LuaExecutor::os_task, params);
-  return std::move(executor_thread);
-}
-
-std::thread start_native_executor() {
-  uActor::ActorRuntime::ExecutorSettings* params =
-      new uActor::ActorRuntime::ExecutorSettings{
-          .node_id = uActor::BoardFunctions::NODE_ID, .instance_id = "1"};
-  std::thread executor_thread =
-      std::thread(&uActor::ActorRuntime::NativeExecutor::os_task, params);
-  return std::move(executor_thread);
-}
 
 boost::program_options::variables_map parse_arguments(int arg_count,
                                                       char** args) {
@@ -249,139 +223,58 @@ int main(int arg_count, char** args) {
                               reinterpret_cast<void*>(&tcp_task_args));
 
   while (tcp_task_args.tcp_forwarder == nullptr) {
-    sleep(1);
+    uActor::BoardFunctions::sleep(100);
   }
 
   auto tcp_task2 = std::thread(&uActor::Remote::TCPForwarder::tcp_reader_task,
                                tcp_task_args.tcp_forwarder);
 
-  uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
-      uActor::Controllers::TopologyManager>("topology_manager");
-  uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
-      uActor::Controllers::DeploymentManager>("deployment_manager");
-  uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
-      uActor::ActorRuntime::CodeStoreActor>("code_store");
-#if CONFIG_UACTOR_ENABLE_INFLUXDB_ACTOR
-  uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
-      uActor::Database::InfluxDBActor>("influxdb_connector");
-#endif
-
-#if CONFIG_UACTOR_ENABLE_HTTP_INGRESS
-  uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
-      uActor::Ingress::HTTPIngress>("http_ingress");
-#endif
-  auto nativeexecutor = start_native_executor();
 #if CONFIG_UACTOR_ENABLE_TELEMETRY
   uActor::Controllers::TelemetryActor::telemetry_fetch_hook =
       telemetry_fetch_hook;
-  uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
-      uActor::Controllers::TelemetryActor>("telemetry_actor");
-#endif
-#if CONFIG_UACTOR_ENABLE_HTTP_CLIENT_ACTOR
-  uActor::HTTP::HTTPClientActor http_client{};
 #endif
 
-  sleep(2);
+  uActor::Support::CoreNativeActors::register_native_actors();
+  uActor::Support::PosixNativeActors::register_native_actors();
 
-#if CONFIG_UACTOR_ENABLE_HTTP_INGRESS
-  auto create_http_ingress =
-      uActor::PubSub::Publication(uActor::BoardFunctions::NODE_ID, "root", "1");
-  create_http_ingress.set_attr("command", "spawn_native_actor");
-  create_http_ingress.set_attr("spawn_actor_version", "default");
-  create_http_ingress.set_attr("spawn_node_id",
-                               uActor::BoardFunctions::NODE_ID);
-  create_http_ingress.set_attr("spawn_actor_type", "http_ingress");
-  create_http_ingress.set_attr("spawn_instance_id", "1");
-  create_http_ingress.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
-  create_http_ingress.set_attr("actor_type", "native_executor");
-  create_http_ingress.set_attr("instance_id", "1");
-  uActor::PubSub::Router::get_instance().publish(
-      std::move(create_http_ingress));
-#endif
+  auto native_executor =
+      uActor::Support::LaunchUtils::await_start_native_executor<std::thread>(
+          [](uActor::ActorRuntime::ExecutorSettings* params) {
+            return std::thread(&uActor::ActorRuntime::NativeExecutor::os_task,
+                               params);
+          });
 
-  sleep(2);
+  uActor::Support::LaunchUtils::await_spawn_native_actor("deployment_manager");
+  uActor::Support::LaunchUtils::await_spawn_native_actor("topology_manager");
+  uActor::Support::LaunchUtils::await_spawn_native_actor("code_store");
 
-  auto create_deployment_manager =
-      uActor::PubSub::Publication(uActor::BoardFunctions::NODE_ID, "root", "1");
-  create_deployment_manager.set_attr("command", "spawn_native_actor");
-  create_deployment_manager.set_attr("spawn_actor_version", "default");
-  create_deployment_manager.set_attr("spawn_node_id",
-                                     uActor::BoardFunctions::NODE_ID);
-  create_deployment_manager.set_attr("spawn_actor_type", "deployment_manager");
-  create_deployment_manager.set_attr("spawn_instance_id", "1");
-  create_deployment_manager.set_attr("node_id",
-                                     uActor::BoardFunctions::NODE_ID);
-  create_deployment_manager.set_attr("actor_type", "native_executor");
-  create_deployment_manager.set_attr("instance_id", "1");
-  uActor::PubSub::Router::get_instance().publish(
-      std::move(create_deployment_manager));
-
-  auto create_topology_manager =
-      uActor::PubSub::Publication(uActor::BoardFunctions::NODE_ID, "root", "1");
-  create_topology_manager.set_attr("command", "spawn_native_actor");
-  create_topology_manager.set_attr("spawn_actor_version", "default");
-  create_topology_manager.set_attr("spawn_node_id",
-                                   uActor::BoardFunctions::NODE_ID);
-  create_topology_manager.set_attr("spawn_actor_type", "topology_manager");
-  create_topology_manager.set_attr("spawn_instance_id", "1");
-  create_topology_manager.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
-  create_topology_manager.set_attr("actor_type", "native_executor");
-  create_topology_manager.set_attr("instance_id", "1");
-  uActor::PubSub::Router::get_instance().publish(
-      std::move(create_topology_manager));
-
-  auto create_code_store =
-      uActor::PubSub::Publication(uActor::BoardFunctions::NODE_ID, "root", "1");
-  create_code_store.set_attr("command", "spawn_native_actor");
-  create_code_store.set_attr("spawn_actor_version", "default");
-  create_code_store.set_attr("spawn_node_id", uActor::BoardFunctions::NODE_ID);
-  create_code_store.set_attr("spawn_actor_type", "code_store");
-  create_code_store.set_attr("spawn_instance_id", "1");
-  create_code_store.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
-  create_code_store.set_attr("actor_type", "native_executor");
-  create_code_store.set_attr("instance_id", "1");
-  uActor::PubSub::Router::get_instance().publish(std::move(create_code_store));
+  auto lua_executor =
+      uActor::Support::LaunchUtils::await_start_lua_executor<std::thread>(
+          [](uActor::ActorRuntime::ExecutorSettings* params) {
+            return std::thread(&uActor::ActorRuntime::LuaExecutor::os_task,
+                               params);
+          });
 
 #if CONFIG_UACTOR_ENABLE_INFLUXDB_ACTOR
   if (arguments.count("influxdb-url")) {
     uActor::Database::InfluxDBActor::server_url =
         arguments["influxdb-url"].as<std::string>();
-    auto create_influxdb_actor = uActor::PubSub::Publication(
-        uActor::BoardFunctions::NODE_ID, "root", "1");
-    create_influxdb_actor.set_attr("command", "spawn_native_actor");
-    create_influxdb_actor.set_attr("spawn_actor_version", "default");
-    create_influxdb_actor.set_attr("spawn_node_id",
-                                   uActor::BoardFunctions::NODE_ID);
-    create_influxdb_actor.set_attr("spawn_actor_type", "influxdb_connector");
-    create_influxdb_actor.set_attr("spawn_instance_id", "1");
-    create_influxdb_actor.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
-    create_influxdb_actor.set_attr("actor_type", "native_executor");
-    create_influxdb_actor.set_attr("instance_id", "1");
-    uActor::PubSub::Router::get_instance().publish(
-        std::move(create_influxdb_actor));
+    uActor::Support::LaunchUtils::await_spawn_native_actor(
+        "influxdb_connector");
   }
 #endif
 
 #if CONFIG_UACTOR_ENABLE_TELEMETRY
-  {
-    auto create_telemetry_actor = uActor::PubSub::Publication(
-        uActor::BoardFunctions::NODE_ID, "root", "1");
-    create_telemetry_actor.set_attr("command", "spawn_native_actor");
-    create_telemetry_actor.set_attr("spawn_code", "");
-    create_telemetry_actor.set_attr("spawn_node_id",
-                                    uActor::BoardFunctions::NODE_ID);
-    create_telemetry_actor.set_attr("spawn_actor_type", "telemetry_actor");
-    create_telemetry_actor.set_attr("spawn_actor_version", "default");
-    create_telemetry_actor.set_attr("spawn_instance_id", "1");
-    create_telemetry_actor.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
-    create_telemetry_actor.set_attr("actor_type", "native_executor");
-    create_telemetry_actor.set_attr("instance_id", "1");
-    uActor::PubSub::Router::get_instance().publish(
-        std::move(create_telemetry_actor));
-  }
+  uActor::Support::LaunchUtils::await_spawn_native_actor("telemetry_actor");
 #endif
 
-  sleep(2);
+#if CONFIG_UACTOR_ENABLE_HTTP_CLIENT_ACTOR
+  uActor::HTTP::HTTPClientActor http_client{};
+#endif
+
+#if CONFIG_UACTOR_ENABLE_HTTP_INGRESS
+  uActor::Support::LaunchUtils::await_spawn_native_actor("http_ingress");
+#endif
 
   if (arguments["enable-code-server"].as<bool>()) {
     auto enable_message = uActor::PubSub::Publication(
@@ -435,8 +328,6 @@ int main(int arg_count, char** args) {
       uActor::PubSub::Router::get_instance().publish(std::move(label_update));
     }
   }
-
-  auto lua_executor = start_lua_executor();
 
 #if CONFIG_BENCHMARK_ENABLED
   sleep(1);

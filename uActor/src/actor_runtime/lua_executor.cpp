@@ -23,7 +23,7 @@ LuaExecutor::LuaExecutor(PubSub::Router* router, const char* node_id,
   p.set_attr("actor_runtime_type", "lua");
   p.set_attr("update_node_id", BoardFunctions::NODE_ID);
   p.set_attr("update_actor_type", "lua_executor");
-  p.set_attr("update_instance_id", "1");
+  p.set_attr("update_instance_id", instance_id());
   p.set_attr("node_id", BoardFunctions::NODE_ID);
   PubSub::Router::get_instance().publish(std::move(p));
 }
@@ -35,7 +35,7 @@ LuaExecutor::~LuaExecutor() {
   p.set_attr("actor_runtime_type", "lua");
   p.set_attr("update_node_id", BoardFunctions::NODE_ID);
   p.set_attr("update_actor_type", "lua_executor");
-  p.set_attr("update_instance_id", "1");
+  p.set_attr("update_instance_id", instance_id());
   p.set_attr("node_id", BoardFunctions::NODE_ID);
   uActor::PubSub::Router::get_instance().publish(std::move(p));
 

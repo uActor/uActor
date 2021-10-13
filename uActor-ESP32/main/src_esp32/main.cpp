@@ -10,33 +10,19 @@ extern "C" {
 #include <cstring>
 #include <utility>
 
-#include "actor_runtime/code_store_actor.hpp"
 #include "actor_runtime/lua_executor.hpp"
 #include "actor_runtime/managed_actor.hpp"
 #include "actor_runtime/managed_native_actor.hpp"
 #include "actor_runtime/native_executor.hpp"
 #include "board_functions.hpp"
-#include "controllers/deployment_manager.hpp"
-#include "controllers/topology_manager.hpp"
 #include "lua.hpp"
 #include "pubsub/receiver.hpp"
 #include "remote/tcp_forwarder.hpp"
 #include "remote/wifi_stack.hpp"
+#include "support/core_native_actors.hpp"
+#include "support/esp32_native_actors.hpp"
+#include "support/launch_utils.hpp"
 #include "support/testbed.h"
-
-#if CONFIG_ENABLE_BMP180
-#include "bmp180_actor.hpp"
-#endif
-#if CONFIG_ENABLE_BME280
-#include "bme280_actor.hpp"
-#endif
-#if CONFIG_ENABLE_SCD30
-#include "scd30_actor.hpp"
-#endif
-// TODO(raphaelhetzel) this currently required patching callEPD
-#if CONFIG_ENABLE_EPAPER_DISPLAY
-#include "epaper_actor.hpp"
-#endif
 
 #if CONFIG_ENABLE_BLE_ACTOR
 #include "ble_actor.hpp"
@@ -125,47 +111,35 @@ void main_task(void *) {
 
   testbed_log_rt_string("node_id", uActor::BoardFunctions::NODE_ID);
 
-  uActor::ActorRuntime::ExecutorSettings executor_settings = {
-      .node_id = uActor::BoardFunctions::NODE_ID, .instance_id = "1"};
-
   xTaskCreatePinnedToCore(&uActor::ESP32::Remote::WifiStack::os_task,
                           "WIFI_STACK", 4192, nullptr, 4, nullptr, 0);
-
-  uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
-      uActor::Controllers::TopologyManager>("topology_manager");
-  uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
-      uActor::Controllers::DeploymentManager>("deployment_manager");
-#if CONFIG_ENABLE_BMP180
-  uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
-      uActor::ESP32::IO::BMP180Actor>("bmp180_sensor");
-#endif
-#if CONFIG_ENABLE_BME280
-  uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
-      uActor::ESP32::Sensors::BME280Actor>("bme280_sensor");
-#endif
-#if CONFIG_ENABLE_SCD30
-  uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
-      uActor::ESP32::Sensors::SCD30Actor>("scd30_sensor");
-#endif
-  uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
-      uActor::ActorRuntime::CodeStoreActor>("code_store");
-
-#if CONFIG_ENABLE_EPAPER_DISPLAY
-  uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
-      uActor::ESP32::Notifications::EPaperNotificationActor>(
-      "epaper_notification_actor");
-#endif
 
 #if CONFIG_UACTOR_ENABLE_TELEMETRY
   uActor::Controllers::TelemetryActor::telemetry_fetch_hook =
       telemetry_fetch_hook;
-  uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
-      uActor::Controllers::TelemetryActor>("telemetry_actor");
 #endif
 
-  xTaskCreatePinnedToCore(&uActor::ActorRuntime::NativeExecutor::os_task,
-                          "NATIVE_EXECUTOR", 6168, &executor_settings, 5,
-                          nullptr, 0);
+  uActor::Support::CoreNativeActors::register_native_actors();
+  uActor::Support::ESP32NativeActors::register_native_actors();
+
+  uActor::Support::LaunchUtils::await_start_native_executor<BaseType_t>(
+      [](uActor::ActorRuntime::ExecutorSettings *params) {
+        return xTaskCreatePinnedToCore(
+            &uActor::ActorRuntime::NativeExecutor::os_task, "NATIVE_EXECUTOR",
+            6168, params, 5, nullptr, 0);
+      });
+
+// The E-Paper actor may take seconds, therefore it is isolated to it's own
+// executor.
+#if CONFIG_ENABLE_EPAPER_DISPLAY
+  uActor::Support::LaunchUtils::await_start_native_executor<BaseType_t>(
+      [](uActor::ActorRuntime::ExecutorSettings *params) {
+        return xTaskCreatePinnedToCore(
+            &uActor::ActorRuntime::NativeExecutor::os_task,
+            "NATIVE_EXECUTOR_EPAPER", 4096, params, 5, nullptr, 0);
+      },
+      "epaper");
+#endif
 
   time_t t = 0;
   time(&t);
@@ -187,151 +161,38 @@ void main_task(void *) {
     uActor::BoardFunctions::epoch = 0;
   }
 
-  vTaskDelay(2000 / portTICK_PERIOD_MS);
-  {
-    auto create_deployment_manager = uActor::PubSub::Publication(
-        uActor::BoardFunctions::NODE_ID, "root", "1");
-    create_deployment_manager.set_attr("command", "spawn_native_actor");
-    create_deployment_manager.set_attr("spawn_actor_version", "default");
-    create_deployment_manager.set_attr("spawn_node_id",
-                                       uActor::BoardFunctions::NODE_ID);
-    create_deployment_manager.set_attr("spawn_actor_type",
-                                       "deployment_manager");
-    create_deployment_manager.set_attr("spawn_instance_id", "1");
-    create_deployment_manager.set_attr("node_id",
-                                       uActor::BoardFunctions::NODE_ID);
-    create_deployment_manager.set_attr("actor_type", "native_executor");
-    create_deployment_manager.set_attr("instance_id", "1");
-    uActor::PubSub::Router::get_instance().publish(
-        std::move(create_deployment_manager));
-  }
-  {
-    auto create_topology_manager = uActor::PubSub::Publication(
-        uActor::BoardFunctions::NODE_ID, "root", "1");
-    create_topology_manager.set_attr("command", "spawn_native_actor");
-    create_topology_manager.set_attr("spawn_actor_version", "default");
-    create_topology_manager.set_attr("spawn_node_id",
-                                     uActor::BoardFunctions::NODE_ID);
-    create_topology_manager.set_attr("spawn_actor_type", "topology_manager");
-    create_topology_manager.set_attr("spawn_instance_id", "1");
-    create_topology_manager.set_attr("node_id",
-                                     uActor::BoardFunctions::NODE_ID);
-    create_topology_manager.set_attr("actor_type", "native_executor");
-    create_topology_manager.set_attr("instance_id", "1");
-    uActor::PubSub::Router::get_instance().publish(
-        std::move(create_topology_manager));
-  }
+  uActor::Support::LaunchUtils::await_spawn_native_actor("deployment_manager");
+  uActor::Support::LaunchUtils::await_spawn_native_actor("topology_manager");
+  uActor::Support::LaunchUtils::await_spawn_native_actor("code_store");
+
+  uActor::Support::LaunchUtils::await_start_lua_executor<BaseType_t>(
+      [](uActor::ActorRuntime::ExecutorSettings *params) {
+        return xTaskCreatePinnedToCore(
+            &uActor::ActorRuntime::LuaExecutor::os_task, "LUA_EXECUTOR", 8192,
+            params, configMAX_PRIORITIES - 1, nullptr, 1);
+      });
 
 #if CONFIG_ENABLE_EPAPER_DISPLAY
-  {
-    auto create_display = uActor::PubSub::Publication(
-        uActor::BoardFunctions::NODE_ID, "root", "1");
-    create_display.set_attr("command", "spawn_native_actor");
-    create_display.set_attr("spawn_code", "");
-    create_display.set_attr("spawn_node_id", uActor::BoardFunctions::NODE_ID);
-    create_display.set_attr("spawn_actor_type", "epaper_notification_actor");
-    create_display.set_attr("spawn_actor_version", "default");
-    create_display.set_attr("spawn_instance_id", "1");
-    create_display.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
-    create_display.set_attr("actor_type", "native_executor");
-    create_display.set_attr("instance_id", "1");
-    uActor::PubSub::Router::get_instance().publish(std::move(create_display));
-  }
+  uActor::Support::LaunchUtils::await_spawn_native_actor(
+      "epaper_notification_actor", "epaper");
 #endif
 
-  {
-    auto create_code_store = uActor::PubSub::Publication(
-        uActor::BoardFunctions::NODE_ID, "root", "1");
-    create_code_store.set_attr("command", "spawn_native_actor");
-    create_code_store.set_attr("spawn_actor_version", "default");
-    create_code_store.set_attr("spawn_node_id",
-                               uActor::BoardFunctions::NODE_ID);
-    create_code_store.set_attr("spawn_actor_type", "code_store");
-    create_code_store.set_attr("spawn_instance_id", "1");
-    create_code_store.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
-    create_code_store.set_attr("actor_type", "native_executor");
-    create_code_store.set_attr("instance_id", "1");
-    uActor::PubSub::Router::get_instance().publish(
-        std::move(create_code_store));
-  }
-
 #if CONFIG_ENABLE_BMP180
-  {
-    auto create_bmp180_sensor = uActor::PubSub::Publication(
-        uActor::BoardFunctions::NODE_ID, "root", "1");
-    create_bmp180_sensor.set_attr("command", "spawn_native_actor");
-    create_bmp180_sensor.set_attr("spawn_code", "");
-    create_bmp180_sensor.set_attr("spawn_node_id",
-                                  uActor::BoardFunctions::NODE_ID);
-    create_bmp180_sensor.set_attr("spawn_actor_version", "default");
-    create_bmp180_sensor.set_attr("spawn_actor_type", "bmp180_sensor");
-    create_bmp180_sensor.set_attr("spawn_instance_id", "1");
-    create_bmp180_sensor.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
-    create_bmp180_sensor.set_attr("actor_type", "native_executor");
-    create_bmp180_sensor.set_attr("instance_id", "1");
-    uActor::PubSub::Router::get_instance().publish(
-        std::move(create_bmp180_sensor));
-  }
+  uActor::Support::LaunchUtils::await_spawn_native_actor("bmp180_sensor");
 #endif
 
 #if CONFIG_ENABLE_BME280
-  {
-    auto create_bme280_sensor = uActor::PubSub::Publication(
-        uActor::BoardFunctions::NODE_ID, "root", "1");
-    create_bme280_sensor.set_attr("command", "spawn_native_actor");
-    create_bme280_sensor.set_attr("spawn_code", "");
-    create_bme280_sensor.set_attr("spawn_node_id",
-                                  uActor::BoardFunctions::NODE_ID);
-    create_bme280_sensor.set_attr("spawn_actor_version", "default");
-    create_bme280_sensor.set_attr("spawn_actor_type", "bme280_sensor");
-    create_bme280_sensor.set_attr("spawn_instance_id", "1");
-    create_bme280_sensor.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
-    create_bme280_sensor.set_attr("actor_type", "native_executor");
-    create_bme280_sensor.set_attr("instance_id", "1");
-    uActor::PubSub::Router::get_instance().publish(
-        std::move(create_bme280_sensor));
-  }
+  uActor::Support::LaunchUtils::await_spawn_native_actor("bme280_sensor");
 #endif
 
 #if CONFIG_ENABLE_SCD30
-  {
-    auto create_scd30_sensor = uActor::PubSub::Publication(
-        uActor::BoardFunctions::NODE_ID, "root", "1");
-    create_scd30_sensor.set_attr("command", "spawn_native_actor");
-    create_scd30_sensor.set_attr("spawn_code", "");
-    create_scd30_sensor.set_attr("spawn_node_id",
-                                 uActor::BoardFunctions::NODE_ID);
-    create_scd30_sensor.set_attr("spawn_actor_type", "scd30_sensor");
-    create_scd30_sensor.set_attr("spawn_instance_id", "1");
-    create_scd30_sensor.set_attr("spawn_actor_version", "default");
-    create_scd30_sensor.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
-    create_scd30_sensor.set_attr("actor_type", "native_executor");
-    create_scd30_sensor.set_attr("instance_id", "1");
-    uActor::PubSub::Router::get_instance().publish(
-        std::move(create_scd30_sensor));
-  }
+  uActor::Support::LaunchUtils::await_spawn_native_actor("scd30_sensor");
 #endif
 
 #if CONFIG_UACTOR_ENABLE_TELEMETRY
-  {
-    auto create_telemetry_actor = uActor::PubSub::Publication(
-        uActor::BoardFunctions::NODE_ID, "root", "1");
-    create_telemetry_actor.set_attr("command", "spawn_native_actor");
-    create_telemetry_actor.set_attr("spawn_code", "");
-    create_telemetry_actor.set_attr("spawn_node_id",
-                                    uActor::BoardFunctions::NODE_ID);
-    create_telemetry_actor.set_attr("spawn_actor_type", "telemetry_actor");
-    create_telemetry_actor.set_attr("spawn_actor_version", "default");
-    create_telemetry_actor.set_attr("spawn_instance_id", "1");
-    create_telemetry_actor.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
-    create_telemetry_actor.set_attr("actor_type", "native_executor");
-    create_telemetry_actor.set_attr("instance_id", "1");
-    uActor::PubSub::Router::get_instance().publish(
-        std::move(create_telemetry_actor));
-  }
+  uActor::Support::LaunchUtils::await_spawn_native_actor("telemetry_actor");
 #endif
 
-  vTaskDelay(50 / portTICK_PERIOD_MS);
   {
     uActor::PubSub::Publication label_update(uActor::BoardFunctions::NODE_ID,
                                              "root", "1");
@@ -353,10 +214,6 @@ void main_task(void *) {
     uActor::PubSub::Router::get_instance().publish(std::move(label_update));
   }
 
-  xTaskCreatePinnedToCore(&uActor::ActorRuntime::LuaExecutor::os_task,
-                          "LUA_EXECUTOR", 8192, &executor_settings,
-                          configMAX_PRIORITIES - 1, nullptr, 1);
-
 #if CONFIG_ENABLE_GPIO_ACTOR
   xTaskCreatePinnedToCore(&uActor::ESP32::IO::GPIOActor::os_task, "GPIO_ACTOR",
                           4192, nullptr, 5, nullptr, 0);
@@ -365,14 +222,14 @@ void main_task(void *) {
   auto tcp_task_args =
       uActor::Remote::TCPAddressArguments("0.0.0.0", 1337, "", 0);
 
+  // The TCP forwarder is split into the main task and a select loop.
+  // Those could most likely be merged.
   xTaskCreatePinnedToCore(&uActor::Remote::TCPForwarder::os_task, "TCP", 4192,
                           reinterpret_cast<void *>(&tcp_task_args), 4, nullptr,
                           0);
-
   while (!tcp_task_args.tcp_forwarder) {
-    vTaskDelay(1000);
+    vTaskDelay(100);
   }
-
   xTaskCreatePinnedToCore(
       &uActor::Remote::TCPForwarder::tcp_reader_task, "TCP2", 6144,
       reinterpret_cast<void *>(tcp_task_args.tcp_forwarder), 4, nullptr, 0);

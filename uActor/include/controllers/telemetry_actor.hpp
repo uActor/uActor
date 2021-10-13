@@ -1,5 +1,4 @@
-#ifndef UACTOR_INCLUDE_CONTROLLERS_TELEMETRY_ACTOR_HPP_
-#define UACTOR_INCLUDE_CONTROLLERS_TELEMETRY_ACTOR_HPP_
+#pragma once
 
 #include <string>
 #include <string_view>
@@ -28,5 +27,3 @@ class TelemetryActor : public ActorRuntime::NativeActor {
 };
 
 }  // namespace uActor::Controllers
-
-#endif  // UACTOR_INCLUDE_CONTROLLERS_TELEMETRY_ACTOR_HPP_

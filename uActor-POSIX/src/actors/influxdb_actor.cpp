@@ -68,5 +68,6 @@ void InfluxDBActor::receive_data_point(const PubSub::Publication& publication) {
     }
   }
 }
+
 }  // namespace uActor::Database
 #endif

@@ -157,6 +157,18 @@ class Executor : public ExecutorApi {
                Allocator<std::pair<const uint32_t, ActorType>>>>
       actors;
 
+  std::string_view node_id() {
+    return std::string_view(_node_id);
+  }
+
+  std::string_view actor_type() {
+    return std::string_view(_actor_type);
+  }
+
+  std::string_view instance_id() {
+    return std::string_view(_instance_id);
+  }
+
  private:
   AString _node_id;
   AString _actor_type;

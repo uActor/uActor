@@ -7,10 +7,11 @@ namespace uActor::ActorRuntime {
 
 ManagedActor::RuntimeReturnValue ManagedNativeActor::receive(
     PubSub::Publication&& p) {
+  if (actor == nullptr) {
+    return RuntimeReturnValue::INITIALIZATION_ERROR;
+  }
   actor->receive(std::move(p));
   return RuntimeReturnValue::OK;
 }
 
-std::unordered_map<std::string, ManagedNativeActor::ConstructionMethod>
-    ManagedNativeActor::actor_constructors;
 }  // namespace uActor::ActorRuntime

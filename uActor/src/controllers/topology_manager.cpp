@@ -10,21 +10,20 @@ TopologyManager::TopologyManager(
     ActorRuntime::ManagedNativeActor* actor_wrapper, std::string_view node_id,
     std::string_view actor_type, std::string_view instance_id)
     : ActorRuntime::NativeActor(actor_wrapper, node_id, actor_type,
-                                instance_id) {
-  subscribe(PubSub::Filter{
-      PubSub::Constraint("type", "peer_announcement"),
-      PubSub::Constraint("node_id", std::string(this->node_id()),
-                         PubSub::ConstraintPredicates::EQ, true)});
-  subscribe(PubSub::Filter{
-      PubSub::Constraint{"type", "peer_update"},
-      PubSub::Constraint{"publisher_node_id", std::string(node_id)}});
-  subscribe(PubSub::Filter{
-      PubSub::Constraint("type", "add_static_peer"),
-      PubSub::Constraint("node_id", std::string(this->node_id()))});
-}
+                                instance_id) {}
 
 void TopologyManager::receive(const PubSub::Publication& publication) {
   if (publication.get_str_attr("type") == "init") {
+    subscribe(PubSub::Filter{
+        PubSub::Constraint("type", "peer_announcement"),
+        PubSub::Constraint("node_id", std::string(node_id()),
+                           PubSub::ConstraintPredicates::EQ, true)});
+    subscribe(PubSub::Filter{
+        PubSub::Constraint{"type", "peer_update"},
+        PubSub::Constraint{"publisher_node_id", std::string(node_id())}});
+    subscribe(
+        PubSub::Filter{PubSub::Constraint("type", "add_static_peer"),
+                       PubSub::Constraint("node_id", std::string(node_id()))});
     {
       auto p = PubSub::Publication();
       p.set_attr("node_id", node_id());

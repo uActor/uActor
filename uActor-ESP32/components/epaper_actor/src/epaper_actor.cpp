@@ -8,12 +8,7 @@ namespace uActor::ESP32::Notifications {
 EPaperNotificationActor::EPaperNotificationActor(
     ActorRuntime::ManagedNativeActor* actor_wrapper, std::string_view node_id,
     std::string_view actor_type, std::string_view instance_id)
-    : NativeActor(actor_wrapper, node_id, actor_type, instance_id) {
-  display.init(false);
-  display.setRotation(0);
-  display.fillScreen(EPD_WHITE);
-  display.update();
-}
+    : NativeActor(actor_wrapper, node_id, actor_type, instance_id) {}
 
 void EPaperNotificationActor::receive(const PubSub::Publication& publication) {
   if (publication.get_str_attr("type") == "notification") {
@@ -69,6 +64,10 @@ void EPaperNotificationActor::receive_notification(
 }
 
 void EPaperNotificationActor::init() {
+  display.init(false);
+  display.setRotation(0);
+  display.fillScreen(EPD_WHITE);
+  display.update();
   subscribe(
       PubSub::Filter{PubSub::Constraint("command", "scroll_notifications"),
                      PubSub::Constraint("node_id", this->node_id().data())});

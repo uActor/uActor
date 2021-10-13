@@ -17,20 +17,23 @@ DeploymentManager::DeploymentManager(
     ActorRuntime::ManagedNativeActor* actor_wrapper, std::string_view node_id,
     std::string_view actor_type, std::string_view instance_id)
     : ActorRuntime::NativeActor(actor_wrapper, node_id, actor_type,
-                                instance_id) {
-  subscribe(PubSub::Filter{PubSub::Constraint{"node_id", std::string(node_id)},
-                           PubSub::Constraint{"type", "label_update"}});
-  subscribe(PubSub::Filter{PubSub::Constraint{"node_id", std::string(node_id)},
-                           PubSub::Constraint{"type", "label_get"}});
-  subscribe(
-      PubSub::Filter{PubSub::Constraint{"node_id", std::string(node_id)},
-                     PubSub::Constraint{"type", "unmanaged_actor_update"}});
-  subscribe(PubSub::Filter{PubSub::Constraint{"node_id", std::string(node_id)},
-                           PubSub::Constraint{"type", "executor_update"}});
-}
+                                instance_id) {}
 
 void DeploymentManager::receive(const PubSub::Publication& publication) {
-  if (publication.get_str_attr("type") == "deployment") {
+  if (publication.get_str_attr("type") == "init") {
+    subscribe(
+        PubSub::Filter{PubSub::Constraint{"node_id", std::string(node_id())},
+                       PubSub::Constraint{"type", "label_update"}});
+    subscribe(
+        PubSub::Filter{PubSub::Constraint{"node_id", std::string(node_id())},
+                       PubSub::Constraint{"type", "label_get"}});
+    subscribe(
+        PubSub::Filter{PubSub::Constraint{"node_id", std::string(node_id())},
+                       PubSub::Constraint{"type", "unmanaged_actor_update"}});
+    subscribe(
+        PubSub::Filter{PubSub::Constraint{"node_id", std::string(node_id())},
+                       PubSub::Constraint{"type", "executor_update"}});
+  } else if (publication.get_str_attr("type") == "deployment") {
     receive_deployment(publication);
   } else if (publication.get_str_attr("category") == "actor_lifetime") {
     receive_lifetime_event(publication);

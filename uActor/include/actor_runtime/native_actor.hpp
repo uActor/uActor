@@ -5,6 +5,7 @@
 #include <string_view>
 
 #include "managed_actor.hpp"
+#include "native_actor_registry.hpp"
 #include "pubsub/publication.hpp"
 
 namespace uActor::ActorRuntime {
