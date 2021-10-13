@@ -12,12 +12,21 @@ cache:
 variables:
   DEBIAN_FRONTEND: noninteractive
 
-lint:
+lint_cpplint:
   before_script:
     - apt update -y && apt upgrade -y && apt install -y git ssh-client build-essential cmake ninja-build python3 python3-pip clang-tidy && pip3 install conan cpplint && git submodule sync --recursive && git submodule update --init --recursive
   stage: lint_test
   image: ubuntu:20.04
-  script: CONAN_USER_HOME=$PWD/conan make lint
+  script: CONAN_USER_HOME=$PWD/conan make lint_cpplint
+
+lint_clang_tidy_posix:
+  before_script:
+    - apt update -y && apt upgrade -y && apt install -y git ssh-client build-essential cmake ninja-build python3 python3-pip clang-tidy && pip3 install conan cpplint && git submodule sync --recursive && git submodule update --init --recursive
+  stage: lint_test
+  image: ubuntu:20.04
+  rules:
+    - allow_failure: true
+  script: CONAN_USER_HOME=$PWD/conan make lint_clang-tidy_posix
 
 test:
   before_script:
