@@ -67,6 +67,8 @@ void HTTPIngress::periodic_cleanup() {
   for (const auto& [request_id, request] : active_requests) {
     if ((request.start_time + std::chrono::seconds(5)) < cutoff) {
       Support::Logger::warning("HTTP-INGRESS", "Request timed out.");
+      request.res->writeStatus("504");
+      request.res->end();
       to_delete.push_back(request_id);
     }
   }
