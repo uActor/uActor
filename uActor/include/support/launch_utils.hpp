@@ -18,7 +18,8 @@ struct LaunchUtils {
             uActor::PubSub::Constraint{"lifetime_actor_type", actor_type},
             uActor::PubSub::Constraint{"lifetime_instance_id", "0"},
             uActor::PubSub::Constraint{"publisher_node_id",
-                                       uActor::BoardFunctions::NODE_ID}});
+                                       uActor::BoardFunctions::NODE_ID}},
+        PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "start_helper", "1"));
 
     auto spawn_message = uActor::PubSub::Publication(
         uActor::BoardFunctions::NODE_ID, "root", "0");
@@ -47,7 +48,8 @@ struct LaunchUtils {
             uActor::PubSub::Constraint{"update_actor_type", "lua_executor"},
             uActor::PubSub::Constraint{"update_instance_id", "1"},
             uActor::PubSub::Constraint{"publisher_node_id",
-                                       uActor::BoardFunctions::NODE_ID}});
+                                       uActor::BoardFunctions::NODE_ID}},
+        PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "start_helper", "1"));
     uActor::ActorRuntime::ExecutorSettings* params =
         new uActor::ActorRuntime::ExecutorSettings{
             .node_id = uActor::BoardFunctions::NODE_ID, .instance_id = "1"};
@@ -69,7 +71,8 @@ struct LaunchUtils {
             uActor::PubSub::Constraint{"update_actor_type", "native_executor"},
             uActor::PubSub::Constraint{"update_instance_id", instance_id},
             uActor::PubSub::Constraint{"publisher_node_id",
-                                       uActor::BoardFunctions::NODE_ID}});
+                                       uActor::BoardFunctions::NODE_ID}},
+        PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "start_helper", "1"));
     uActor::ActorRuntime::ExecutorSettings* params =
         new uActor::ActorRuntime::ExecutorSettings{
             .node_id = uActor::BoardFunctions::NODE_ID,

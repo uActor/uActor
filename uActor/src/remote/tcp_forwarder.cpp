@@ -49,25 +49,22 @@ using uActor::Support::Logger;
 
 TCPForwarder::TCPForwarder(TCPAddressArguments address_arguments)
     : handle(PubSub::Router::get_instance().new_subscriber()),
-      _address_arguments(address_arguments) {
+    _address_arguments(address_arguments) {
   PubSub::Filter primary_filter{
       PubSub::Constraint(std::string("node_id"), BoardFunctions::NODE_ID),
       PubSub::Constraint(std::string("actor_type"), "forwarder"),
       PubSub::Constraint(std::string("instance_id"), "1")};
-  forwarder_subscription_id = handle.subscribe(primary_filter);
+  forwarder_subscription_id = handle.subscribe(
+      primary_filter,
+      PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "tcp_forwarder", "1"));
 
-  PubSub::Filter peer_announcements{
+  PubSub::Filter connection_requests{
       PubSub::Constraint(std::string("type"), "tcp_client_connect"),
       PubSub::Constraint(std::string("node_id"), BoardFunctions::NODE_ID),
   };
-  peer_announcement_subscription_id = handle.subscribe(peer_announcements);
-
-  PubSub::Filter subscription_update{
-      PubSub::Constraint(std::string("type"), "local_subscription_update"),
-      PubSub::Constraint(std::string("publisher_node_id"),
-                         BoardFunctions::NODE_ID),
-  };
-  subscription_update_subscription_id = handle.subscribe(subscription_update);
+  peer_announcement_subscription_id = handle.subscribe(
+      connection_requests,
+      PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "tcp_forwarder", "1"));
 }
 
 void TCPForwarder::os_task(void* args) {
@@ -94,15 +91,6 @@ void TCPForwarder::receive(PubSub::MatchedPublication&& m) {
   if (m.subscription_id == forwarder_subscription_id) {
     Logger::warning("TCP-FORWARDER", "Received unhandled message!");
     return;
-  }
-
-  if (m.subscription_id == subscription_update_subscription_id) {
-    Logger::trace("TCP-FORWARDER", "Received subscription update");
-    if (m.publication.get_str_attr("type") == "local_subscription_update") {
-      for (auto& receiver : remotes) {
-        receiver.second.handle_subscription_update_notification(m.publication);
-      }
-    }
   }
 
   if (m.publication.get_str_attr("type") == "local_subscription_added") {
@@ -200,7 +188,9 @@ void TCPForwarder::remove_local_subscription(uint32_t local_id,
 
 uint32_t TCPForwarder::add_local_subscription(uint32_t local_id,
                                               PubSub::Filter&& filter) {
-  uint32_t sub_id = handle.subscribe(std::move(filter));
+  uint32_t sub_id = handle.subscribe(
+      std::move(filter),
+      PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "tcp_forwarder", "1"));
   auto entry = subscription_mapping.find(sub_id);
   if (entry != subscription_mapping.end()) {
     entry->second.insert(local_id);
@@ -213,7 +203,9 @@ uint32_t TCPForwarder::add_local_subscription(uint32_t local_id,
 uint32_t TCPForwarder::add_remote_subscription(uint32_t local_id,
                                                PubSub::Filter&& filter,
                                                std::string node_id) {
-  uint32_t sub_id = handle.subscribe(std::move(filter), node_id);
+  uint32_t sub_id =
+      handle.subscribe(std::move(filter),
+                       PubSub::ActorIdentifier(node_id, "tcp_forwarder", "1"));
   auto entry = subscription_mapping.find(sub_id);
   if (entry != subscription_mapping.end()) {
     entry->second.insert(local_id);

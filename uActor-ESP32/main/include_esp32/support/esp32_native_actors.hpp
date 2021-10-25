@@ -29,8 +29,8 @@ struct ESP32NativeActors {
 #endif
 #if CONFIG_ENABLE_BME280
     ActorRuntime::NativeActorRegistry::register_actor_type(
-        "bme280_sensor",
-        ActorRuntime::NativeActor::create_instance<ESP32::Sensors::BME280Actor>);
+        "bme280_sensor", ActorRuntime::NativeActor::create_instance<
+                             ESP32::Sensors::BME280Actor>);
 #endif
 #if CONFIG_ENABLE_SCD30
     ActorRuntime::NativeActorRegistry::register_actor_type(

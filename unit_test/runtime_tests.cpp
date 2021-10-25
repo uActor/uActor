@@ -70,7 +70,7 @@ PubSub::ReceiverHandle subscription_handle_with_default_subscription() {
       PubSub::Constraint(std::string("node_id"), "node_1"),
       PubSub::Constraint(std::string("actor_type"), "root"),
       PubSub::Constraint(std::string("instance_id"), "1")};
-  uint32_t root_subscription_id = root_handle.subscribe(primary_filter);
+  uint32_t root_subscription_id = root_handle.subscribe(primary_filter, PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "test", "1"));
   return std::move(root_handle);
 }
 
@@ -360,7 +360,7 @@ end)";
 
   PubSub::Filter primary_filter{
       PubSub::Constraint("category", "actor_lifetime")};
-  lifetime_handle.subscribe(primary_filter);
+  lifetime_handle.subscribe(primary_filter, PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "test", "1"));
 
   usleep(1000);
 
@@ -402,7 +402,7 @@ TEST(RuntimeSystem, spawn_failure_syntax) {
 
   auto root_handle = subscription_handle_with_default_subscription();
   root_handle.subscribe(
-      PubSub::Filter{PubSub::Constraint{"type", "actor_exit"}});
+      PubSub::Filter{PubSub::Constraint{"type", "actor_exit"}}, PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "test", "1"));
 
   auto executors = start_executor_threads();
 
@@ -426,7 +426,7 @@ TEST(RuntimeSystem, spawn_failure_no_receive) {
 
   auto root_handle = subscription_handle_with_default_subscription();
   root_handle.subscribe(
-      PubSub::Filter{PubSub::Constraint{"type", "actor_exit"}});
+      PubSub::Filter{PubSub::Constraint{"type", "actor_exit"}}, PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "test", "1"));
 
   auto executors = start_executor_threads();
 
@@ -451,7 +451,7 @@ TEST(RuntimeSystem, spawn_failure_bad_call) {
 
   auto root_handle = subscription_handle_with_default_subscription();
   root_handle.subscribe(
-      PubSub::Filter{PubSub::Constraint{"type", "actor_exit"}});
+      PubSub::Filter{PubSub::Constraint{"type", "actor_exit"}}, PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "test", "1"));
 
   auto executors = start_executor_threads();
 
@@ -474,7 +474,7 @@ TEST(RuntimeSystem, runtime_failure) {
   end)";
   auto root_handle = subscription_handle_with_default_subscription();
   root_handle.subscribe(
-      PubSub::Filter{PubSub::Constraint{"type", "actor_exit"}});
+      PubSub::Filter{PubSub::Constraint{"type", "actor_exit"}}, PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "test", "1"));
 
   auto executors = start_executor_threads();
 

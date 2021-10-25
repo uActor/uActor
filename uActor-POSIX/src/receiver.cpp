@@ -69,10 +69,10 @@ void Receiver::publish(MatchedPublication&& publication) {
   queue->send_message(std::move(publication));
 }
 
-uint32_t Receiver::subscribe(Filter&& f, std::string node_id,
+uint32_t Receiver::subscribe(Filter&& f, const ActorIdentifier& subscriber,
                              uint8_t priority) {
   uint32_t sub_id =
-      router->add_subscription(std::move(f), this, node_id, priority);
+      router->add_subscription(std::move(f), this, subscriber, priority);
   subscriptions.insert(sub_id);
   return sub_id;
 }

@@ -167,6 +167,20 @@ std::vector<std::string> Router::subscriptions_for(
   return serialized_sub;
 }
 
+std::vector<std::reference_wrapper<const Router::ASubscription>>
+Router::find_subscriptions(std::function<bool(const Filter&)> filter) {
+  std::map<std::string, std::vector<Constraint>> example_constraints;
+
+  std::vector<std::reference_wrapper<const Router::ASubscription>> result;
+
+  for (const auto& [sub_id, sub] : subscriptions) {
+    if (filter(*Filter::deserialize(sub.filter.serialize()))) {
+      result.push_back(sub);
+    }
+  }
+  return result;
+}
+
 uint32_t Router::find_sub_id(Filter&& filter) {
   std::shared_lock lck(mtx);
   if (auto it = std::find_if(
@@ -181,11 +195,16 @@ uint32_t Router::find_sub_id(Filter&& filter) {
 uint32_t Router::number_of_subscriptions() { return subscriptions.size(); }
 
 uint32_t Router::add_subscription(Filter&& f, Receiver* r,
-                                  std::string subscriber_node_id,
+                                  const ActorIdentifier& subscriber,
                                   uint8_t priority) {
   std::unique_lock lck(mtx);
+
+  if (is_meta_subscription(f)) {
+    handle_meta_subscription(f, subscriber);
+  }
+
   auto [res_it, _inserted] = peer_node_ids.try_emplace(
-      AString(subscriber_node_id), false, next_node_id++);
+      AString(subscriber.node_id), false, next_node_id++);
   uint32_t internal_node_id = res_it->second.second;
 
   if (auto it = std::find_if(subscriptions.begin(), subscriptions.end(),
@@ -253,8 +272,36 @@ uint32_t Router::add_subscription(Filter&& f, Receiver* r,
     }
 
     publish_subscription_added(
-        f, AString(subscriber_node_id, make_allocator<AString>()), "");
+        f, AString(subscriber.node_id, make_allocator<AString>()), "");
     return id;
+  }
+}
+
+bool Router::is_meta_subscription(const Filter& filter) {
+  for (auto& constraint : filter.required_constraints()) {
+    if (constraint.attribute() == "type" &&
+        std::holds_alternative<std::string_view>(constraint.operand()) &&
+        constraint.predicate() == ConstraintPredicates::EQ &&
+        std::get<std::string_view>(constraint.operand()) ==
+            "local_subscription_added") {
+      return true;
+    }
+  }
+  return false;
+}
+
+void Router::handle_meta_subscription(const Filter& filter,
+                                      const ActorIdentifier& subscriber) {
+  auto accept_all = [](const Filter& filter) { return true; };
+
+  for (auto sub : find_subscriptions(accept_all)) {
+    auto pub = Publication(BoardFunctions::NODE_ID, "router", "1");
+    pub.set_attr("node_id", subscriber.node_id);
+    pub.set_attr("actor_type", subscriber.actor_type);
+    pub.set_attr("instance_id", subscriber.instance_id);
+    pub.set_attr("type", "local_subscription_exists");
+    pub.set_attr("serialized_subscription", sub.get().filter.serialize());
+    publish_internal(std::move(pub));
   }
 }
 

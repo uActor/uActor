@@ -39,7 +39,9 @@ size_t write_function(void* ptr, size_t size, size_t nmemb, std::string* data) {
 HTTPClientActor::HTTPClientActor()
     : handle(PubSub::Router::get_instance().new_subscriber()) {
   PubSub::Filter request_filter{PubSub::Constraint("type", "http_request")};
-  handle.subscribe(request_filter);
+  handle.subscribe(
+      request_filter,
+      PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "http_client", "1"));
   this->_request_thread = std::thread(&HTTPClientActor::thread_function, this);
 
   PubSub::Publication p{BoardFunctions::NODE_ID, HTTP_ACTOR_NAME, "1"};

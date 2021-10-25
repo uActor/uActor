@@ -38,7 +38,7 @@ TEST(FORWARDING, data_handling_base) {
   auto subscription_handle = PubSub::Router::get_instance().new_subscriber();
 
   PubSub::Filter primary_filter{PubSub::Constraint(std::string("foo"), "bar")};
-  subscription_handle.subscribe(primary_filter);
+  subscription_handle.subscribe(primary_filter, PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "test", "1"));
   FakeForwarder f;
   Remote::RemoteConnection connection{0, 0, "127.0.0.1", 1234, Remote::ConnectionRole::CLIENT, &f};
 
@@ -94,7 +94,7 @@ TEST(FORWARDING, data_handling_split_data) {
   auto subscription_handle = PubSub::Router::get_instance().new_subscriber();
 
   PubSub::Filter primary_filter{PubSub::Constraint(std::string("foo"), "bar")};
-  subscription_handle.subscribe(primary_filter);
+  subscription_handle.subscribe(primary_filter, PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "test", "1"));
 
   FakeForwarder f;
   Remote::RemoteConnection connection{0, 0, "127.0.0.1", 1234, Remote::ConnectionRole::CLIENT, &f};
@@ -149,7 +149,7 @@ TEST(FORWARDING, data_handling_split_message_size) {
   auto subscription_handle = PubSub::Router::get_instance().new_subscriber();
 
   PubSub::Filter primary_filter{PubSub::Constraint(std::string("foo"), "bar")};
-  subscription_handle.subscribe(primary_filter);
+  subscription_handle.subscribe(primary_filter, PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "test", "1"));
 
   FakeForwarder f;
   Remote::RemoteConnection connection{0, 0, "127.0.0.1", 1234, Remote::ConnectionRole::CLIENT, &f};
@@ -202,7 +202,7 @@ TEST(FORWARDING, mixed_data) {
   auto subscription_handle = PubSub::Router::get_instance().new_subscriber();
 
   PubSub::Filter primary_filter{PubSub::Constraint(std::string("foo"), "bar")};
-  subscription_handle.subscribe(primary_filter);
+  subscription_handle.subscribe(primary_filter, PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "test", "1"));
 
   FakeForwarder f;
   Remote::RemoteConnection connection{0, 0, "127.0.0.1", 1234, Remote::ConnectionRole::CLIENT, &f};

@@ -18,7 +18,7 @@ TEST(ROUTERV3, base) {
       Constraint(std::string("node_id"), "master_node"),
       Constraint(std::string("actor_type"), "master_type"),
       Constraint(std::string("instance_id"), "master_instance")};
-  size_t master_subscription_id = r.subscribe(primary_filter);
+  size_t master_subscription_id = r.subscribe(primary_filter, PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "test", "1"));
 
   auto result0 = r.receive(0);
   ASSERT_FALSE(result0);
@@ -46,7 +46,7 @@ TEST(ROUTERV3, alias) {
   Router router{};
   auto r = router.new_subscriber();
   size_t sub_id = r.subscribe(
-      Filter{Constraint{"foo", "bar"}, Constraint{"asdf", "ghjkl", ConstraintPredicates::Predicate::EQ, true}});
+      Filter{Constraint{"foo", "bar"}, Constraint{"asdf", "ghjkl", ConstraintPredicates::Predicate::EQ, true}}, PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "test", "1"));
 
   auto result0 = r.receive(0);
   ASSERT_FALSE(result0);
@@ -70,7 +70,7 @@ TEST(ROUTERV3, alias) {
 TEST(ROUTERV3, sub_all) {
   Router router{};
   auto r = router.new_subscriber();
-  size_t sub_id = r.subscribe(Filter{});
+  size_t sub_id = r.subscribe(Filter{}, PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "test", "1"));
 
   auto result0 = r.receive(0);
   ASSERT_TRUE(result0);
@@ -102,7 +102,7 @@ TEST(ROUTERV3, sub_all) {
 TEST(ROUTERV3, integer_simple) {
   Router router{};
   auto r = router.new_subscriber();
-  size_t sub_id = r.subscribe(Filter{Constraint{"test_number", 1}});
+  size_t sub_id = r.subscribe(Filter{Constraint{"test_number", 1}}, PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "test", "1"));
 
   auto result0 = r.receive(0);
   ASSERT_FALSE(result0);
@@ -136,7 +136,7 @@ TEST(ROUTERV3, integer_advanced) {
                  ConstraintPredicates::Predicate::LE},
       Constraint{"test_number_less_equal_less", 50,
                  ConstraintPredicates::Predicate::LE},
-  });
+  }, PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "test", "1"));
 
   auto result0 = r.receive(0);
   ASSERT_FALSE(result0);
@@ -164,7 +164,7 @@ TEST(ROUTERV3, integer_advanced) {
 TEST(ROUTERV3, float_simple) {
   Router router{};
   auto r = router.new_subscriber();
-  size_t sub_id = r.subscribe(Filter{Constraint{"test_number", 1.0f}});
+  size_t sub_id = r.subscribe(Filter{Constraint{"test_number", 1.0f}}, PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "test", "1"));
 
   auto result0 = r.receive(0);
   ASSERT_FALSE(result0);
@@ -200,7 +200,7 @@ TEST(ROUTERV3, float_advanced) {
                  ConstraintPredicates::Predicate::LE},
       Constraint{"test_number_less_equal_less", 50.0f,
                  ConstraintPredicates::Predicate::LE},
-  });
+  }, PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "test", "1"));
 
   auto result0 = r.receive(0);
   ASSERT_FALSE(result0);
@@ -231,7 +231,7 @@ TEST(ROUTERV3, float_negative_match) {
   size_t sub_id = r.subscribe(Filter{
       Constraint{"test_number_less", 50.0f,
                  ConstraintPredicates::Predicate::LT},
-  });
+  }, PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "test", "1"));
 
   auto result0 = r.receive(0);
   ASSERT_FALSE(result0);
@@ -247,7 +247,7 @@ TEST(ROUTERV3, float_negative_match) {
 TEST(ROUTERV3, valid_optional) {
   Router router{};
   auto r = router.new_subscriber();
-  r.subscribe(Filter{Constraint{"opt", "ional",  ConstraintPredicates::Predicate::EQ, true}});
+  r.subscribe(Filter{Constraint{"opt", "ional",  ConstraintPredicates::Predicate::EQ, true}}, PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "test", "1"));
 
   auto result0 = r.receive(0);
   ASSERT_TRUE(result0);
@@ -272,7 +272,7 @@ TEST(ROUTERV3, valid_optional) {
 TEST(ROUTERV3, invalid_optional) {
   Router router{};
   auto r = router.new_subscriber();
-  r.subscribe(Filter{Constraint{"asdf", "bar"}, Constraint{"opt", "ional", ConstraintPredicates::Predicate::EQ, true}});
+  r.subscribe(Filter{Constraint{"asdf", "bar"}, Constraint{"opt", "ional", ConstraintPredicates::Predicate::EQ, true}}, PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "test", "1"));
 
   auto result0 = r.receive(0);
   ASSERT_FALSE(result0);
@@ -290,7 +290,7 @@ TEST(ROUTERV3, unsubscribe) {
   Router router{};
   auto r = router.new_subscriber();
 
-  uint32_t sub_id = r.subscribe(Filter{Constraint{"foo", "bar"}});
+  uint32_t sub_id = r.subscribe(Filter{Constraint{"foo", "bar"}}, PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "test", "1"));
   r.unsubscribe(sub_id);
 
   Publication p = Publication("sender_node", "sender_type", "sender_instance");
@@ -325,10 +325,10 @@ TEST(ROUTERV3, subscription_ids) {
   auto r = router.new_subscriber();
   auto r2 = router.new_subscriber();
 
-  size_t r11 = r.subscribe(Filter{Constraint{"foo", "bar"}});
-  size_t r21 = r.subscribe(Filter{Constraint{"foo", "bar"}});
-  size_t r12 = r.subscribe(Filter{Constraint{"bar", "baz"}});
-  size_t r22 = r.subscribe(Filter{Constraint{"bar", "baz"}});
+  size_t r11 = r.subscribe(Filter{Constraint{"foo", "bar"}}, PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "test", "1"));
+  size_t r21 = r.subscribe(Filter{Constraint{"foo", "bar"}}, PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "test", "1"));
+  size_t r12 = r.subscribe(Filter{Constraint{"bar", "baz"}}, PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "test", "1"));
+  size_t r22 = r.subscribe(Filter{Constraint{"bar", "baz"}}, PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "test", "1"));
 
   ASSERT_LT(r11, r12);
   ASSERT_LT(r21, r22);

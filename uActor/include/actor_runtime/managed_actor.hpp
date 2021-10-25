@@ -63,10 +63,7 @@ class ManagedActor {
         _instance_id(instance_id, allocator),
         message_queue(allocator),
         subscriptions(allocator),
-        api(api) {
-    add_default_subscription();
-    publish_creation_message();
-  }
+        api(api) {}
 
   ~ManagedActor() {
     for (uint32_t sub_id : subscriptions) {
@@ -128,6 +125,9 @@ class ManagedActor {
   static std::atomic<int> total_queue_size;
 #endif
 
+  void add_default_subscription();
+  void publish_creation_message();
+
  protected:
   virtual RuntimeReturnValue early_internal_initialize() = 0;
   virtual RuntimeReturnValue late_internal_initialize(std::string&& code) = 0;
@@ -168,8 +168,6 @@ class ManagedActor {
   bool waiting_for_code = false;
 
   void publish_exit_message(std::string exit_reason);
-  void publish_creation_message();
-  void add_default_subscription();
 };
 
 }  //  namespace uActor::ActorRuntime

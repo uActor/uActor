@@ -13,6 +13,7 @@
 #include <utility>
 #include <vector>
 
+#include "actor_identifier.hpp"
 #include "allocator_configuration.hpp"
 #include "constraint_index.hpp"
 #include "filter.hpp"
@@ -76,7 +77,7 @@ class Router {
   // TODO(raphaelhetzel): This is not cleaned up when a peer is removed.
   std::map<AString, std::pair<bool, uint32_t>, Support::StringCMP,
            Allocator<std::pair<const AString, std::pair<bool, uint32_t>>>>
-      peer_node_ids{{{AString("local"), {true, 1}}},
+      peer_node_ids{{{AString(BoardFunctions::NODE_ID), {true, 1}}},
                     make_allocator<
                         std::pair<const AString, std::pair<bool, uint32_t>>>()};
 
@@ -86,10 +87,9 @@ class Router {
 
   std::atomic<uint32_t> next_node_id{2};
 
-  uint32_t add_subscription(
-      Filter&& f, Receiver* r,
-      std::string subscriber_node_id = std::string("local"),
-      uint8_t priority = 0);
+  uint32_t add_subscription(Filter&& f, Receiver* r,
+                            const ActorIdentifier& subscriber,
+                            uint8_t priority = 0);
 
   uint32_t remove_subscription(uint32_t sub_id, Receiver* r,
                                std::string node_id = "");
@@ -104,6 +104,13 @@ class Router {
 
   void publish_local_subscription_added(const ASubscription& subscription);
   void publish_local_subscription_removed(const ASubscription& subscription);
+
+  bool is_meta_subscription(const Filter& filter);
+  void handle_meta_subscription(const Filter& filter,
+                                const ActorIdentifier& subscriber);
+
+  std::vector<std::reference_wrapper<const Router::ASubscription>>
+      find_subscriptions(std::function<bool(const Filter&)>);
 };
 
 }  // namespace uActor::PubSub

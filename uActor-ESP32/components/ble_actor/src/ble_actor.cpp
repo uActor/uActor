@@ -25,28 +25,32 @@ void BLEActor::os_task(void* args) {
   }
 }
 
-BLEActor::BLEActor() : handle(PubSub::Router::get_instance().new_subscriber()) {
+BLEActor::BLEActor()
+    : handle(PubSub::Router::get_instance().new_subscriber()),
+      own_identifier(BoardFunctions::NODE_ID, "ble_actor", "1") {
   ble_init();
 
   PubSub::Filter primary_filter{
       PubSub::Constraint(std::string("node_id"), BoardFunctions::NODE_ID),
       PubSub::Constraint(std::string("actor_type"), "core.io.ble"),
       PubSub::Constraint(std::string("instance_id"), "1")};
-  handle.subscribe(primary_filter);
+  handle.subscribe(primary_filter, own_identifier);
 
   PubSub::Filter ble_filter{PubSub::Constraint("type", "ble_advertisement")};
-  handle.subscribe(ble_filter);
+  handle.subscribe(ble_filter, own_identifier);
 
 #if CONFIG_UACTOR_OPTIMIZATIONS_BLE_FILTER
   handle.subscribe(
       PubSub::Filter{PubSub::Constraint("type", "local_subscription_added"),
                      PubSub::Constraint("publisher_node_id",
-                                        std::string(BoardFunctions::NODE_ID))});
+                                        std::string(BoardFunctions::NODE_ID))},
+      own_identifier);
 
   handle.subscribe(
       PubSub::Filter{PubSub::Constraint("type", "local_subscription_removed"),
                      PubSub::Constraint("publisher_node_id",
-                                        std::string(BoardFunctions::NODE_ID))});
+                                        std::string(BoardFunctions::NODE_ID))},
+      own_identifier);
 #endif
 
   PubSub::Publication p{BoardFunctions::NODE_ID, "core.io.ble", "1"};
@@ -83,7 +87,8 @@ void BLEActor::receive(PubSub::Publication&& publication) {
 #if CONFIG_UACTOR_OPTIMIZATIONS_BLE_FILTER
   } else if (publication.get_str_attr("type") == "local_subscription_removed") {
     handle_subscription_added(std::move(publication));
-  } else if (publication.get_str_attr("type") == "local_subscription_added") {
+  } else if (publication.get_str_attr("type") == "local_subscription_added" ||
+             publication.get_str_attr("type") == "local_subscription_exists") {
     handle_subscription_added(std::move(publication));
   }
 #else

@@ -132,7 +132,9 @@ class GPIOActor {
         PubSub::Constraint(std::string("node_id"), BoardFunctions::NODE_ID),
         PubSub::Constraint(std::string("actor_type"), "core.io.gpio"),
         PubSub::Constraint(std::string("?instance_id"), "1")};
-    handle.subscribe(primary_filter);
+    handle.subscribe(
+        primary_filter,
+        PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "core.io.gpio", "1"));
 
     for (int i = 0; i < 40; i++) {
       pins[i] = Pin(i);

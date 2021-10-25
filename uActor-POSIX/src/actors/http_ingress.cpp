@@ -15,7 +15,8 @@ void HTTPIngress::receive(const PubSub::Publication& publication) {
     stop_server();
   } else if (publication.get_str_attr("type") == "ingress_http_response") {
     handle_http_response(publication);
-  } else if (publication.get_str_attr("type") == "local_subscription_added") {
+  } else if (publication.get_str_attr("type") == "local_subscription_added" ||
+             publication.get_str_attr("type") == "local_subscription_exists") {
     auto subscription = parse_http_ingress_subscription(publication);
     if (subscription) {
       handle_subscription_added(std::move(*subscription));

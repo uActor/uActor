@@ -112,6 +112,7 @@ class BLEActor {
 
  private:
   PubSub::ReceiverHandle handle;
+  PubSub::ActorIdentifier own_identifier;
 
 #if CONFIG_UACTOR_OPTIMIZATIONS_BLE_FILTER
   static std::list<InternalBLEFilter> active_filters;

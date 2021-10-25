@@ -71,7 +71,9 @@ class Executor : public ExecutorApi {
         PubSub::Constraint(std::string("node_id"), node_id),
         PubSub::Constraint(std::string("actor_type"), actor_type),
         PubSub::Constraint(std::string("instance_id"), instance_id)};
-    executor_subscription_id = router_handle.subscribe(primary_filter);
+    executor_subscription_id = router_handle.subscribe(
+        primary_filter,
+        PubSub::ActorIdentifier(node_id, actor_type, instance_id));
   }
 
   Executor(const Executor&) = delete;
@@ -98,6 +100,9 @@ class Executor : public ExecutorApi {
             local_id, this, local_id, node_id, actor_type, actor_version,
             instance_id, std::forward<Args>(args)...);
         success) {
+      // TODO(raphaelhetzel) clean up
+      actor_it->second.add_default_subscription();
+      actor_it->second.publish_creation_message();
       auto result = actor_it->second.early_initialize();
       if (result.second < UINT32_MAX) {
         timeouts.emplace(BoardFunctions::timestamp() + result.second,
@@ -115,7 +120,16 @@ class Executor : public ExecutorApi {
 
   uint32_t add_subscription(uint32_t local_id, PubSub::Filter&& filter,
                             uint8_t priority) override {
-    uint32_t sub_id = router_handle.subscribe(filter, "local", priority);
+    auto actor_it = actors.find(local_id);
+    if (actor_it == actors.end()) {
+      return 0;
+    }
+    uint32_t sub_id = router_handle.subscribe(
+        filter,
+        PubSub::ActorIdentifier(actor_it->second.node_id(),
+                                actor_it->second.actor_type(),
+                                actor_it->second.instance_id()),
+        priority);
     auto entry = subscription_mapping.find(sub_id);
     if (entry != subscription_mapping.end()) {
       entry->second.insert(local_id);
@@ -157,17 +171,11 @@ class Executor : public ExecutorApi {
                Allocator<std::pair<const uint32_t, ActorType>>>>
       actors;
 
-  std::string_view node_id() {
-    return std::string_view(_node_id);
-  }
+  std::string_view node_id() { return std::string_view(_node_id); }
 
-  std::string_view actor_type() {
-    return std::string_view(_actor_type);
-  }
+  std::string_view actor_type() { return std::string_view(_actor_type); }
 
-  std::string_view instance_id() {
-    return std::string_view(_instance_id);
-  }
+  std::string_view instance_id() { return std::string_view(_instance_id); }
 
  private:
   AString _node_id;

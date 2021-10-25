@@ -22,10 +22,9 @@ class ReceiverHandle {
   explicit ReceiverHandle(Router* router)
       : receiver(std::make_unique<Receiver>(router)) {}
 
-  uint32_t subscribe(Filter f,
-                     std::string_view node_id = std::string_view("local"),
+  uint32_t subscribe(Filter f, const ActorIdentifier& subscriber,
                      uint8_t priority = 0) {
-    return receiver->subscribe(std::move(f), std::string(node_id), priority);
+    return receiver->subscribe(std::move(f), subscriber, priority);
   }
 
   void unsubscribe(uint32_t sub_id,
