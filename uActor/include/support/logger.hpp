@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <mutex>
+#include <set>
 #include <string_view>
 
 #define UACTOR_LOG_LEVEL_TRACE 6
@@ -20,6 +21,8 @@
 
 namespace uActor::Support {
 struct Logger {
+  static const std::set<std::string_view> valid_levels;
+
   template <typename... Args>
   static void trace(std::string_view component, Args... args) {
 #if LOG_LEVEL >= UACTOR_LOG_LEVEL_TRACE

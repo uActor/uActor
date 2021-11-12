@@ -31,7 +31,9 @@ class Executor : public ExecutorApi {
   using Allocator = RuntimeAllocatorConfiguration::Allocator<U>;
 
   // TODO(raphaelhetzel) this alias seems to cause issues (clang11 macOS
-  // segfault) template <typename U> constexpr static auto make_allocator =
+  // segfault)
+
+  // template <typename U> constexpr static auto make_allocator =
   //     RuntimeAllocatorConfiguration::make_allocator<U>;
 
   using AString =

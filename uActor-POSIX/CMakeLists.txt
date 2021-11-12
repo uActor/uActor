@@ -8,6 +8,8 @@ endif()
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(CONFIG_UACTOR_V8 OFF)
+
 # TODO(raphaelhetzel) this needs to be reenabled, requires code updates, was previsously in the wrong location in the configuration file
 #add_compile_options(-Werror -Wall -Wextra -pedantic)
 

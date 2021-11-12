@@ -15,6 +15,9 @@
 #include "actor_runtime/managed_actor.hpp"
 #include "actor_runtime/managed_native_actor.hpp"
 #include "actor_runtime/native_executor.hpp"
+#if CONFIG_UACTOR_V8
+#include "actor_runtime/v8/executor.hpp"
+#endif
 #include "remote/remote_connection.hpp"
 #include "remote/tcp_forwarder.hpp"
 #include "support/core_native_actors.hpp"
@@ -254,6 +257,14 @@ int main(int arg_count, char** args) {
             return std::thread(&uActor::ActorRuntime::LuaExecutor::os_task,
                                params);
           });
+#if CONFIG_UACTOR_V8
+  auto v8_executor =
+      uActor::Support::LaunchUtils::await_start_v8_executor<std::thread>(
+          [](uActor::ActorRuntime::ExecutorSettings* params) {
+            return std::thread(
+                &uActor::ActorRuntime::V8Runtime::V8Executor::os_task, params);
+          });
+#endif
 
 #if CONFIG_UACTOR_ENABLE_INFLUXDB_ACTOR
   if (arguments.count("influxdb-url")) {
