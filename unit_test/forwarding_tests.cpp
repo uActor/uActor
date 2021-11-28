@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "pubsub/router.hpp"
-#include "remote/remote_connection.hpp"
+#include "remote/tcp_connection.hpp"
 
 namespace uActor::Test {
 
@@ -40,7 +40,7 @@ TEST(FORWARDING, data_handling_base) {
   PubSub::Filter primary_filter{PubSub::Constraint(std::string("foo"), "bar")};
   subscription_handle.subscribe(primary_filter, PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "test", "1"));
   FakeForwarder f;
-  Remote::RemoteConnection connection{0, 0, "127.0.0.1", 1234, Remote::ConnectionRole::CLIENT, &f};
+  Remote::TCPConnection connection{0, 0, "127.0.0.1", 1234, Remote::ConnectionRole::CLIENT, &f};
 
   PubSub::Publication sub_update{"sender_node", "sender_type", "sender_id"};
   sub_update.set_attr("type", "subscription_update");
@@ -97,7 +97,7 @@ TEST(FORWARDING, data_handling_split_data) {
   subscription_handle.subscribe(primary_filter, PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "test", "1"));
 
   FakeForwarder f;
-  Remote::RemoteConnection connection{0, 0, "127.0.0.1", 1234, Remote::ConnectionRole::CLIENT, &f};
+  Remote::TCPConnection connection{0, 0, "127.0.0.1", 1234, Remote::ConnectionRole::CLIENT, &f};
 
   PubSub::Publication sub_update{"sender_node", "sender_type", "sender_id"};
   sub_update.set_attr("type", "subscription_update");
@@ -152,7 +152,7 @@ TEST(FORWARDING, data_handling_split_message_size) {
   subscription_handle.subscribe(primary_filter, PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "test", "1"));
 
   FakeForwarder f;
-  Remote::RemoteConnection connection{0, 0, "127.0.0.1", 1234, Remote::ConnectionRole::CLIENT, &f};
+  Remote::TCPConnection connection{0, 0, "127.0.0.1", 1234, Remote::ConnectionRole::CLIENT, &f};
 
   PubSub::Publication sub_update{"sender_node", "sender_type", "sender_id"};
   sub_update.set_attr("type", "subscription_update");
@@ -205,7 +205,7 @@ TEST(FORWARDING, mixed_data) {
   subscription_handle.subscribe(primary_filter, PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "test", "1"));
 
   FakeForwarder f;
-  Remote::RemoteConnection connection{0, 0, "127.0.0.1", 1234, Remote::ConnectionRole::CLIENT, &f};
+  Remote::TCPConnection connection{0, 0, "127.0.0.1", 1234, Remote::ConnectionRole::CLIENT, &f};
 
   PubSub::Publication sub_update{"sender_node", "sender_type", "sender_id"};
   sub_update.set_attr("type", "subscription_update");

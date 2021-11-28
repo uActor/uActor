@@ -49,7 +49,7 @@ using uActor::Support::Logger;
 
 TCPForwarder::TCPForwarder(TCPAddressArguments address_arguments)
     : handle(PubSub::Router::get_instance().new_subscriber()),
-    _address_arguments(address_arguments) {
+      _address_arguments(address_arguments) {
   PubSub::Filter primary_filter{
       PubSub::Constraint(std::string("node_id"), BoardFunctions::NODE_ID),
       PubSub::Constraint(std::string("actor_type"), "forwarder"),
@@ -229,7 +229,7 @@ void TCPForwarder::remove_remote_subscription(uint32_t local_id,
 }
 
 std::pair<bool, std::unique_lock<std::mutex>> TCPForwarder::write(
-    RemoteConnection* remote, std::shared_ptr<std::vector<char>> dataset,
+    TCPConnection* remote, std::shared_ptr<std::vector<char>> dataset,
     std::unique_lock<std::mutex>&& lock) {
   Controllers::TelemetryData::increase("written_traffic_size", dataset->size());
   remote->write_buffer.push(std::move(dataset));
@@ -395,7 +395,7 @@ void TCPForwarder::tcp_reader() {
     if (num_ready > 0) {
       std::vector<uint> to_delete;
       for (auto& remote_pair : remotes) {
-        uActor::Remote::RemoteConnection& remote = remote_pair.second;
+        uActor::Remote::TCPConnection& remote = remote_pair.second;
         if (remote.sock > 0) {
           if (FD_ISSET(remote.sock, &error_sockets)) {
             Logger::debug("TCP-FORWARDER", "Event Loop: Error");
@@ -528,7 +528,7 @@ void TCPForwarder::listen_handler() {
                         uActor::Remote::ConnectionRole::SERVER);
 }
 
-bool TCPForwarder::data_handler(uActor::Remote::RemoteConnection* remote) {
+bool TCPForwarder::data_handler(uActor::Remote::TCPConnection* remote) {
   remote->last_read_contact = BoardFunctions::seconds_timestamp();
   remote->len =
       recv(remote->sock, remote->rx_buffer.data(), remote->rx_buffer.size(), 0);
@@ -545,7 +545,7 @@ bool TCPForwarder::data_handler(uActor::Remote::RemoteConnection* remote) {
   }
 }
 
-bool TCPForwarder::write_handler(uActor::Remote::RemoteConnection* remote) {
+bool TCPForwarder::write_handler(uActor::Remote::TCPConnection* remote) {
 #if defined(MSG_NOSIGNAL)  // POSIX
   int flag = MSG_NOSIGNAL | MSG_DONTWAIT;
 #elif defined(SO_NOSIGPIPE)  // MacOS

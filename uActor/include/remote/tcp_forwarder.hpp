@@ -14,7 +14,7 @@
 #include "board_functions.hpp"
 #include "forwarder_api.hpp"
 #include "pubsub/router.hpp"
-#include "remote_connection.hpp"
+#include "tcp_connection.hpp"
 
 namespace uActor::Remote {
 
@@ -64,7 +64,7 @@ class TCPForwarder : public uActor::Remote::ForwarderSubscriptionAPI {
   TCPAddressArguments _address_arguments;
 
   uint32_t next_local_id = 0;
-  std::unordered_map<uint32_t, uActor::Remote::RemoteConnection> remotes;
+  std::unordered_map<uint32_t, uActor::Remote::TCPConnection> remotes;
   std::map<uint32_t, std::set<uint32_t>> subscription_mapping;
 
   std::mutex remote_mtx;
@@ -74,7 +74,7 @@ class TCPForwarder : public uActor::Remote::ForwarderSubscriptionAPI {
   int signal_socket_write_handler = 0;
 
   std::pair<bool, std::unique_lock<std::mutex>> write(
-      RemoteConnection* remote, std::shared_ptr<std::vector<char>> dataset,
+      TCPConnection* remote, std::shared_ptr<std::vector<char>> dataset,
       std::unique_lock<std::mutex>&& lock);
 
   void tcp_reader();
@@ -83,9 +83,9 @@ class TCPForwarder : public uActor::Remote::ForwarderSubscriptionAPI {
 
   void listen_handler();
 
-  bool data_handler(uActor::Remote::RemoteConnection* remote);
+  bool data_handler(uActor::Remote::TCPConnection* remote);
 
-  bool write_handler(uActor::Remote::RemoteConnection* remote);
+  bool write_handler(uActor::Remote::TCPConnection* remote);
 
   void keepalive();
 

@@ -28,16 +28,9 @@
 
 namespace uActor::Remote {
 
-RemoteConnection::RemoteConnection(uint32_t local_id, int32_t socket_id,
-                                   std::string remote_addr,
-                                   uint16_t remote_port,
-                                   ConnectionRole connection_role,
+RemoteConnection::RemoteConnection(uint32_t local_id,
                                    ForwarderSubscriptionAPI* handle)
     : local_id(local_id),
-      sock(socket_id),
-      partner_ip(remote_addr),
-      partner_port(remote_port),
-      connection_role(connection_role),
       handle(handle),
       forwarding_strategy(
           std::make_unique<SequenceNumberForwardingStrategy>()) {
@@ -79,9 +72,6 @@ RemoteConnection::~RemoteConnection() {
   }
 }
 
-void RemoteConnection::handle_subscription_update_notification(
-    const PubSub::Publication& /*update_message*/) {}
-
 void RemoteConnection::send_routing_info() {
   PubSub::Publication p{BoardFunctions::NODE_ID, "remote_connection",
                         std::to_string(local_id)};
@@ -113,65 +103,8 @@ void RemoteConnection::send_routing_info() {
   PubSub::Router::get_instance().publish(std::move(p));
 }
 
-void RemoteConnection::process_data(uint32_t len, char* data) {
-  uint32_t bytes_remaining = len;
-  while (bytes_remaining > 0) {
-    if (state == empty) {
-      if (bytes_remaining >= 4) {
-        publicaton_full_size =
-            ntohl(*reinterpret_cast<uint32_t*>(data + (len - bytes_remaining)));
-        publicaton_remaining_bytes = publicaton_full_size;
-        bytes_remaining -= 4;
-        state = waiting_for_data;
-      } else {
-        std::memcpy(size_buffer, data + (len - bytes_remaining),
-                    bytes_remaining);
-        size_field_remaining_bytes = 4 - bytes_remaining;
-        bytes_remaining = 0;
-        state = waiting_for_size;
-      }
-    } else if (state == waiting_for_size) {
-      if (bytes_remaining > size_field_remaining_bytes) {
-        std::memcpy(size_buffer + (4 - size_field_remaining_bytes),
-                    data + (len - bytes_remaining), size_field_remaining_bytes);
-        publicaton_full_size = ntohl(*reinterpret_cast<uint32_t*>(size_buffer));
-        publicaton_remaining_bytes = publicaton_full_size;
-        bytes_remaining -= size_field_remaining_bytes;
-        size_field_remaining_bytes = 0;
-        state = waiting_for_data;
-      } else {
-        std::memcpy(size_buffer + (4 - size_field_remaining_bytes),
-                    data + (len - bytes_remaining), bytes_remaining);
-        size_field_remaining_bytes =
-            size_field_remaining_bytes - bytes_remaining;
-        bytes_remaining = 0;
-      }
-    } else if (state == waiting_for_data) {
-      uint32_t to_move = std::min(publicaton_remaining_bytes, bytes_remaining);
-      publication_buffer.write(data + (len - bytes_remaining), to_move);
-      bytes_remaining -= to_move;
-      publicaton_remaining_bytes -= to_move;
-      if (publicaton_remaining_bytes == 0) {
-#if CONFIG_BENCHMARK_BREAKDOWN
-        timeval tv;
-        gettimeofday(&tv, NULL);
-#endif
-        std::optional<PubSub::Publication> p;
-        if (publicaton_full_size > 0) {
-          p = publication_buffer.build();
-        }
-        if (p) {
-          process_remote_publication(std::move(*p));
-        }
-        publication_buffer = PubSub::PublicationFactory();
-        state = empty;
-        assert(publicaton_remaining_bytes == 0);
-      }
-    }
-  }
-}
-
-void RemoteConnection::process_remote_publication(PubSub::Publication&& p) {
+void RemoteConnection::process_remote_publication(PubSub::Publication&& p,
+                                                  size_t encoded_length) {
   if (p.has_attr("publisher_node_id") &&
       p.get_str_attr("publisher_node_id") != BoardFunctions::NODE_ID) {
     auto publisher_node_id = std::string(*p.get_str_attr("publisher_node_id"));
@@ -183,30 +116,30 @@ void RemoteConnection::process_remote_publication(PubSub::Publication&& p) {
         handle_remote_hello(std::move(p));
 #if CONFIG_UACTOR_ENABLE_TELEMETRY
         Controllers::TelemetryData::increase("sub_traffic_size",
-                                             publicaton_full_size);
+                                             encoded_length);
 #endif
       } else if (p.get_str_attr("type") == "subscriptions_added") {
         handle_remote_subscriptions_added(std::move(p));
 #if CONFIG_UACTOR_ENABLE_TELEMETRY
         Controllers::TelemetryData::increase("sub_traffic_size",
-                                             publicaton_full_size);
+                                             encoded_length);
 #endif
       } else if (p.get_str_attr("type") == "subscriptions_removed") {
         handle_remote_subscriptions_removed(std::move(p));
 #if CONFIG_UACTOR_ENABLE_TELEMETRY
         Controllers::TelemetryData::increase("sub_traffic_size",
-                                             publicaton_full_size);
+                                             encoded_length);
 #endif
       } else {
 #if CONFIG_UACTOR_ENABLE_TELEMETRY
         if (p.get_str_attr("type") == "deployment" ||
             p.get_str_attr("type") == "actor_code") {
           Controllers::TelemetryData::increase("deployment_traffic_size",
-                                               publicaton_full_size);
+                                               encoded_length);
           Controllers::TelemetryData::increase("deployment_traffic_number", 1);
         } else {
           Controllers::TelemetryData::increase("regular_traffic_size",
-                                               publicaton_full_size);
+                                               encoded_length);
           Controllers::TelemetryData::increase("regular_traffic_number", 1);
         }
 #endif
@@ -249,7 +182,7 @@ void RemoteConnection::process_remote_publication(PubSub::Publication&& p) {
           publisher_node_id.c_str(), partner_node_id.c_str());
 #if CONFIG_UACTOR_ENABLE_TELEMETRY
       Controllers::TelemetryData::increase("dropped_traffic_size",
-                                           publicaton_full_size);
+                                           encoded_length);
       Controllers::TelemetryData::increase("dropped_traffic_number", 1);
 #endif
     }
@@ -266,8 +199,18 @@ void RemoteConnection::handle_remote_subscriptions_added(
              *p.get_str_attr("serialized_subscriptions"), "&")) {
       auto deserialized = PubSub::Filter::deserialize(serialized);
       if (deserialized) {
+        auto current_subscription_rule = *deserialized;
+        bool skip = false;
+        for (auto& ingress_processor : ingress_subscription_processors) {
+          if (ingress_processor->process_added(&current_subscription_rule)) {
+            skip = true;
+          }
+        }
+        if (skip) {
+          continue;
+        }
         uint32_t sub_id = handle->add_remote_subscription(
-            local_id, PubSub::Filter(*deserialized), partner_node_id);
+            local_id, std::move(current_subscription_rule), partner_node_id);
         subscription_ids.insert(sub_id);
       }
     }
@@ -281,8 +224,18 @@ void RemoteConnection::handle_remote_subscriptions_removed(
              *p.get_str_attr("serialized_subscriptions"), "&")) {
       auto deserialized = PubSub::Filter::deserialize(serialized);
       if (deserialized) {
+        auto current_subscription_rule = *deserialized;
+        bool skip = false;
+        for (auto& ingress_processor : ingress_subscription_processors) {
+          if (ingress_processor->process_removed(&current_subscription_rule)) {
+            skip = true;
+          }
+        }
+        if (skip) {
+          continue;
+        }
         uint32_t sub_id = PubSub::Router::get_instance().find_sub_id(
-            std::move(*deserialized));
+            std::move(current_subscription_rule));
         handle->remove_remote_subscription(local_id, sub_id, partner_node_id);
         subscription_ids.erase(sub_id);
       }
