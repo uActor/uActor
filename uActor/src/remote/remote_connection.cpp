@@ -392,7 +392,8 @@ void RemoteConnection::handle_remote_hello(PubSub::Publication&& p) {
         std::make_unique<OptionalConstraintDrop>(
             BoardFunctions::NODE_ID, partner_node_id,
             std::set<PubSub::Constraint>{
-                {"node_id", BoardFunctions::NODE_ID}}));
+                {"node_id", BoardFunctions::NODE_ID,
+                 PubSub::ConstraintPredicates::Predicate::EQ, true}}));
 
     for (const auto& chunk : PubSub::Router::get_instance().subscriptions_for(
              partner_node_id,
