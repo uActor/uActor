@@ -20,6 +20,7 @@ class NodeIdAggregator;
 class ClusterBarrier;
 class ClusterAggregator;
 class OptionalConstraintDrop;
+class LeafNodeIdGateway;
 };  // namespace uActor::Remote
 
 namespace uActor::PubSub {
@@ -131,6 +132,7 @@ class Filter {
   friend class Remote::ClusterBarrier;
   friend class Remote::ClusterAggregator;
   friend class Remote::OptionalConstraintDrop;
+  friend class Remote::LeafNodeIdGateway;
   friend Router;
 };
 }  // namespace uActor::PubSub

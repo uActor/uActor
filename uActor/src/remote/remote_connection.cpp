@@ -2,6 +2,7 @@
 
 #ifdef ESP_IDF
 #include <sdkconfig.h>
+// CONFIG_UACTOR_IS_LEAF = 1
 #endif
 #if CONFIG_BENCHMARK_ENABLED
 #include <support/testbed.h>
@@ -12,7 +13,6 @@
 #include <string_view>
 #include <unordered_map>
 #include <unordered_set>
-#include <utility>
 
 #include "board_functions.hpp"
 #include "controllers/telemetry_data.hpp"
@@ -21,6 +21,7 @@
 #include "remote/sequence_number_forwarding_strategy.hpp"
 #include "remote/subscription_processors/cluster_aggregator.hpp"
 #include "remote/subscription_processors/cluster_barrier.hpp"
+#include "remote/subscription_processors/leaf_node_id_gateway.hpp"
 #include "remote/subscription_processors/node_id_aggregator.hpp"
 #include "remote/subscription_processors/node_local_filter_drop.hpp"
 #include "remote/subscription_processors/optional_constraint_drop.hpp"
@@ -394,6 +395,12 @@ void RemoteConnection::handle_remote_hello(PubSub::Publication&& p) {
             std::set<PubSub::Constraint>{
                 {"node_id", BoardFunctions::NODE_ID,
                  PubSub::ConstraintPredicates::Predicate::EQ, true}}));
+
+#ifdef CONFIG_UACTOR_IS_LEAF
+    ingress_subscription_processors.push_back(
+        std::make_unique<LeafNodeIdGateway>(BoardFunctions::NODE_ID,
+                                            partner_node_id));
+#endif
 
     for (const auto& chunk : PubSub::Router::get_instance().subscriptions_for(
              partner_node_id,
