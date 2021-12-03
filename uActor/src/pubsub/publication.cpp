@@ -401,4 +401,6 @@ Publication Publication::unwrap() const {
   return pub;
 }
 
+size_t Publication::size() const { return this->attributes->size(); }
+
 }  //  namespace uActor::PubSub

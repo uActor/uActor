@@ -14,6 +14,9 @@ target_include_directories(uActor PUBLIC "include")
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../vendor/lua ${CMAKE_CURRENT_BINARY_DIR}/lib_lua)
 target_link_libraries(uActor lib_lua)
 
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../vendor/wasm3_cpp/ ${CMAKE_CURRENT_BINARY_DIR}/wasm3_cpp)
+target_link_libraries(uActor wasm3_cpp)
+
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../vendor/msgpack ${CMAKE_CURRENT_BINARY_DIR}/lib_msgpack)
 target_link_libraries(uActor lib_msgpack)
 

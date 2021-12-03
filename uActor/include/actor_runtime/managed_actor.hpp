@@ -140,7 +140,7 @@ class ManagedActor {
                      PubSub::SubscriptionArguments arguments);
   void unsubscribe(uint32_t sub_id);
 
-  void publish(PubSub::Publication&& p);
+  void publish(PubSub::Publication&& p) const ;
   void republish(PubSub::Publication&& p);
   void delayed_publish(PubSub::Publication&& p, uint32_t delay);
   void enqueue_wakeup(uint32_t delay, std::string_view wakeup_id);

@@ -16,7 +16,7 @@ import yaml
 INTER_DEPLOYMENT_WAIT_TIME_MS = 5000
 MIN_DEPLOYMENT_LIFETIME = 10000
 # List of extensions which will be identified as binary code files
-BINARY_FILE_EXTENSIONS = [".wasm", ".o"]
+BINARY_FILE_EXTENSIONS = [".wat", ".o"]
 
 
 def main():
