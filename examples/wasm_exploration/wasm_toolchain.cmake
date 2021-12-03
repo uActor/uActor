@@ -16,5 +16,7 @@ set(CMAKE_EXECUTABLE_SUFFIX_CXX ".wat" CACHE INTERNAL "")
 
 add_compile_definitions(WASM32)
 
-#Building shared libraries is not supported with wasm
+# Building shared libraries is not supported with wasm
 set(BUILD_SHARED_LIBS OFF CACHE INTERNAL "")
+# Creating non Release versions creates Problems
+set(CMAKE_BUILD_TYPE Release CACHE INTERNAL ""
