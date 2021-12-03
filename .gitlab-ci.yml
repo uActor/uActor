@@ -34,7 +34,7 @@ test:
   stage: lint_test
   image: ubuntu:20.04
   rules:
-    - allow_failure: true
+    - allow_failure: false
   script: CONAN_USER_HOME=$PWD/conan make test
 
 build_linux_x64:
