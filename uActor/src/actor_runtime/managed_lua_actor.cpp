@@ -23,11 +23,14 @@ namespace uActor::ActorRuntime {
 
 ManagedLuaActor::~ManagedLuaActor() {
   uActor::Support::Logger::trace("MANAGED-LUA-ACTOR", "LUA Actor Stopped.");
-  lua_pushnil(state);
-  lua_setglobal(state, std::to_string(id()).data());
-  lua_pushnil(state);
-  lua_setglobal(state, (std::string("state_") + std::to_string(id())).c_str());
-  lua_gc(state, LUA_GCCOLLECT, 0);
+  if (initialized()) {
+    lua_pushnil(state);
+    lua_setglobal(state, std::to_string(id()).data());
+    lua_pushnil(state);
+    lua_setglobal(state,
+                  (std::string("state_") + std::to_string(id())).c_str());
+    lua_gc(state, LUA_GCCOLLECT, 0);
+  }
 }
 
 ManagedActor::RuntimeReturnValue ManagedLuaActor::receive(

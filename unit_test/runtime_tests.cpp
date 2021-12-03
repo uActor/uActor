@@ -3,9 +3,9 @@
 
 #include <thread>
 
+#include "actor_runtime/code_store_actor.hpp"
 #include "actor_runtime/lua_executor.hpp"
 #include "actor_runtime/native_executor.hpp"
-#include "actor_runtime/code_store_actor.hpp"
 #include "pubsub/publication.hpp"
 #include "pubsub/receiver_handle.hpp"
 #include "pubsub/router.hpp"
@@ -13,15 +13,15 @@
 namespace uActor::Test {
 
 struct Executors {
-
-  Executors(std::thread lua_executor, std::thread native_executor) : lua_executor(std::move(lua_executor)), native_executor(std::move(native_executor)) {}
+  Executors(std::thread lua_executor, std::thread native_executor)
+      : lua_executor(std::move(lua_executor)),
+        native_executor(std::move(native_executor)) {}
 
   std::thread lua_executor;
   std::thread native_executor;
 };
 
 void spawn_actor(std::string_view code, std::string_view instance_id) {
-
   auto publish_code = PubSub::Publication("node_1", "root", "1");
 
   auto code_version = std::to_string(std::hash<std::string_view>()(code));
@@ -29,12 +29,12 @@ void spawn_actor(std::string_view code, std::string_view instance_id) {
   publish_code.set_attr("type", "actor_code");
   publish_code.set_attr("actor_code_type", "actor");
   publish_code.set_attr("actor_code_version", code_version);
-  publish_code.set_attr("actor_code_lifetime_end", static_cast<int32_t>(UINT32_MAX));
+  publish_code.set_attr("actor_code_lifetime_end",
+                        static_cast<int32_t>(UINT32_MAX));
   publish_code.set_attr("actor_code_runtime_type", "lua");
   publish_code.set_attr("actor_code", std::string(code));
 
   PubSub::Router::get_instance().publish(std::move(publish_code));
-
 
   auto create_actor = PubSub::Publication("node_1", "root", "1");
   create_actor.set_attr("spawn_code", code);
@@ -75,24 +75,18 @@ PubSub::ReceiverHandle subscription_handle_with_default_subscription() {
 }
 
 Executors start_executor_threads() {
-  
-  
   BoardFunctions::NODE_ID = "node_1";
-  ActorRuntime::ExecutorSettings params = {
-      .node_id = "node_1",
-      .instance_id = "1"
-  };
+  ActorRuntime::ExecutorSettings params = {.node_id = "node_1",
+                                           .instance_id = "1"};
   Executors executors(
-  std::thread(&ActorRuntime::LuaExecutor::os_task, &params),
-  std::thread(&uActor::ActorRuntime::NativeExecutor::os_task, &params)
-  );
+      std::thread(&ActorRuntime::LuaExecutor::os_task, &params),
+      std::thread(&uActor::ActorRuntime::NativeExecutor::os_task, &params));
   sleep(1);
 
   uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
       uActor::ActorRuntime::CodeStoreActor>("code_store");
 
-  auto create_code_store =
-      uActor::PubSub::Publication("node_1", "root", "1");
+  auto create_code_store = uActor::PubSub::Publication("node_1", "root", "1");
   create_code_store.set_attr("command", "spawn_native_actor");
   create_code_store.set_attr("spawn_actor_version", "default");
   create_code_store.set_attr("spawn_node_id", "node_1");
@@ -273,7 +267,8 @@ TEST(RuntimeSystem, sub_unsub) {
 
   auto sub_result = root_handle.receive(10000);
   ASSERT_TRUE(sub_result);
-  int32_t sub_id = std::get<std::int32_t>(sub_result->publication.get_attr("sub_id"));
+  int32_t sub_id =
+      std::get<std::int32_t>(sub_result->publication.get_attr("sub_id"));
 
   auto test_message = PubSub::Publication("node_1", "root", "1");
   test_message.set_attr("foo", "bar");
@@ -300,7 +295,7 @@ TEST(RuntimeSystem, sub_unsub) {
   auto test_message2 = PubSub::Publication("node_1", "root", "1");
   test_message2.set_attr("foo", "bar");
   test_message2.set_attr("message", "asdf");
-  PubSub::Router::get_instance().publish(std::move(test_message2)); 
+  PubSub::Router::get_instance().publish(std::move(test_message2));
 
   ASSERT_FALSE(root_handle.receive(2000));
 
@@ -364,7 +359,7 @@ end)";
   auto executors = start_executor_threads();
 
   PubSub::Filter primary_filter{
-        PubSub::Constraint("category", "actor_lifetime")};
+      PubSub::Constraint("category", "actor_lifetime")};
   lifetime_handle.subscribe(primary_filter);
 
   usleep(1000);

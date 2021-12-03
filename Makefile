@@ -81,7 +81,7 @@ build_esp32: ${ESP32_BUILD_DIRECTORY}/release/compile_commands.json
 test:
 	mkdir -p ${TEST_DIRECTORY} && \
 	cd ${TEST_DIRECTORY} && \
-	cmake -G Ninja ${PROJECT_HOME}/unit_test && \
+	cmake -DCMAKE_BUILD_TYPE=Debug -G Ninja ${PROJECT_HOME}/unit_test && \
 	ninja && \
 	./uactor_test
 
