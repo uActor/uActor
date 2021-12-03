@@ -108,7 +108,7 @@ endif()
 conan_cmake_autodetect(settings)
 conan_cmake_install(PATH_OR_REFERENCE .
                     BUILD missing
-                    REMOTE conan-center
+                    REMOTE conancenter
                     SETTINGS ${settings}
                     SETTINGS_HOST 
                       arch=${CONAN_SYSTEM_PROCESSOR}
