@@ -19,6 +19,9 @@ void TopologyManager::receive(const PubSub::Publication& publication) {
         PubSub::Constraint("node_id", std::string(node_id()),
                            PubSub::ConstraintPredicates::EQ, true)});
     subscribe(PubSub::Filter{
+        PubSub::Constraint("type", "local_peer_announcement"),
+        PubSub::Constraint("publisher_node_id", std::string(node_id()))});
+    subscribe(PubSub::Filter{
         PubSub::Constraint{"type", "peer_update"},
         PubSub::Constraint{"publisher_node_id", std::string(node_id())}});
     subscribe(
@@ -36,7 +39,8 @@ void TopologyManager::receive(const PubSub::Publication& publication) {
              (publication.get_str_attr("type") == "wakeup" &&
               publication.get_str_attr("wakeup_id") == "trigger_static_peer")) {
     publish_persistent_peers();
-  } else if (publication.get_str_attr("type") == "peer_announcement") {
+  } else if (publication.get_str_attr("type") == "peer_announcement" ||
+             publication.get_str_attr("type") == "local_peer_announcement") {
     receive_peer_announcement(publication);
   } else if (publication.get_str_attr("type") == "peer_update") {
     receive_peer_update(publication);
@@ -61,7 +65,6 @@ void TopologyManager::receive_peer_announcement(
       publication.has_attr("peer_node_id")) {
     std::string peer_node_id =
         std::string(*publication.get_str_attr("peer_node_id"));
-
     bool forced_mode = publication.get_str_attr("forced") == node_id();
     if (should_connect(peer_node_id, forced_mode)) {
       PubSub::Publication connect{};
@@ -132,12 +135,11 @@ void TopologyManager::publish_persistent_peers() {
   if (persistent_announcement_active) {
     for (const auto& peer : persistent_peers) {
       auto p = PubSub::Publication();
-      p.set_attr("type", "peer_announcement");
+      p.set_attr("type", "local_peer_announcement");
       p.set_attr("peer_type", "tcp_server");
       p.set_attr("peer_node_id", peer.node_id);
       p.set_attr("peer_ip", peer.ip);
       p.set_attr("peer_port", peer.port);
-      p.set_attr("node_id", node_id());
       publish(std::move(p));
     }
   }

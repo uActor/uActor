@@ -133,6 +133,10 @@ boost::program_options::variables_map parse_arguments(int arg_count,
     "tcp-external-port", boost::program_options::value<uint16_t>(),
     "Provide a hint on the external port this node can be reached at."
   )
+  (
+    "tcp-static-peer", boost::program_options::value<std::string>(),
+    "automatically connect to a TCP peer."
+  )
 #if CONFIG_UACTOR_ENABLE_INFLUXDB_ACTOR
   (
     "influxdb-url", boost::program_options::value<std::string>(),
@@ -337,6 +341,32 @@ int main(int arg_count, char** args) {
       label_update.set_attr("key", key);
       label_update.set_attr("value", value);
       uActor::PubSub::Router::get_instance().publish(std::move(label_update));
+    }
+  }
+
+  if (arguments.count("tcp-static-peer")) {
+    auto raw_static_peers = arguments["tcp-static-peer"].as<std::string>();
+    for (std::string_view raw_static_peer :
+         uActor::Support::StringHelper::string_split(raw_static_peers)) {
+      uint32_t first_split_pos = raw_static_peer.find_first_of(":");
+      uint32_t second_split_pos = raw_static_peer.find_last_of(":");
+
+      std::string_view peer_node_id =
+          raw_static_peer.substr(0, first_split_pos);
+      std::string_view peer_ip = raw_static_peer.substr(
+          first_split_pos + 1, second_split_pos - first_split_pos - 1);
+      std::string_view peer_port = raw_static_peer.substr(second_split_pos + 1);
+
+      uActor::PubSub::Publication add_persistent_peer(
+          uActor::BoardFunctions::NODE_ID, "root", "1");
+      add_persistent_peer.set_attr("node_id", uActor::BoardFunctions::NODE_ID);
+      add_persistent_peer.set_attr("type", "add_static_peer");
+      add_persistent_peer.set_attr("peer_node_id", peer_node_id);
+      add_persistent_peer.set_attr("peer_ip", peer_ip);
+      add_persistent_peer.set_attr("peer_port",
+                                   std::stoi(std::string(peer_port)));
+      uActor::PubSub::Router::get_instance().publish(
+          std::move(add_persistent_peer));
     }
   }
 
