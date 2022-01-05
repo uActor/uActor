@@ -67,7 +67,7 @@ class TestBed {
 
 #if CONFIG_TESTBED_NESTED_TIMEKEEPING
   void stop_timekeeping_inner(size_t variable, const char* name) {
-    uint64_t timestamp = std::chrono::steady_clock::now();
+    auto timestamp = std::chrono::steady_clock::now();
     times.emplace_back(std::string(name),
                        std::chrono::duration_cast<std::chrono::microseconds>(
                            timestamp - timekeeping[variable])
