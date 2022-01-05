@@ -6,6 +6,8 @@
 #include "actor_runtime/code_store_actor.hpp"
 #include "actor_runtime/lua_executor.hpp"
 #include "actor_runtime/native_executor.hpp"
+#include "support/core_native_actors.hpp"
+#include "support/launch_utils.hpp"
 #include "pubsub/publication.hpp"
 #include "pubsub/receiver_handle.hpp"
 #include "pubsub/router.hpp"
@@ -22,6 +24,18 @@ struct Executors {
 };
 
 void spawn_actor(std::string_view code, std::string_view instance_id) {
+  auto r = uActor::PubSub::Router::get_instance().new_subscriber();
+
+  r.subscribe(
+      uActor::PubSub::Filter{
+          uActor::PubSub::Constraint{"type", "actor_creation"},
+          uActor::PubSub::Constraint{"category", "actor_lifetime"},
+          uActor::PubSub::Constraint{"lifetime_actor_type", "actor"},
+          uActor::PubSub::Constraint{"lifetime_instance_id", instance_id},
+          uActor::PubSub::Constraint{"publisher_node_id",
+                                      uActor::BoardFunctions::NODE_ID}},
+      PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "start_helper", "1"));
+
   auto publish_code = PubSub::Publication("node_1", "root", "1");
 
   auto code_version = std::to_string(std::hash<std::string_view>()(code));
@@ -33,6 +47,8 @@ void spawn_actor(std::string_view code, std::string_view instance_id) {
                         static_cast<int32_t>(UINT32_MAX));
   publish_code.set_attr("actor_code_runtime_type", "lua");
   publish_code.set_attr("actor_code", std::string(code));
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
   PubSub::Router::get_instance().publish(std::move(publish_code));
 
@@ -46,7 +62,8 @@ void spawn_actor(std::string_view code, std::string_view instance_id) {
   create_actor.set_attr("actor_type", "lua_executor");
   create_actor.set_attr("instance_id", "1");
   PubSub::Router::get_instance().publish(std::move(create_actor));
-  sleep(1);
+  
+  auto res = r.receive(uActor::BoardFunctions::SLEEP_FOREVER);
 }
 
 void shutdown_executors(Executors* executors) {
@@ -76,27 +93,23 @@ PubSub::ReceiverHandle subscription_handle_with_default_subscription() {
 
 Executors start_executor_threads() {
   BoardFunctions::NODE_ID = "node_1";
-  ActorRuntime::ExecutorSettings params = {.node_id = "node_1",
-                                           .instance_id = "1"};
   Executors executors(
-      std::thread(&ActorRuntime::LuaExecutor::os_task, &params),
-      std::thread(&uActor::ActorRuntime::NativeExecutor::os_task, &params));
-  sleep(1);
+    uActor::Support::LaunchUtils::await_start_lua_executor<std::thread>(
+      [](uActor::ActorRuntime::ExecutorSettings* params) {
+        return std::thread(&uActor::ActorRuntime::LuaExecutor::os_task,
+                            params);
+      }),
+    uActor::Support::LaunchUtils::await_start_native_executor<std::thread>(
+      [](uActor::ActorRuntime::ExecutorSettings* params) {
+        return std::thread(&uActor::ActorRuntime::NativeExecutor::os_task,
+                              params);
+      })
+        );
 
-  uActor::ActorRuntime::ManagedNativeActor::register_actor_type<
-      uActor::ActorRuntime::CodeStoreActor>("code_store");
+  uActor::Support::CoreNativeActors::register_native_actors();
 
-  auto create_code_store = uActor::PubSub::Publication("node_1", "root", "1");
-  create_code_store.set_attr("command", "spawn_native_actor");
-  create_code_store.set_attr("spawn_actor_version", "default");
-  create_code_store.set_attr("spawn_node_id", "node_1");
-  create_code_store.set_attr("spawn_actor_type", "code_store");
-  create_code_store.set_attr("spawn_instance_id", "1");
-  create_code_store.set_attr("node_id", "node_1");
-  create_code_store.set_attr("actor_type", "native_executor");
-  create_code_store.set_attr("instance_id", "1");
-  uActor::PubSub::Router::get_instance().publish(std::move(create_code_store));
-  sleep(1);
+  uActor::Support::LaunchUtils::await_spawn_native_actor("code_store");
+
 
   return std::move(executors);
 }
@@ -122,7 +135,7 @@ TEST(RuntimeSystem, pingPong) {
   ping.set_attr("message", "ping");
   PubSub::Router::get_instance().publish(std::move(ping));
 
-  auto result = root_handle.receive(10000);
+  auto result = root_handle.receive(100);
   ASSERT_TRUE(result);
   ASSERT_STREQ(
       std::get<std::string_view>(result->publication.get_attr("message"))
@@ -292,12 +305,14 @@ TEST(RuntimeSystem, sub_unsub) {
   unsub.set_attr("sub_id", sub_id);
   PubSub::Router::get_instance().publish(std::move(unsub));
 
+  ASSERT_FALSE(root_handle.receive(100));
+
   auto test_message2 = PubSub::Publication("node_1", "root", "1");
   test_message2.set_attr("foo", "bar");
   test_message2.set_attr("message", "asdf");
   PubSub::Router::get_instance().publish(std::move(test_message2));
 
-  ASSERT_FALSE(root_handle.receive(2000));
+  ASSERT_FALSE(root_handle.receive(100));
 
   shutdown_executors(&executors);
 }
@@ -319,7 +334,7 @@ TEST(RuntimeSystem, complex_subscription) {
 
   spawn_actor(block_for_pong, "1");
 
-  ASSERT_FALSE(root_handle.receive(2000));
+  ASSERT_FALSE(root_handle.receive(100));
 
   auto sub = PubSub::Publication("node_1", "root", "1");
   sub.set_attr("node_id", "node_1");
