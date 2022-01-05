@@ -339,6 +339,12 @@ TEST(Publication, msgpack) {
   p.set_attr("string", "string");
   p.set_attr("integer", 1);
   p.set_attr("float", 2.0f);
+  
+  auto elem_handle = std::make_shared<Publication::Map>();
+
+  elem_handle->set_attr("foo", "bar");
+
+  p.set_attr("nested", elem_handle);
 
   auto serialized = p.to_msg_pack();
 
@@ -348,6 +354,119 @@ TEST(Publication, msgpack) {
   ASSERT_TRUE(deserialized);
   Publication decoded = *deserialized;
 
+  auto attr = deserialized->get_nested_component("nested");
+  ASSERT_TRUE(attr);
+  auto nested_attr = (*attr)->get_str_attr("foo");
+  ASSERT_TRUE(nested_attr);
+  ASSERT_EQ(*nested_attr, "bar");
+
   ASSERT_TRUE(p == decoded);
 }
+
+TEST(Publication, copy_on_write) {
+
+  Publication p{};
+
+  p.set_attr("foo", "bar");
+
+  Publication p2{p};
+
+  ASSERT_TRUE(p.is_shallow_copy());
+  ASSERT_TRUE(p2.is_shallow_copy());
+
+  p2.set_attr("foo", "baz");
+
+  // TODO(raphaelhetzel) While this is the current expected behaviour,
+  // this is not ideal as it creates an additional copy
+  ASSERT_TRUE(p.is_shallow_copy());
+  ASSERT_FALSE(p2.is_shallow_copy());
+
+  auto p1_foo = p.get_str_attr("foo");
+  ASSERT_TRUE(p1_foo);
+  ASSERT_EQ(*p1_foo, "bar");
+
+  auto p2_foo = p2.get_str_attr("foo");
+  ASSERT_TRUE(p2_foo);
+  ASSERT_EQ(*p2_foo, "baz");
+
+}
+
+TEST(Publication, nested_copy_on_write) {
+
+  auto nested_elem = std::make_shared<Publication::Map>();
+  nested_elem->set_attr("baz", "foo");
+
+  Publication p{};
+
+  p.set_attr("foo", nested_elem);;
+
+  Publication p2{p};
+
+  // COW is disabled when there are nested attributes
+  ASSERT_FALSE(p.is_shallow_copy());
+  ASSERT_FALSE(p2.is_shallow_copy());
+
+  ASSERT_TRUE(p2.has_attr("foo"));
+
+  auto elem_handle = p2.get_nested_component("foo");
+  (*elem_handle)->set_attr("zap", "buzz");
+
+  ASSERT_FALSE(p.is_shallow_copy());
+  ASSERT_FALSE(p2.is_shallow_copy());
+
+  auto p1_foo = p.get_nested_component("foo");
+  ASSERT_TRUE(p1_foo);
+  ASSERT_FALSE((*p1_foo)->has_attr("zap"));
+
+  auto p2_foo = p2.get_nested_component("foo");
+  ASSERT_TRUE(p2_foo);
+  ASSERT_TRUE((*p2_foo)->has_attr("zap"));
+  ASSERT_EQ((*p2_foo)->get_str_attr("zap"), "buzz");
+
+}
+TEST(Publication, map_orphan) {
+  Publication p{};
+
+  {
+    auto nested_elem = std::make_shared<Publication::Map>();
+    nested_elem->set_attr("foo", "bar");
+    p.set_attr("nested", nested_elem);
+  }
+
+  ASSERT_TRUE(p.has_attr("nested"));
+  auto elem_ref = *p.get_nested_component("nested");
+  ASSERT_EQ(elem_ref->get_str_attr("foo"), "bar");
+
+  p = Publication{};
+  ASSERT_FALSE(p.has_attr("nested"));
+  
+  ASSERT_EQ(elem_ref->get_str_attr("foo"), "bar");
+  elem_ref->set_attr("fizz", "buzz");
+  ASSERT_EQ(elem_ref->get_str_attr("fizz"), "buzz"); 
+
+}
+
+TEST(Publication, orphan_after_cow) {
+  Publication p{};
+
+  {
+    auto nested_elem = std::make_shared<Publication::Map>();
+    nested_elem->set_attr("foo", "bar");
+    p.set_attr("nested", nested_elem);
+  }
+
+  auto elem_ref = *p.get_nested_component("nested");
+  Publication p2{p};
+
+  ASSERT_TRUE(p.has_attr("nested"));
+  auto elem_ref2 = *p2.get_nested_component("nested");
+
+  p = Publication{};
+  p2 = Publication{};
+
+  elem_ref->set_attr("fizz", "buzz");
+  ASSERT_EQ(elem_ref->get_str_attr("fizz"), "buzz");
+  ASSERT_FALSE(elem_ref2->has_attr("fizz"));
+}
+
 }  // namespace uActor::Test

@@ -249,6 +249,9 @@ lua_State* LuaExecutor::create_lua_state() {
   open_lua_table_optimized(lua_state);
   luaL_requiref(lua_state, "Publication", LuaPublicationWrapper::luaopen, 1);
   lua_pop(lua_state, 1);
+  luaL_requiref(lua_state, "PublicationMap", LuaPublicationMapWrapper::luaopen,
+                1);
+  lua_pop(lua_state, 1);
   lua_gc(lua_state, LUA_GCSETSTEPMUL, 200);
   lua_gc(lua_state, LUA_GCSETPAUSE, 50);
   return lua_state;
