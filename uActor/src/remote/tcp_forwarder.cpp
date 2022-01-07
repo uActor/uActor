@@ -231,7 +231,8 @@ void TCPForwarder::remove_remote_subscription(uint32_t local_id,
 std::pair<bool, std::unique_lock<std::mutex>> TCPForwarder::write(
     TCPConnection* remote, std::shared_ptr<std::vector<char>> dataset,
     std::unique_lock<std::mutex>&& lock) {
-  Controllers::TelemetryData::increase("written_traffic_size", dataset->size());
+  Controllers::TelemetryData::increase("written_traffic_size",
+                                       dataset->size() - 4);
   remote->write_buffer.push(std::move(dataset));
 
 #if defined(MSG_NOSIGNAL)  // POSIX
