@@ -293,7 +293,7 @@ int ManagedLuaActor::queue_size_wrapper(lua_State* state) {
 }
 
 int ManagedLuaActor::blake2s_wrapper(lua_State* state) {
-  auto code = std::string_view(lua_tostring(state, 1));
+  auto code = std::string_view(lua_tostring(state, 1), lua_rawlen(state, 1));
 
   std::array<char, 32> out_buffer;
 
