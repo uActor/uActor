@@ -109,6 +109,20 @@ int ManagedLuaActor::publish_wrapper(lua_State* state) {
   return 0;
 }
 
+int ManagedLuaActor::reply_wrapper(lua_State* state) {
+  ManagedLuaActor* actor = reinterpret_cast<ManagedLuaActor*>(
+      lua_touserdata(state, lua_upvalueindex(1)));
+
+  if (lua_isuserdata(state, 1) != 0 &&
+      luaL_checkudata(state, 1, "uActor.Publication") != nullptr) {
+    auto* pub =
+        reinterpret_cast<PubSub::Publication*>(lua_touserdata(state, 1));
+    actor->reply(std::move(*pub));
+  }
+
+  return 0;
+}
+
 int ManagedLuaActor::republish_wrapper(lua_State* state) {
   ManagedLuaActor* actor = reinterpret_cast<ManagedLuaActor*>(
       lua_touserdata(state, lua_upvalueindex(1)));

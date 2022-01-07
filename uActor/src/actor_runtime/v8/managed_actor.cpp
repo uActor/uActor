@@ -119,6 +119,9 @@ v8::Local<v8::ObjectTemplate> ManagedV8Actor::actor_context_template() {
   global->Set(isolate, "forward",
               v8::FunctionTemplate::New(isolate, ActorClosures::fwd));
 
+  global->Set(isolate, "reply",
+              v8::FunctionTemplate::New(isolate, ActorClosures::reply));
+
   global->Set(
       isolate, "Message",
       v8::FunctionTemplate::New(isolate, PublicationWrapper::initialize));

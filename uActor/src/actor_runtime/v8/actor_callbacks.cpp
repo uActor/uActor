@@ -168,6 +168,24 @@ void ActorClosures::fwd(const v8::FunctionCallbackInfo<v8::Value>& info) {
       *reinterpret_cast<PubSub::Publication*>(ext_publication->Value())));
 }
 
+void ActorClosures::reply(const v8::FunctionCallbackInfo<v8::Value>& info) {
+  const auto [isolate, actor] = closure_preamble(info);
+  v8::HandleScope scope(isolate);
+
+  if (info.Length() != 1 || !info[0]->IsObject()) {
+    return;
+  }
+  auto message_object = v8::Local<v8::Object>::Cast(info[0]);
+  if (message_object->InternalFieldCount() != 1) {
+    return;
+  }
+  v8::Local<v8::External> ext_publication =
+      v8::Local<v8::External>::Cast(message_object->GetInternalField(0));
+
+  actor->reply(std::move(
+      *reinterpret_cast<PubSub::Publication*>(ext_publication->Value())));
+}
+
 void ActorClosures::subscribe(const v8::FunctionCallbackInfo<v8::Value>& info) {
   const auto [isolate, actor] = closure_preamble(info);
   v8::HandleScope scope(isolate);

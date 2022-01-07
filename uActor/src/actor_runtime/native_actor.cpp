@@ -26,6 +26,10 @@ void NativeActor::delayed_publish(PubSub::Publication&& publication,
   actor_wrapper->delayed_publish(std::move(publication), delay);
 }
 
+void NativeActor::reply(PubSub::Publication&& publication) {
+  actor_wrapper->reply(std::move(publication));
+}
+
 uint32_t NativeActor::subscribe(PubSub::Filter&& filter, uint8_t priority) {
   return actor_wrapper->subscribe(std::move(filter), priority);
 }

@@ -15,6 +15,7 @@
 #include "pubsub/filter.hpp"
 #include "pubsub/publication.hpp"
 #include "pubsub/router.hpp"
+#include "reply_context.hpp"
 #include "runtime_allocator_configuration.hpp"
 #include "support/tracking_allocator.hpp"
 
@@ -63,6 +64,7 @@ class ManagedActor {
         _instance_id(instance_id, allocator),
         message_queue(allocator),
         subscriptions(allocator),
+        reply_context(allocator),
         api(api) {}
 
   ~ManagedActor() {
@@ -142,9 +144,15 @@ class ManagedActor {
   void delayed_publish(PubSub::Publication&& p, uint32_t delay);
   void enqueue_wakeup(uint32_t delay, std::string_view wakeup_id);
 
+  void reply(PubSub::Publication&& p) {
+    reply_context.add_reply_fields(&p);
+    publish(std::move(p));
+  }
+
   void deffered_block_for(PubSub::Filter&& filter, uint32_t timeout);
 
   uint32_t queue_size();
+  ReplyContext<Allocator> reply_context;
 
  private:
   uint32_t _id;

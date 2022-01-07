@@ -28,6 +28,8 @@ class ActorClosures {
 
   static void fwd(const v8::FunctionCallbackInfo<v8::Value>& info);
 
+  static void reply(const v8::FunctionCallbackInfo<v8::Value>& info);
+
   static void subscribe(const v8::FunctionCallbackInfo<v8::Value>& info);
 
   static void block_for(const v8::FunctionCallbackInfo<v8::Value>& info);

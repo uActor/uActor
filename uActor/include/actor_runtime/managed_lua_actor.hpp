@@ -78,6 +78,8 @@ class ManagedLuaActor : public ManagedActor {
 
   static int delayed_publish_wrapper(lua_State* state);
 
+  static int reply_wrapper(lua_State* state);
+
   static int deferred_block_for_wrapper(lua_State* state);
 
   static int subscribe_wrapper(lua_State* state);
@@ -137,6 +139,7 @@ class ManagedLuaActor : public ManagedActor {
   constexpr static auto closures =
       frozen::make_unordered_map<frozen::string, lua_CFunction>({
         {"publish", &publish_wrapper}, {"republish", &republish_wrapper},
+            {"reply", &reply_wrapper},
             {"delayed_publish", &delayed_publish_wrapper},
             {"deferred_block_for", &deferred_block_for_wrapper},
             {"subscribe", &subscribe_wrapper},
