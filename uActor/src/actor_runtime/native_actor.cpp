@@ -38,6 +38,10 @@ void NativeActor::unsubscribe(uint32_t subscription_id) {
   actor_wrapper->unsubscribe(subscription_id);
 }
 
+uint32_t NativeActor::add_reply_subscription() {
+  return actor_wrapper->add_reply_subscription();
+}
+
 uint32_t NativeActor::now() { return BoardFunctions::timestamp(); }
 
 void NativeActor::enqueue_wakeup(uint32_t delay, std::string_view wakeup_id) {

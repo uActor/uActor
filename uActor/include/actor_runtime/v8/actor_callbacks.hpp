@@ -32,6 +32,9 @@ class ActorClosures {
 
   static void subscribe(const v8::FunctionCallbackInfo<v8::Value>& info);
 
+  static void add_reply_subscription(
+      const v8::FunctionCallbackInfo<v8::Value>& info);
+
   static void block_for(const v8::FunctionCallbackInfo<v8::Value>& info);
 
   static void unsubscribe(const v8::FunctionCallbackInfo<v8::Value>& info);

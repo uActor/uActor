@@ -130,6 +130,9 @@ v8::Local<v8::ObjectTemplate> ManagedV8Actor::actor_context_template() {
               v8::FunctionTemplate::New(isolate, ActorClosures::subscribe));
   global->Set(isolate, "unsubscribe",
               v8::FunctionTemplate::New(isolate, ActorClosures::unsubscribe));
+  global->Set(isolate, "add_reply_subscription",
+              v8::FunctionTemplate::New(isolate,
+                                        ActorClosures::add_reply_subscription));
   global->Set(isolate, "deferred_block_for",
               v8::FunctionTemplate::New(isolate, ActorClosures::block_for));
 

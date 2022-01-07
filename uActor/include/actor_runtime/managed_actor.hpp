@@ -127,7 +127,7 @@ class ManagedActor {
   static std::atomic<int> total_queue_size;
 #endif
 
-  void add_default_subscription();
+  uint32_t add_reply_subscription();
   void publish_creation_message();
 
  protected:

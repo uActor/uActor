@@ -102,8 +102,9 @@ class Executor : public ExecutorApi {
             local_id, this, local_id, node_id, actor_type, actor_version,
             instance_id, std::forward<Args>(args)...);
         success) {
-      // TODO(raphaelhetzel) clean up
-      actor_it->second.add_default_subscription();
+#if !UACTOR_EXPERIMENTAL_REPLY_SUB_OPTIONAL
+      actor_it->second.add_reply_subscription();
+#endif
       actor_it->second.publish_creation_message();
       auto result = actor_it->second.early_initialize();
       if (result.second < UINT32_MAX) {
@@ -112,11 +113,9 @@ class Executor : public ExecutorApi {
       }
       auto init_message =
           PubSub::Publication(_node_id, _actor_type, _instance_id);
-      init_message.set_attr("node_id", node_id);
-      init_message.set_attr("actor_type", actor_type);
-      init_message.set_attr("instance_id", instance_id);
       init_message.set_attr("type", "init");
-      PubSub::Router::get_instance().publish(std::move(init_message));
+      actor_it->second.enqueue(std::move(init_message));
+      ready_queue.push_back(local_id);
     }
   }
 

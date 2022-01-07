@@ -33,6 +33,7 @@ class NativeActor {
   void reply(PubSub::Publication&& publication);
   uint32_t subscribe(PubSub::Filter&& filter, uint8_t priority = 0);
   void unsubscribe(uint32_t subscription_id);
+  uint32_t add_reply_subscription();
   void deffered_block_for(PubSub::Filter&& filter, uint32_t timeout);
   uint32_t now();
   void enqueue_wakeup(uint32_t delay, std::string_view wakeup_id);

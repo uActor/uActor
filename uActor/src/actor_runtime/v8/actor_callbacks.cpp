@@ -205,6 +205,19 @@ void ActorClosures::subscribe(const v8::FunctionCallbackInfo<v8::Value>& info) {
   }
 }
 
+void ActorClosures::add_reply_subscription(
+    const v8::FunctionCallbackInfo<v8::Value>& info) {
+  const auto [isolate, actor] = closure_preamble(info);
+  v8::HandleScope scope(isolate);
+  if (info.Length() == 0) {
+    auto sid = actor->add_reply_subscription();
+    info.GetReturnValue().Set(
+        v8::Number::New(info.GetIsolate(), static_cast<double>(sid)));
+  } else {
+    info.GetReturnValue().Set(v8::Number::New(info.GetIsolate(), 0));
+  }
+}
+
 void ActorClosures::block_for(const v8::FunctionCallbackInfo<v8::Value>& info) {
   const auto [isolate, actor] = closure_preamble(info);
   v8::HandleScope scope(isolate);

@@ -106,6 +106,8 @@ class ManagedLuaActor : public ManagedActor {
 
   static int print_wrapper(lua_State* state);
 
+  static int add_reply_subscription_wrapper(lua_State* state);
+
 #if CONFIG_UACTOR_ENABLE_TELEMETRY
   static int telemetry_set_wrapper(lua_State* state);
 #endif
@@ -148,6 +150,7 @@ class ManagedLuaActor : public ManagedActor {
             {"decode_base64", &decode_base64},
             {"queue_size", &queue_size_wrapper}, {"log", &log_wrapper},
             {"print", &print_wrapper},
+            {"add_reply_sub", &add_reply_subscription_wrapper},
 #if CONFIG_BENCHMARK_ENABLED
             {"testbed_log_integer", &testbed_log_integer_wrapper},
             {"testbed_log_double", &testbed_log_double_wrapper},

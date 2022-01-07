@@ -185,6 +185,15 @@ int ManagedLuaActor::subscribe_wrapper(lua_State* state) {
   return 1;
 }
 
+int ManagedLuaActor::add_reply_subscription_wrapper(lua_State* state) {
+  ManagedLuaActor* actor = reinterpret_cast<ManagedLuaActor*>(
+      lua_touserdata(state, lua_upvalueindex(1)));
+
+  uint32_t sub_id = actor->add_reply_subscription();
+  lua_pushinteger(state, sub_id);
+  return 1;
+}
+
 int ManagedLuaActor::unsubscribe_wrapper(lua_State* state) {
   ManagedLuaActor* actor = reinterpret_cast<ManagedLuaActor*>(
       lua_touserdata(state, lua_upvalueindex(1)));

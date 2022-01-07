@@ -258,7 +258,7 @@ void ManagedActor::publish_creation_message() {
   PubSub::Router::get_instance().publish(std::move(create_message));
 }
 
-void ManagedActor::add_default_subscription() {
+uint32_t ManagedActor::add_reply_subscription() {
   uint32_t sub_id = api->add_subscription(
       _id, PubSub::Filter{PubSub::Constraint(std::string("node_id"),
                                              std::string(_node_id)),
@@ -267,6 +267,7 @@ void ManagedActor::add_default_subscription() {
                           PubSub::Constraint(std::string("instance_id"),
                                              std::string(_instance_id))});
   subscriptions.insert(sub_id);
+  return sub_id;
 }
 
 }  // namespace uActor::ActorRuntime
