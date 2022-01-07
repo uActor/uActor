@@ -66,13 +66,20 @@ ManagedActor::RuntimeReturnValue ManagedLuaActor::receive(
   luaL_getmetatable(state, "uActor.Publication");
   lua_setmetatable(state, -2);
 
+#if UACTOR_EXPERIMENTAL_STATE_AS_PARAMETER
+  lua_getglobal(state, (std::string("state_") + std::to_string(id())).c_str());
+#endif
 #if CONFIG_BENCHMARK_BREAKDOWN
   if (lua_pub->get_str_attr("type") == "ping") {
     testbed_stop_timekeeping_inner(4, "prepare_message");
   }
 #endif
 
+#if UACTOR_EXPERIMENTAL_STATE_AS_PARAMETER
+  int error_code = lua_pcall(state, 2, 0, 0);
+#else
   int error_code = lua_pcall(state, 1, 0, 0);
+#endif
   if (error_code != 0) {
     Support::Logger::info("MANAGED-LUA-ACTOR",
                           "LUA ERROR for actor %s.%s.%s: %s", node_id(),
@@ -465,10 +472,12 @@ bool ManagedLuaActor::createActorEnvironment(
     return false;
   }
 
+#if !UACTOR_EXPERIMENTAL_STATE_AS_PARAMETER
   lua_getmetatable(state, -1);
   lua_getglobal(state, (std::string("state_") + std::to_string(id())).c_str());
   lua_setfield(state, -2, "__newindex");  // 3
   lua_pop(state, 1);
+#endif
 
   lua_getfield(state, -1, "receive");  // 2
   if (!lua_isfunction(state, -1)) {
@@ -528,15 +537,16 @@ int ManagedLuaActor::actor_index(lua_State* state) {
     lua_getglobal(state, "Publication");
     return 1;
   }
-
+#if !UACTOR_EXPERIMENTAL_STATE_AS_PARAMETER
   lua_getglobal(
       state,
       (std::string("state_") + std::to_string(actor->id())).c_str());  // 2
   lua_getfield(state, -1, key.data());
   return 1;
-
+#else
   lua_pushnil(state);
   return 1;
+#endif
 }
 
 ManagedLuaActor::RuntimeReturnValue ManagedLuaActor::fetch_code_and_init() {
