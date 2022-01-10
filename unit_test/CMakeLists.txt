@@ -7,6 +7,8 @@ set(CMAKE_CXX_STANDARD 17)
 # settings on Windows
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 
+# set(CONFIG_UACTOR_V8 ON)
+
 # Add googletest directly to our build. This defines
 # the gtest and gtest_main targets.
 add_subdirectory(googletest EXCLUDE_FROM_ALL)

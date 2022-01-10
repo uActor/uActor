@@ -16,6 +16,8 @@ namespace uActor::ActorRuntime::V8Runtime {
 // https://groups.google.com/g/v8-users/c/nVJF0SsdvhM/m/7BE5ddw1BQAJ.
 template <typename T>
 struct GCWrapper {
+  explicit GCWrapper(T&& item) : item(std::move(item)) {}
+
   static v8::Local<v8::Object> gc_wrap(
       v8::Isolate* isolate, T&& to_wrap,
       const v8::Local<v8::ObjectTemplate>& object_template) {
@@ -23,8 +25,7 @@ struct GCWrapper {
     assert(object_template->InternalFieldCount() == 1);
 
     // This pointer is freed by the collect callback
-    auto container = new GCWrapper();
-    container->item = std::move(to_wrap);
+    auto container = new GCWrapper(std::move(to_wrap));
 
     v8::Local<v8::Object> local_handle =
         object_template->NewInstance(isolate->GetCurrentContext())

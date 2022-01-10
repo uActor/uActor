@@ -103,6 +103,8 @@ class Publication {
 
   const std::shared_ptr<Map> root_handle() const { return attributes; }
 
+  Map* root_ptr() { return attributes.get(); }
+
   using const_iterator = Map::const_iterator;
   [[nodiscard]] const_iterator begin() const { return attributes->begin(); }
 
