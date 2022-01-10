@@ -43,12 +43,15 @@ void V8Executor::start_v8() {
   // TODO(raphaelhetzel) Evaluate whether this is requried for our usecase
   // v8::V8::InitializeICUDefaultLocation(argv[0]);
   // v8::V8::InitializeExternalStartupData(argv[0]);
-
-  platform = v8::platform::NewDefaultPlatform();
-  v8::V8::InitializePlatform(platform.get());
-  v8::V8::Initialize();
+  if (!instance_running) {
+    platform = v8::platform::NewDefaultPlatform();
+    v8::V8::InitializePlatform(platform.get());
+    v8::V8::Initialize();
+    instance_running = true;
+  }
 }
 
 bool V8Executor::instance_running = false;
+std::unique_ptr<v8::Platform> V8Executor::platform{nullptr};
 }  // namespace uActor::ActorRuntime::V8Runtime
 #endif

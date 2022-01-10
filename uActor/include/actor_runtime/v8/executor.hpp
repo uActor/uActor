@@ -17,10 +17,6 @@ class V8Executor : public Executor<ManagedV8Actor, V8Executor> {
              const char* id)
       : uActor::ActorRuntime::Executor<ManagedV8Actor, V8Executor>(
             router, node_id, "v8_executor", id) {
-    // V8 appears to run a global instance, see todo item in start_v8
-    assert(!instance_running);
-    instance_running = true;
-
     start_v8();
     register_actor_type();
   }
@@ -32,7 +28,7 @@ class V8Executor : public Executor<ManagedV8Actor, V8Executor> {
   }
 
  private:
-  std::unique_ptr<v8::Platform> platform;
+  static std::unique_ptr<v8::Platform> platform;
   static bool instance_running;
 
   void add_actor(uActor::PubSub::Publication&& publication);
