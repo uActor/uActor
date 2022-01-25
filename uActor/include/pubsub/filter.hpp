@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <list>
+#include <memory>
 #include <optional>
 #include <scoped_allocator>
 #include <string>
@@ -21,6 +22,8 @@ class ClusterBarrier;
 class ClusterAggregator;
 class OptionalConstraintDrop;
 class LeafNodeIdGateway;
+class ScopeLocal;
+class ScopeCluster;
 };  // namespace uActor::Remote
 
 namespace uActor::PubSub {
@@ -113,9 +116,16 @@ class Filter {
     return optional;
   }
 
-  [[nodiscard]] std::string serialize() const;
+  void add_constraint_to_map(const Constraint& constraint,
+                             Publication::Map* map) const;
 
-  static std::optional<Filter> deserialize(std::string_view serialized);
+  std::shared_ptr<PubSub::Publication::Map> to_publication_map() const;
+
+  static std::optional<Constraint> parse_constraint_from_map(
+      std::string_view key, const Publication::Map& item);
+
+  static std::optional<Filter> from_publication_map(
+      const Publication::Map& map);
 
  private:
   std::vector<Constraint, std::scoped_allocator_adaptor<Allocator<Constraint>>>
@@ -133,6 +143,8 @@ class Filter {
   friend class Remote::ClusterAggregator;
   friend class Remote::OptionalConstraintDrop;
   friend class Remote::LeafNodeIdGateway;
+  friend class Remote::ScopeLocal;
+  friend class Remote::ScopeCluster;
   friend Router;
 };
 }  // namespace uActor::PubSub

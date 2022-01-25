@@ -22,9 +22,12 @@ class ReceiverHandle {
   explicit ReceiverHandle(Router* router)
       : receiver(std::make_unique<Receiver>(router)) {}
 
-  uint32_t subscribe(Filter f, const ActorIdentifier& subscriber,
-                     uint8_t priority = 0) {
-    return receiver->subscribe(std::move(f), subscriber, priority);
+  uint32_t subscribe(
+      Filter f, const ActorIdentifier& subscriber,
+      const std::string& source_peer = BoardFunctions::NODE_ID,
+      SubscriptionArguments arguments = SubscriptionArguments()) {
+    return receiver->subscribe(std::move(f), subscriber, source_peer,
+                               arguments);
   }
 
   void unsubscribe(uint32_t sub_id,

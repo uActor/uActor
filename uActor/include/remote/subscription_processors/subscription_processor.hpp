@@ -3,6 +3,7 @@
 #include <string_view>
 
 #include "pubsub/filter.hpp"
+#include "pubsub/subscription_arguments.hpp"
 
 namespace uActor::Remote {
 
@@ -12,9 +13,15 @@ class SubscriptionProcessor {
                         std::string_view peer_node_id)
       : local_node_id(local_node_id), peer_node_id(peer_node_id) {}
 
-  virtual bool process_added(PubSub::Filter* filter) { return false; }
+  virtual bool process_added(PubSub::Filter* filter,
+                             const PubSub::SubscriptionArguments& arguments) {
+    return false;
+  }
 
-  virtual bool process_removed(PubSub::Filter* filter) { return false; }
+  virtual bool process_removed(PubSub::Filter* filter,
+                               const PubSub::SubscriptionArguments& arguments) {
+    return false;
+  }
 
   virtual ~SubscriptionProcessor() = default;
 

@@ -12,6 +12,7 @@
 #include "filter.hpp"
 #include "internal_filter.hpp"
 #include "receiver.hpp"
+#include "subscription_arguments.hpp"
 #include "support/memory_manager.hpp"
 
 namespace uActor::PubSub {
@@ -19,13 +20,23 @@ namespace uActor::PubSub {
 template <template <typename> typename Allocator>
 struct Subscription {
   using allocator_type = Allocator<Subscription>;
+  using NodeList = std::set<uint32_t, std::less<uint32_t>, Allocator<uint32_t>>;
+
+  uint32_t subscription_id;
+  InternalFilter filter;
+  SubscriptionArguments arguments;
+  std::map<Receiver*, NodeList, std::less<Receiver*>,
+           std::scoped_allocator_adaptor<
+               Allocator<std::pair<Receiver* const, NodeList>>>>
+      receivers;
 
   template <typename PAllocator = Allocator<Subscription>>
   Subscription(std::allocator_arg_t, const PAllocator& allocator, uint32_t id,
-               Receiver* r, uint32_t node_id, uint8_t priority = 0)
+               Receiver* r, uint32_t node_id,
+               SubscriptionArguments args = SubscriptionArguments())
       : subscription_id(id),
         filter(allocator),
-        priority(priority),
+        arguments(args),
         receivers(allocator) {
     receivers.emplace(r, std::initializer_list<uint32_t>{node_id});
   }
@@ -35,7 +46,7 @@ struct Subscription {
                const Subscription& other)
       : subscription_id(other.subscription_id),
         filter(other.filter, allocator),
-        priority(other.priority),
+        arguments(other.arguments),
         receivers(other.receivers, allocator) {}
 
   template <typename PAllocator = Allocator<Subscription>>
@@ -43,7 +54,7 @@ struct Subscription {
                Subscription&& other)
       : subscription_id(other.subscription_id),
         filter(std::move(other.filter), allocator),
-        priority(other.priority),
+        arguments(other.arguments),
         receivers(std::move(other.receivers), allocator) {}
 
   bool add_receiver(Receiver* receiver, uint32_t source_node_id) {
@@ -51,13 +62,15 @@ struct Subscription {
     auto [it, inserted] = receiver_it->second.emplace(source_node_id);
 
     if (inserted) {
-      for (const auto& r : receivers) {
-        for (uint32_t n : r.second) {
-          if (n == source_node_id) {
-            return false;
-          }
-        }
-      }
+      // TODO(raphaelhetzel) This appears to be broken.
+      // I assume the goal behind this was to deal with multiple connections to
+      // the same node. for (const auto& r : receivers) {
+      //   for (uint32_t n : r.second) {
+      //     if (n == source_node_id) {
+      //       return false;
+      //     }
+      //   }
+      // }
       return true;
     }
     return false;
@@ -101,21 +114,9 @@ struct Subscription {
     }
   }
 
-  uint32_t subscription_id;
-
-  InternalFilter filter;
-
   uint32_t count_required() { return filter.required.size(); }
 
   uint32_t count_optional() { return filter.optional.size(); }
-
-  using NodeList = std::set<uint32_t, std::less<uint32_t>, Allocator<uint32_t>>;
-  uint8_t priority;
-
-  std::map<Receiver*, NodeList, std::less<Receiver*>,
-           std::scoped_allocator_adaptor<
-               Allocator<std::pair<Receiver* const, NodeList>>>>
-      receivers;
 };
 
 }  // namespace uActor::PubSub

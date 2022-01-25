@@ -1,14 +1,18 @@
 #pragma once
 #include <string>
 
+#include "pubsub/actor_identifier.hpp"
 #include "pubsub/filter.hpp"
+#include "pubsub/subscription_arguments.hpp"
 
 namespace uActor::Remote {
 
 struct ForwarderSubscriptionAPI {
-  virtual uint32_t add_remote_subscription(uint32_t local_id,
-                                           PubSub::Filter&& filter,
-                                           std::string node_id) = 0;
+  virtual uint32_t add_remote_subscription(
+      uint32_t local_id, PubSub::Filter&& filter, std::string node_id,
+      const PubSub::ActorIdentifier& subscriber,
+      PubSub::SubscriptionArguments subscription_arguments =
+          PubSub::SubscriptionArguments()) = 0;
   virtual void remove_remote_subscription(uint32_t local_id, uint32_t sub_id,
                                           std::string node_id) = 0;
 

@@ -31,7 +31,9 @@ class NativeActor {
   void republish(PubSub::Publication&& publication);
   void delayed_publish(PubSub::Publication&& publication, uint32_t delay);
   void reply(PubSub::Publication&& publication);
-  uint32_t subscribe(PubSub::Filter&& filter, uint8_t priority = 0);
+  uint32_t subscribe(PubSub::Filter&& filter,
+                     PubSub::SubscriptionArguments arguments =
+                         PubSub::SubscriptionArguments());
   void unsubscribe(uint32_t subscription_id);
   uint32_t add_reply_subscription();
   void deffered_block_for(PubSub::Filter&& filter, uint32_t timeout);

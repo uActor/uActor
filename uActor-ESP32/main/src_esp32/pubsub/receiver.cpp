@@ -67,9 +67,10 @@ void Receiver::publish(MatchedPublication&& publication) {
 }
 
 uint32_t Receiver::subscribe(Filter&& f, const ActorIdentifier& subscriber,
-                             uint8_t priority) {
-  uint32_t sub_id =
-      router->add_subscription(std::move(f), this, subscriber, priority);
+                             const std::string& source_peer,
+                             SubscriptionArguments arguments) {
+  uint32_t sub_id = router->add_subscription(std::move(f), this, subscriber,
+                                             source_peer, arguments);
   subscriptions.insert(sub_id);
   return sub_id;
 }

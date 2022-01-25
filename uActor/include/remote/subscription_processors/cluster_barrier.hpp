@@ -28,7 +28,8 @@ class ClusterBarrier : public SubscriptionProcessor {
 
   ~ClusterBarrier() = default;
 
-  bool process_added(PubSub::Filter* filter) override {
+  bool process_added(PubSub::Filter* filter,
+                     const PubSub::SubscriptionArguments& arguments) override {
     if (!same_cluster) {
       for (const auto& key : drop_keys) {
         if (has_equality_constraint(filter, key)) {
@@ -39,7 +40,9 @@ class ClusterBarrier : public SubscriptionProcessor {
     return false;
   }
 
-  bool process_removed(PubSub::Filter* filter) override {
+  bool process_removed(
+      PubSub::Filter* filter,
+      const PubSub::SubscriptionArguments& arguments) override {
     if (!same_cluster) {
       for (const auto& key : drop_keys) {
         if (has_equality_constraint(filter, key)) {

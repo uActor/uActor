@@ -14,6 +14,7 @@
 #include "board_functions.hpp"
 #include "forwarder_api.hpp"
 #include "pubsub/router.hpp"
+#include "pubsub/subscription_arguments.hpp"
 #include "tcp_connection.hpp"
 
 namespace uActor::Remote {
@@ -47,8 +48,11 @@ class TCPForwarder : public uActor::Remote::ForwarderSubscriptionAPI {
 
   void receive(PubSub::MatchedPublication&& m);
 
-  uint32_t add_remote_subscription(uint32_t local_id, PubSub::Filter&& filter,
-                                   std::string node_id) override;
+  uint32_t add_remote_subscription(
+      uint32_t local_id, PubSub::Filter&& filter, std::string node_id,
+      const PubSub::ActorIdentifier& subscriber,
+      PubSub::SubscriptionArguments subscription_arguments =
+          PubSub::SubscriptionArguments()) override;
   void remove_remote_subscription(uint32_t local_id, uint32_t sub_id,
                                   std::string node_id) override;
 

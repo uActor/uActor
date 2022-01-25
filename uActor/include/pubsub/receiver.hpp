@@ -14,6 +14,7 @@
 #include "actor_identifier.hpp"
 #include "filter.hpp"
 #include "matched_publication.hpp"
+#include "subscription_arguments.hpp"
 
 namespace uActor::PubSub {
 
@@ -38,7 +39,8 @@ class Receiver {
   std::optional<MatchedPublication> receive(uint32_t timeout = 0);
 
   uint32_t subscribe(Filter&& f, const ActorIdentifier& subscriber,
-                     uint8_t priority = 0);
+                     const std::string& source_peer,
+                     SubscriptionArguments arguments);
 
   void unsubscribe(uint32_t sub_id, std::string node_id = "");
 

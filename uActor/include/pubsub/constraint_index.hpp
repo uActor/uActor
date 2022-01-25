@@ -176,8 +176,10 @@ struct ConstraintIndex {
     return index.size() == 0 && string_equal.size() == 0;
   }
 
-  void check(std::variant<std::string_view, int32_t, float> value,
-             Counter<Allocator>* counter) {
+  void check(
+      std::variant<std::string_view, int32_t, float, const Publication::Map*>
+          value,
+      Counter<Allocator>* counter) {
     if (std::holds_alternative<std::string_view>(value)) {
       auto index_it = std::lower_bound(
           string_equal.begin(), string_equal.end(),
@@ -213,6 +215,12 @@ struct ConstraintIndex {
       }
       if (std::holds_alternative<float>(value) &&
           !(*stored_constraint_ptr)(std::get<float>(value))) {
+        continue;
+      }
+
+      if (std::holds_alternative<const Publication::Map*>(value) &&
+          !(*stored_constraint_ptr)(
+              *std::get<const Publication::Map*>(value))) {
         continue;
       }
 

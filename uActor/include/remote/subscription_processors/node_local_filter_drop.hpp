@@ -12,7 +12,8 @@ class NodeLocalFilterDrop : public SubscriptionProcessor {
 
   ~NodeLocalFilterDrop() = default;
 
-  bool process_added(PubSub::Filter* filter) override {
+  bool process_added(PubSub::Filter* filter,
+                     const PubSub::SubscriptionArguments& arguments) override {
     for (const auto& constraint : filter->required) {
       if (constraint.attribute() == "publisher_node_id") {
         if (std::holds_alternative<std::string_view>(constraint.operand()) &&
@@ -25,7 +26,9 @@ class NodeLocalFilterDrop : public SubscriptionProcessor {
     return false;
   }
 
-  bool process_removed(PubSub::Filter* filter) override {
+  bool process_removed(
+      PubSub::Filter* filter,
+      const PubSub::SubscriptionArguments& arguments) override {
     for (const auto& constraint : filter->required) {
       if (constraint.attribute() == "publisher_node_id") {
         if (std::holds_alternative<std::string_view>(constraint.operand()) &&

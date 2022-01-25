@@ -13,7 +13,7 @@ struct FakeForwarder : public Remote::ForwarderSubscriptionAPI {
 
   virtual uint32_t add_remote_subscription(uint32_t local_id,
                                            PubSub::Filter&& filter,
-                                           std::string node_id) {
+                                           std::string node_id, const PubSub::ActorIdentifier& subscriber, PubSub::SubscriptionArguments subscription_arguments) {
     return 0;
   };
   virtual void remove_remote_subscription(uint32_t local_id, uint32_t sub_id,
@@ -56,8 +56,15 @@ TEST(FORWARDING, data_handling_base) {
 
   PubSub::Publication sub_added{"sender_node", "sender_type", "sender_id"};
   sub_added.set_attr("type", "subscriptions_added");
-  sub_added.set_attr("serialized_subscriptions",
-                    PubSub::Filter{}.serialize() + "&");
+
+  auto subscriptions = std::make_shared<PubSub::Publication::Map>();
+  auto sub_1 = std::make_shared<PubSub::Publication::Map>();
+  auto filter = PubSub::Filter{}.to_publication_map();
+  sub_1->set_attr("subscription", std::move(filter));
+  sub_1->set_attr("subscription_arguments", PubSub::SubscriptionArguments{}.to_map());
+  subscriptions->set_attr("0", std::move(sub_1));
+  sub_added.set_attr("subscriptions", std::move(subscriptions));
+
   sub_added.set_attr("_internal_epoch", 0);
   sub_added.set_attr("_internal_sequence_number",
                     FakeForwarder::next_sequence_number());
@@ -113,8 +120,15 @@ TEST(FORWARDING, data_handling_split_data) {
 
   PubSub::Publication sub_added{"sender_node", "sender_type", "sender_id"};
   sub_added.set_attr("type", "subscriptions_added");
-  sub_added.set_attr("serialized_subscriptions",
-                     PubSub::Filter{}.serialize() + "&");
+
+  auto subscriptions = std::make_shared<PubSub::Publication::Map>();
+  auto sub_1 = std::make_shared<PubSub::Publication::Map>();
+  auto filter = PubSub::Filter{}.to_publication_map();
+  sub_1->set_attr("subscription", std::move(filter));
+  sub_1->set_attr("subscription_arguments", PubSub::SubscriptionArguments{}.to_map());
+  subscriptions->set_attr("0", std::move(sub_1));
+  sub_added.set_attr("subscriptions", std::move(subscriptions));
+
   sub_added.set_attr("_internal_epoch", 0);
   sub_added.set_attr("_internal_sequence_number",
                      FakeForwarder::next_sequence_number());
@@ -168,8 +182,15 @@ TEST(FORWARDING, data_handling_split_message_size) {
 
   PubSub::Publication sub_added{"sender_node", "sender_type", "sender_id"};
   sub_added.set_attr("type", "subscriptions_added");
-  sub_added.set_attr("serialized_subscriptions",
-                     PubSub::Filter{}.serialize() + "&");
+
+  auto subscriptions = std::make_shared<PubSub::Publication::Map>();
+  auto sub_1 = std::make_shared<PubSub::Publication::Map>();
+  auto filter = PubSub::Filter{}.to_publication_map();
+  sub_1->set_attr("subscription", std::move(filter));
+  sub_1->set_attr("subscription_arguments", PubSub::SubscriptionArguments{}.to_map());
+  subscriptions->set_attr("0", std::move(sub_1));
+  sub_added.set_attr("subscriptions", std::move(subscriptions));
+
   sub_added.set_attr("_internal_epoch", 0);
   sub_added.set_attr("_internal_sequence_number",
                      FakeForwarder::next_sequence_number());
@@ -221,8 +242,15 @@ TEST(FORWARDING, mixed_data) {
 
   PubSub::Publication sub_added{"sender_node", "sender_type", "sender_id"};
   sub_added.set_attr("type", "subscriptions_added");
-  sub_added.set_attr("serialized_subscriptions",
-                     PubSub::Filter{}.serialize() + "&");
+
+  auto subscriptions = std::make_shared<PubSub::Publication::Map>();
+  auto sub_1 = std::make_shared<PubSub::Publication::Map>();
+  auto filter = PubSub::Filter{}.to_publication_map();
+  sub_1->set_attr("subscription", std::move(filter));
+  sub_1->set_attr("subscription_arguments", PubSub::SubscriptionArguments{}.to_map());
+  subscriptions->set_attr("0", std::move(sub_1));
+  sub_added.set_attr("subscriptions", std::move(subscriptions));
+
   sub_added.set_attr("_internal_epoch", 0);
   sub_added.set_attr("_internal_sequence_number",
                      FakeForwarder::next_sequence_number());

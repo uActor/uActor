@@ -7,6 +7,9 @@
 #include "remote/subscription_processors/cluster_aggregator.hpp"
 #include "remote/subscription_processors/cluster_barrier.hpp"
 #include "remote/subscription_processors/optional_constraint_drop.hpp"
+#include "remote/subscription_processors/scope_local.hpp"
+#include "remote/subscription_processors/scope_cluster.hpp"
+#include "pubsub/subscription_arguments.hpp"
 
 namespace uActor::Test {
 
@@ -19,9 +22,9 @@ TEST(RoutingRuleLocalFilterDrop, DroppedRule) {
   auto filter = Filter{Constraint{"publisher_node_id", "n_local"}, Constraint{"foo", "bar"}};
   auto filter_copy = filter;
 
-  ASSERT_TRUE(processor.process_added(&filter));
+  ASSERT_TRUE(processor.process_added(&filter, PubSub::SubscriptionArguments()));
   ASSERT_EQ(filter, filter_copy);
-  ASSERT_TRUE(processor.process_removed(&filter));
+  ASSERT_TRUE(processor.process_removed(&filter, PubSub::SubscriptionArguments()));
   ASSERT_EQ(filter, filter_copy);
 }
 
@@ -31,9 +34,9 @@ TEST(RoutingRuleLocalFilterDrop, IgnoredRule) {
   auto filter = Filter{Constraint{"baz", "n_local"}, Constraint{"foo", "bar"}};
   auto filter_copy = filter;
 
-  ASSERT_FALSE(processor.process_added(&filter));
+  ASSERT_FALSE(processor.process_added(&filter, PubSub::SubscriptionArguments()));
   ASSERT_EQ(filter, filter_copy);
-  ASSERT_FALSE(processor.process_removed(&filter));
+  ASSERT_FALSE(processor.process_removed(&filter, PubSub::SubscriptionArguments()));
   ASSERT_EQ(filter, filter_copy);
 }
 
@@ -48,16 +51,16 @@ TEST(NodeIdAggregator, MatchingRules) {
   auto filter2_copy_add = filter2;
   auto filter2_copy_remove = filter2;
 
-  ASSERT_FALSE(processor.process_added(&filter_copy_add));
+  ASSERT_FALSE(processor.process_added(&filter_copy_add, PubSub::SubscriptionArguments()));
   ASSERT_NE(filter_copy_add, filter);
 
-  ASSERT_TRUE(processor.process_added(&filter2_copy_add));
+  ASSERT_TRUE(processor.process_added(&filter2_copy_add, PubSub::SubscriptionArguments()));
   ASSERT_EQ(filter2_copy_add, filter2);
 
-  ASSERT_TRUE(processor.process_removed(&filter2_copy_remove));
+  ASSERT_TRUE(processor.process_removed(&filter2_copy_remove, PubSub::SubscriptionArguments()));
   ASSERT_EQ(filter2_copy_remove, filter2);
 
-  ASSERT_FALSE(processor.process_removed(&filter_copy_remove));
+  ASSERT_FALSE(processor.process_removed(&filter_copy_remove, PubSub::SubscriptionArguments()));
   ASSERT_NE(filter_copy_remove, filter);
 }
 
@@ -72,17 +75,17 @@ TEST(NodeIdAggregator, MatchingAndIgnoredRule) {
   auto filter2_copy_add = filter2;
   auto filter2_copy_remove = filter2;
 
-  ASSERT_FALSE(processor.process_added(&filter_copy_add));
+  ASSERT_FALSE(processor.process_added(&filter_copy_add, PubSub::SubscriptionArguments()));
   ASSERT_NE(filter_copy_add, filter);
-  ASSERT_EQ(filter_copy_add.serialize(), "node_id,s,EQ,n_local");
+  ASSERT_EQ(filter_copy_add, Filter{Constraint("node_id", "n_local")});
 
-  ASSERT_FALSE(processor.process_added(&filter2_copy_add));
+  ASSERT_FALSE(processor.process_added(&filter2_copy_add, PubSub::SubscriptionArguments()));
   ASSERT_EQ(filter2_copy_add, filter2);
 
-  ASSERT_FALSE(processor.process_removed(&filter2_copy_remove));
+  ASSERT_FALSE(processor.process_removed(&filter2_copy_remove, PubSub::SubscriptionArguments()));
   ASSERT_EQ(filter2_copy_remove, filter2);
 
-  ASSERT_FALSE(processor.process_removed(&filter_copy_remove));
+  ASSERT_FALSE(processor.process_removed(&filter_copy_remove, PubSub::SubscriptionArguments()));
   ASSERT_NE(filter_copy_remove, filter);
   ASSERT_EQ(filter_copy_remove, filter_copy_add);
 }
@@ -94,10 +97,10 @@ TEST(ClusterAggregator, SingleMatchingRule) {
   auto filter_copy_add = filter;
   auto filter_copy_remove = filter;
 
-  ASSERT_FALSE(processor.process_added(&filter_copy_add));
+  ASSERT_FALSE(processor.process_added(&filter_copy_add, PubSub::SubscriptionArguments()));
   ASSERT_NE(filter_copy_add, filter);
 
-  ASSERT_FALSE(processor.process_removed(&filter_copy_remove));
+  ASSERT_FALSE(processor.process_removed(&filter_copy_remove, PubSub::SubscriptionArguments()));
   ASSERT_NE(filter_copy_remove, filter);
   ASSERT_EQ(filter_copy_remove, filter_copy_add);
 }
@@ -109,10 +112,10 @@ TEST(ClusterAggregator, IgnoredRule) {
   auto filter_copy_add = filter;
   auto filter_copy_remove = filter;
 
-  ASSERT_FALSE(processor.process_added(&filter_copy_add));
+  ASSERT_FALSE(processor.process_added(&filter_copy_add, PubSub::SubscriptionArguments()));
   ASSERT_EQ(filter_copy_add, filter);
 
-  ASSERT_FALSE(processor.process_removed(&filter_copy_remove));
+  ASSERT_FALSE(processor.process_removed(&filter_copy_remove, PubSub::SubscriptionArguments()));
   ASSERT_EQ(filter_copy_remove, filter);
 }
 
@@ -127,16 +130,16 @@ TEST(ClusterAggregator, CoveredRule) {
   auto filter2_copy_add = filter2;
   auto filter2_copy_remove = filter2;
 
-  ASSERT_FALSE(processor.process_added(&filter_copy_add));
+  ASSERT_FALSE(processor.process_added(&filter_copy_add, PubSub::SubscriptionArguments()));
   ASSERT_NE(filter_copy_add, filter);
 
-  ASSERT_TRUE(processor.process_added(&filter2_copy_add));
+  ASSERT_TRUE(processor.process_added(&filter2_copy_add, PubSub::SubscriptionArguments()));
   ASSERT_EQ(filter2_copy_add, filter2);
 
-  ASSERT_TRUE(processor.process_removed(&filter2_copy_remove));
+  ASSERT_TRUE(processor.process_removed(&filter2_copy_remove, PubSub::SubscriptionArguments()));
   ASSERT_EQ(filter2_copy_remove, filter2); 
 
-  ASSERT_FALSE(processor.process_removed(&filter_copy_remove));
+  ASSERT_FALSE(processor.process_removed(&filter_copy_remove, PubSub::SubscriptionArguments()));
   ASSERT_NE(filter_copy_remove, filter);
   ASSERT_EQ(filter_copy_remove, filter_copy_add);
 }
@@ -148,10 +151,10 @@ TEST(ClusterBarrier, SingleMatchingRule) {
   auto filter_copy_add = filter;
   auto filter_copy_remove = filter;
 
-  ASSERT_TRUE(processor.process_added(&filter_copy_add));
+  ASSERT_TRUE(processor.process_added(&filter_copy_add, PubSub::SubscriptionArguments()));
   ASSERT_EQ(filter_copy_add, filter);
 
-  ASSERT_TRUE(processor.process_removed(&filter_copy_remove));
+  ASSERT_TRUE(processor.process_removed(&filter_copy_remove, PubSub::SubscriptionArguments()));
   ASSERT_EQ(filter_copy_remove, filter);
 }
 
@@ -162,10 +165,10 @@ TEST(ClusterBarrier, SingleMatchingRuleWithBarrierItems) {
   auto filter_copy_add = filter;
   auto filter_copy_remove = filter;
 
-  ASSERT_TRUE(processor.process_added(&filter_copy_add));
+  ASSERT_TRUE(processor.process_added(&filter_copy_add, PubSub::SubscriptionArguments()));
   ASSERT_EQ(filter_copy_add, filter);
 
-  ASSERT_TRUE(processor.process_removed(&filter_copy_remove));
+  ASSERT_TRUE(processor.process_removed(&filter_copy_remove, PubSub::SubscriptionArguments()));
   ASSERT_EQ(filter_copy_remove, filter);
 }
 
@@ -176,10 +179,10 @@ TEST(ClusterBarrier, MultiMatchingRule) {
   auto filter_copy_add = filter;
   auto filter_copy_remove = filter;
 
-  ASSERT_TRUE(processor.process_added(&filter_copy_add));
+  ASSERT_TRUE(processor.process_added(&filter_copy_add, PubSub::SubscriptionArguments()));
   ASSERT_EQ(filter_copy_add, filter);
 
-  ASSERT_TRUE(processor.process_removed(&filter_copy_remove));
+  ASSERT_TRUE(processor.process_removed(&filter_copy_remove, PubSub::SubscriptionArguments()));
   ASSERT_EQ(filter_copy_remove, filter);
 }
 
@@ -190,10 +193,10 @@ TEST(OptionalConstraintDrop, SingleMatchingRule) {
   auto filter_copy_add = Filter(filter);
   auto filter_copy_remove = Filter(filter);
 
-  ASSERT_FALSE(processor.process_added(&filter_copy_add));
+  ASSERT_FALSE(processor.process_added(&filter_copy_add, PubSub::SubscriptionArguments()));
   ASSERT_NE(filter_copy_add, filter);
 
-  ASSERT_FALSE(processor.process_removed(&filter_copy_remove));
+  ASSERT_FALSE(processor.process_removed(&filter_copy_remove, PubSub::SubscriptionArguments()));
   ASSERT_NE(filter_copy_remove, filter);
 }
 
@@ -205,10 +208,10 @@ TEST(OptionalConstraintDrop, MultipleeMatchingRules) {
   auto filter_copy_add = Filter(filter);
   auto filter_copy_remove = Filter(filter);
 
-  ASSERT_FALSE(processor.process_added(&filter_copy_add));
+  ASSERT_FALSE(processor.process_added(&filter_copy_add, PubSub::SubscriptionArguments()));
   ASSERT_NE(filter_copy_add, filter);
 
-  ASSERT_FALSE(processor.process_removed(&filter_copy_remove));
+  ASSERT_FALSE(processor.process_removed(&filter_copy_remove, PubSub::SubscriptionArguments()));
   ASSERT_NE(filter_copy_remove, filter);
 }
 
@@ -219,10 +222,129 @@ TEST(OptionalConstraintDrop, IgnoreDifferentRule) {
   auto filter_copy_add = Filter(filter);
   auto filter_copy_remove = Filter(filter);
 
-  ASSERT_FALSE(processor.process_added(&filter_copy_add));
+  ASSERT_FALSE(processor.process_added(&filter_copy_add, PubSub::SubscriptionArguments()));
   ASSERT_EQ(filter_copy_add, filter);
 
-  ASSERT_FALSE(processor.process_removed(&filter_copy_remove));
+  ASSERT_FALSE(processor.process_removed(&filter_copy_remove, PubSub::SubscriptionArguments()));
+  ASSERT_EQ(filter_copy_remove, filter);
+}
+
+TEST(ScopeLocal, DropLocalSubscription) {
+  auto processor = ScopeLocal("n_local", "n_remote");
+
+  auto filter = Filter{{"foo", "bar"}};
+  auto filter_copy_add = Filter(filter);
+  auto filter_copy_remove = Filter(filter);
+
+  PubSub::SubscriptionArguments args;
+  args.scope = PubSub::Scope::LOCAL;
+
+  ASSERT_TRUE(processor.process_added(&filter_copy_add, args));
+  ASSERT_EQ(filter_copy_add, filter);
+
+  ASSERT_TRUE(processor.process_removed(&filter_copy_remove, args));
+  ASSERT_EQ(filter_copy_remove, filter);
+}
+
+TEST(ScopeLocal, ForwardClusterSubscription) {
+  auto processor = ScopeLocal("n_local", "n_remote");
+
+  auto filter = Filter{{"foo", "bar"}};
+  auto filter_copy_add = Filter(filter);
+  auto filter_copy_remove = Filter(filter);
+
+  PubSub::SubscriptionArguments args;
+  args.scope = PubSub::Scope::CLUSTER;
+
+  ASSERT_FALSE(processor.process_added(&filter_copy_add, args));
+  ASSERT_EQ(filter_copy_add, filter);
+
+  ASSERT_FALSE(processor.process_removed(&filter_copy_remove, args));
+  ASSERT_EQ(filter_copy_remove, filter);
+}
+
+TEST(ScopeLocal, ForwardGlobalSubscription) {
+  auto processor = ScopeLocal("n_local", "n_remote");
+
+  auto filter = Filter{{"foo", "bar"}};
+  auto filter_copy_add = Filter(filter);
+  auto filter_copy_remove = Filter(filter);
+
+  PubSub::SubscriptionArguments args;
+  args.scope = PubSub::Scope::GLOBAL;
+
+  ASSERT_FALSE(processor.process_added(&filter_copy_add, args));
+  ASSERT_EQ(filter_copy_add, filter);
+
+  ASSERT_FALSE(processor.process_removed(&filter_copy_remove, args));
+  ASSERT_EQ(filter_copy_remove, filter);
+}
+
+TEST(ScopeCluster, SameClusterForwardClusterSubscription) {
+  auto processor = ScopeCluster("n_local", "n_remote", "foo.bar.com", "foo.bar.com");
+
+  auto filter = Filter{{"foo", "bar"}};
+  auto filter_copy_add = Filter(filter);
+  auto filter_copy_remove = Filter(filter);
+
+  PubSub::SubscriptionArguments args;
+  args.scope = PubSub::Scope::CLUSTER;
+
+  ASSERT_FALSE(processor.process_added(&filter_copy_add, args));
+  ASSERT_EQ(filter_copy_add, filter);
+
+  ASSERT_FALSE(processor.process_removed(&filter_copy_remove, args));
+  ASSERT_EQ(filter_copy_remove, filter);
+}
+
+TEST(ScopeCluster, SameClusterForwardGlobalSubscription) {
+  auto processor = ScopeCluster("n_local", "n_remote", "foo.bar.com", "foo.bar.com");
+
+  auto filter = Filter{{"foo", "bar"}};
+  auto filter_copy_add = Filter(filter);
+  auto filter_copy_remove = Filter(filter);
+
+  PubSub::SubscriptionArguments args;
+  args.scope = PubSub::Scope::GLOBAL;
+
+  ASSERT_FALSE(processor.process_added(&filter_copy_add, args));
+  ASSERT_EQ(filter_copy_add, filter);
+
+  ASSERT_FALSE(processor.process_removed(&filter_copy_remove, args));
+  ASSERT_EQ(filter_copy_remove, filter);
+}
+
+TEST(ScopeCluster, DifferentlusterDropClusterSubscription) {
+  auto processor = ScopeCluster("n_local", "n_remote", "baz.bar.com", "foo.bar.com");
+
+  auto filter = Filter{{"foo", "bar"}};
+  auto filter_copy_add = Filter(filter);
+  auto filter_copy_remove = Filter(filter);
+
+  PubSub::SubscriptionArguments args;
+  args.scope = PubSub::Scope::CLUSTER;
+
+  ASSERT_TRUE(processor.process_added(&filter_copy_add, args));
+  ASSERT_EQ(filter_copy_add, filter);
+
+  ASSERT_TRUE(processor.process_removed(&filter_copy_remove, args));
+  ASSERT_EQ(filter_copy_remove, filter);
+}
+
+TEST(ScopeCluster, DifferentClusterForwardGlobalSubscription) {
+  auto processor = ScopeCluster("n_local", "n_remote", "baz.bar.com", "foo.bar.com");
+
+  auto filter = Filter{{"foo", "bar"}};
+  auto filter_copy_add = Filter(filter);
+  auto filter_copy_remove = Filter(filter);
+
+  PubSub::SubscriptionArguments args;
+  args.scope = PubSub::Scope::GLOBAL;
+
+  ASSERT_FALSE(processor.process_added(&filter_copy_add, args));
+  ASSERT_EQ(filter_copy_add, filter);
+
+  ASSERT_FALSE(processor.process_removed(&filter_copy_remove, args));
   ASSERT_EQ(filter_copy_remove, filter);
 }
 

@@ -19,7 +19,7 @@ class ReplyContext {
   explicit ReplyContext(
       const PAllocator& allocator =
           RuntimeAllocatorConfiguration::make_allocator<ReplyContext>)
-      : _node_id(allocator), _instance_id(allocator), _actor_type(allocator) {}
+      : _node_id(allocator), _actor_type(allocator), _instance_id(allocator) {}
 
   template <typename PAllocator = allocator_type>
   ReplyContext(const ReplyContext& other,

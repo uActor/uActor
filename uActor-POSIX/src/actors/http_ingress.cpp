@@ -122,12 +122,13 @@ void HTTPIngress::handle_subscription_removed(
 std::optional<HTTPIngress::SubscriptionIdentifier>
 HTTPIngress::parse_http_ingress_subscription(
     const PubSub::Publication& publication) {
-  if (!publication.has_attr("serialized_subscription")) {
+  if (!publication.has_attr("subscription")) {
     return std::nullopt;
   }
 
-  auto deserialized_subscription = PubSub::Filter::deserialize(
-      *publication.get_str_attr("serialized_subscription"));
+  auto map = *publication.get_nested_component("subscription");
+
+  auto deserialized_subscription = PubSub::Filter::from_publication_map(*map);
 
   if (!(deserialized_subscription &&
         filter_has_ingress_http_constraint(*deserialized_subscription))) {

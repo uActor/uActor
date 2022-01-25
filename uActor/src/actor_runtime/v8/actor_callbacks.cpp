@@ -197,7 +197,8 @@ void ActorClosures::subscribe(const v8::FunctionCallbackInfo<v8::Value>& info) {
       info.GetReturnValue().Set(v8::Number::New(info.GetIsolate(), 0));
       return;
     }
-    auto sid = actor->subscribe(std::move(*f), 0);
+    PubSub::SubscriptionArguments arguments;
+    auto sid = actor->subscribe(std::move(*f), arguments);
     info.GetReturnValue().Set(
         v8::Number::New(info.GetIsolate(), static_cast<double>(sid)));
   } else {

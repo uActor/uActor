@@ -61,6 +61,10 @@ void Router::publish_internal(Publication&& publication) {
         constraint_it->second.check(std::get<int32_t>(value), &c);
       } else if (std::holds_alternative<float>(value)) {
         constraint_it->second.check(std::get<float>(value), &c);
+      } else if (std::holds_alternative<std::shared_ptr<Publication::Map>>(
+                     value)) {
+        constraint_it->second.check(
+            std::get<std::shared_ptr<Publication::Map>>(value).get(), &c);
       }
     }
   }
@@ -75,10 +79,10 @@ void Router::publish_internal(Publication&& publication) {
     if (counts.required == subscription_ptr->count_required()) {
       if (counts.optional == subscription_ptr->count_optional() ||
           subscription_ptr->filter.check_optionals(publication)) {
-        if (subscription_ptr->priority > current_priority) {
-          current_priority = subscription_ptr->priority;
+        if (subscription_ptr->arguments.priority > current_priority) {
+          current_priority = subscription_ptr->arguments.priority;
           current_receivers.clear();
-        } else if (subscription_ptr->priority < current_priority) {
+        } else if (subscription_ptr->arguments.priority < current_priority) {
           continue;
         }
         for (auto& receiver : subscription_ptr->receivers) {
@@ -93,10 +97,10 @@ void Router::publish_internal(Publication&& publication) {
   for (const auto& sub : no_requirements) {
     if (c.find(sub) == c.end()) {
       if (sub->filter.check_optionals(publication)) {
-        if (sub->priority > current_priority) {
-          current_priority = sub->priority;
+        if (sub->arguments.priority > current_priority) {
+          current_priority = sub->arguments.priority;
           current_receivers.clear();
-        } else if (sub->priority < current_priority) {
+        } else if (sub->arguments.priority < current_priority) {
           continue;
         }
         for (auto& receiver : sub->receivers) {
@@ -126,16 +130,20 @@ void Router::publish_internal(Publication&& publication) {
 #endif
 }
 
-std::vector<std::string> Router::subscriptions_for(
-    std::string_view node_id, std::function<bool(Filter*)> processing_chain,
-    uint32_t max_size) {
+std::vector<std::shared_ptr<PubSub::Publication::Map>>
+Router::subscription_lists_for(
+    std::string_view node_id,
+    std::function<bool(Filter*, const SubscriptionArguments&)> processing_chain,
+    size_t num_subs) {
   std::shared_lock lock(mtx);
-  std::vector<std::string> serialized_sub{std::string()};
+
+  std::vector<std::shared_ptr<PubSub::Publication::Map>> subscription_lists{
+      std::make_shared<PubSub::Publication::Map>()};
 
   auto [peer_node_it, _inserted] =
       peer_node_ids.try_emplace(AString(node_id), false, next_node_id++);
   if (peer_node_it == peer_node_ids.end()) {
-    return serialized_sub;
+    return subscription_lists;
   }
   uint32_t internal_node_id = peer_node_it->second.second;
 
@@ -145,26 +153,30 @@ std::vector<std::string> Router::subscriptions_for(
     // Only subscriptions that could be fulfilled
     auto n = sub.nodes();
     if (n.size() >= 2 || n.find(internal_node_id) == n.end()) {
-      Filter filter = *Filter::deserialize(sub.filter.serialize());
+      Filter filter = sub.filter.to_filter();
 
-      if (!processing_chain(&filter)) {
-        auto current = filter.serialize();
+      if (!processing_chain(&filter, sub.arguments)) {
+        std::shared_ptr<PubSub::Publication::Map> current_sub{
+            std::make_shared<Publication::Map>()};
+        current_sub->set_attr("subscription", filter.to_publication_map());
+        current_sub->set_attr("subscription_arguments", sub.arguments.to_map());
+        current_sub->set_attr(
+            "subscriber",
+            ActorIdentifier(BoardFunctions::NODE_ID, "replay", "1")
+                .to_publication_map());
 
-        if (max_size > 0 &&
-            current.size() + serialized_sub.back().size() > max_size) {
-          serialized_sub.emplace_back();
+        if (num_subs > 0 && subscription_lists.back()->size() >= num_subs) {
+          subscription_lists.emplace_back(
+              std::make_shared<PubSub::Publication::Map>());
         }
-
-        if (!serialized_sub.back().empty()) {
-          serialized_sub.back() += "&" + std::move(current);
-        } else {
-          serialized_sub.back() = std::move(current);
-        }
+        subscription_lists.back()->set_attr(
+            std::to_string(subscription_lists.back()->size()),
+            std::move(current_sub));
       }
     }
   }
 
-  return serialized_sub;
+  return subscription_lists;
 }
 
 std::vector<std::reference_wrapper<const Router::ASubscription>>
@@ -174,18 +186,21 @@ Router::find_subscriptions(std::function<bool(const Filter&)> filter) {
   std::vector<std::reference_wrapper<const Router::ASubscription>> result;
 
   for (const auto& [sub_id, sub] : subscriptions) {
-    if (filter(*Filter::deserialize(sub.filter.serialize()))) {
+    if (filter(sub.filter.to_filter())) {
       result.push_back(sub);
     }
   }
   return result;
 }
 
-uint32_t Router::find_sub_id(Filter&& filter) {
+uint32_t Router::find_sub_id(const Filter& filter,
+                             const SubscriptionArguments& arguments) {
   std::shared_lock lck(mtx);
-  if (auto it = std::find_if(
-          subscriptions.begin(), subscriptions.end(),
-          [&](const auto& sub) { return sub.second.filter == filter; });
+  if (auto it = std::find_if(subscriptions.begin(), subscriptions.end(),
+                             [&](const auto& sub) {
+                               return sub.second.filter == filter &&
+                                      sub.second.arguments == arguments;
+                             });
       it != subscriptions.end()) {
     return it->first;
   }
@@ -194,23 +209,34 @@ uint32_t Router::find_sub_id(Filter&& filter) {
 
 uint32_t Router::number_of_subscriptions() { return subscriptions.size(); }
 
-uint32_t Router::add_subscription(Filter&& f, Receiver* r,
-                                  const ActorIdentifier& subscriber,
-                                  uint8_t priority) {
+uint32_t Router::add_subscription(
+    Filter&& f, Receiver* r,
+    const ActorIdentifier& subscriber,  // True origin
+    const std::string& source_peer,     // The node_id this came from
+    SubscriptionArguments args) {
   std::unique_lock lck(mtx);
 
   if (is_meta_subscription(f)) {
     handle_meta_subscription(f, subscriber);
   }
 
-  auto [res_it, _inserted] = peer_node_ids.try_emplace(
-      AString(subscriber.node_id), false, next_node_id++);
+  if (args.fetch_policy == FetchPolicy::FETCH) {
+    AString exclude = AString(source_peer);
+    if (source_peer == BoardFunctions::NODE_ID) {
+      exclude = "";
+    }
+    publish_subscription_added(f, args, subscriber, std::move(exclude), "");
+    return 1;
+  }
+
+  auto [res_it, _inserted] =
+      peer_node_ids.try_emplace(AString(source_peer), false, next_node_id++);
   uint32_t internal_node_id = res_it->second.second;
 
   if (auto it = std::find_if(subscriptions.begin(), subscriptions.end(),
                              [&](const auto& sub_pair) {
                                return sub_pair.second.filter == f &&
-                                      sub_pair.second.priority == priority;
+                                      sub_pair.second.arguments == args;
                              });
       it != subscriptions.end()) {
     Subscription<Allocator>& sub = it->second;
@@ -225,20 +251,29 @@ uint32_t Router::add_subscription(Filter&& f, Receiver* r,
           }
         }
 
-        auto exclude_node_id =
+        auto include_node_id =
             std::find_if(peer_node_ids.begin(), peer_node_ids.end(),
                          [other_sub](const auto& node_it) {
                            return node_it.second.second == other_sub;
                          })
                 ->first;
-        publish_subscription_added(f, "", exclude_node_id);
+        publish_subscription_added(f, args, subscriber, "", include_node_id);
+      } else if (args.fetch_policy == FetchPolicy::FETCH_FUTURE) {
+        AString exclude = AString(source_peer);
+        if (source_peer == BoardFunctions::NODE_ID) {
+          exclude = "";
+        }
+        publish_subscription_added(f, args, subscriber, exclude, "");
+      } else if (source_peer == BoardFunctions::NODE_ID) {
+        publish_subscription_added(f, args, subscriber, "",
+                                   BoardFunctions::NODE_ID);
       }
     }
     return sub.subscription_id;
   } else {  // new subscription
     uint32_t id = next_sub_id++;
     auto [sub_it, inserted] = subscriptions.try_emplace(
-        id, id, r, internal_node_id, priority);  // Filters not set yet;
+        id, id, r, internal_node_id, args);  // Filters not set yet;
 
     std::vector<std::shared_ptr<const Constraint>,
                 Allocator<std::shared_ptr<const Constraint>>>
@@ -271,8 +306,11 @@ uint32_t Router::add_subscription(Filter&& f, Receiver* r,
       no_requirements.insert(&sub_it->second);
     }
 
-    publish_subscription_added(
-        f, AString(subscriber.node_id, make_allocator<AString>()), "");
+    AString exclude = AString(source_peer);
+    if (source_peer == BoardFunctions::NODE_ID) {
+      exclude = "";
+    }
+    publish_subscription_added(f, args, subscriber, exclude, "");
     return id;
   }
 }
@@ -300,7 +338,8 @@ void Router::handle_meta_subscription(const Filter& filter,
     pub.set_attr("actor_type", subscriber.actor_type);
     pub.set_attr("instance_id", subscriber.instance_id);
     pub.set_attr("type", "local_subscription_exists");
-    pub.set_attr("serialized_subscription", sub.get().filter.serialize());
+    pub.set_attr("subscription",
+                 std::move(sub.get().filter.to_filter().to_publication_map()));
     publish_internal(std::move(pub));
   }
 }
@@ -345,14 +384,15 @@ uint32_t Router::remove_subscription(uint32_t sub_id, Receiver* r,
       }
 
       auto filter = std::move(sub.filter);
+      auto arguments = std::move(sub.arguments);
       subscriptions.erase(sub.subscription_id);
 
-      publish_subscription_removed(filter, "", "");
+      publish_subscription_removed(filter, arguments, "", "");
     } else {
       auto n = sub.nodes();
       if (n.size() == 1 && *n.begin() != 1) {
         publish_subscription_removed(
-            sub.filter, "",
+            sub.filter, sub.arguments, "",
             std::find_if(peer_node_ids.begin(), peer_node_ids.end(),
                          [&n](const auto& node_it) {
                            return node_it.second.second == *n.begin();
@@ -364,13 +404,16 @@ uint32_t Router::remove_subscription(uint32_t sub_id, Receiver* r,
   return remaining;
 }
 
-void Router::publish_subscription_added(const Filter& filter, AString exclude,
-                                        AString include) {
-  std::string serialized = filter.serialize();
-
-  Publication update{BoardFunctions::NODE_ID, "router", "1"};
+void Router::publish_subscription_added(const Filter& filter,
+                                        const SubscriptionArguments& arguments,
+                                        const ActorIdentifier& actor_identifier,
+                                        AString exclude, AString include) {
+  Publication update{actor_identifier.node_id, actor_identifier.actor_type,
+                     actor_identifier.instance_id};
   update.set_attr("type", "local_subscription_added");
-  update.set_attr("serialized_subscription", std::move(serialized));
+  update.set_attr("subscriber", actor_identifier.to_publication_map());
+  update.set_attr("subscription_arguments", arguments.to_map());
+  update.set_attr("subscription", filter.to_publication_map());
   if (exclude.length() != 0) {
     update.set_attr("exclude_node_id", exclude);
   }
@@ -380,11 +423,13 @@ void Router::publish_subscription_added(const Filter& filter, AString exclude,
   publish_internal(std::move(update));
 }
 
-void Router::publish_subscription_removed(const InternalFilter& filter,
-                                          AString exclude, AString include) {
+void Router::publish_subscription_removed(
+    const InternalFilter& filter, const SubscriptionArguments& arguments,
+    AString exclude, AString include) {
   Publication update{BoardFunctions::NODE_ID, "router", "1"};
   update.set_attr("type", "local_subscription_removed");
-  update.set_attr("serialized_subscription", filter.serialize());
+  update.set_attr("subscription", filter.to_filter().to_publication_map());
+  update.set_attr("subscription_arguments", arguments.to_map());
   if (exclude.length() != 0) {
     update.set_attr("exclude_node_id", exclude);
   }

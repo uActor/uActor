@@ -111,12 +111,12 @@ void BLEActor::handle_advertisement_receive(PubSub::Publication&& publication) {
 
 #if CONFIG_UACTOR_OPTIMIZATIONS_BLE_FILTER
 void BLEActor::handle_subscription_added(PubSub::Publication&& publication) {
-  if (!publication.has_attr("serialized_subscription")) {
+  if (!publication.has_attr("subscription")) {
     return;
   }
 
-  auto deserialized = PubSub::Filter::deserialize(
-      *publication.get_str_attr("serialized_subscription"));
+  auto deserialized = PubSub::Filter::from_publication_map(
+      **publication.get_nested_component("subscription"));
 
   if (deserialized && filter_has_ble_type_constraint(*deserialized)) {
     if (std::find_if(
@@ -146,12 +146,12 @@ void BLEActor::handle_subscription_added(PubSub::Publication&& publication) {
 }
 
 void BLEActor::handle_subscription_removed(PubSub::Publication&& publication) {
-  if (!publication.has_attr("serialized_subscription")) {
+  if (!publication.has_attr("subscription")) {
     return;
   }
 
-  auto deserialized = PubSub::Filter::deserialize(
-      *publication.get_str_attr("serialized_subscription"));
+  auto deserialized = PubSub::Filter::from_publication_map(
+      **publication.get_nested_component("subscription"));
 
   if (deserialized && filter_has_ble_type_constraint(*deserialized)) {
     auto filter_it = std::find_if(

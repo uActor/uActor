@@ -23,13 +23,17 @@ void CodeStoreActor::receive(const PubSub::Publication& publication) {
     // "code_fetch_response"}, PubSub::Constraint{"node_id", "node_id"},
     // PubSub::Constraint{"publisher_node_id",
     // node_id(),PubSub::ConstraintPredicates::NE, true}});
+
+    PubSub::SubscriptionArguments arguments;
+    arguments.priority = 1;
+
     code_fetch_subscription_id = subscribe(
         PubSub::Filter{
             PubSub::Constraint{"type", "code_fetch_request"},
             PubSub::Constraint{"publisher_node_id", node_id()},
             PubSub::Constraint{"last_cache_miss_node_id", node_id(),
                                PubSub::ConstraintPredicates::NE, true}},
-        1);
+        arguments);
     subscribe(
         PubSub::Filter{PubSub::Constraint{"type", "code_unavailable"},
                        PubSub::Constraint{"publisher_node_id", node_id()}});
@@ -219,16 +223,22 @@ void CodeStoreActor::receive_remote_fetch_control_command(
   auto command = *publication.get_str_attr("command");
 
   if (command == "enable") {
+    PubSub::SubscriptionArguments arguments;
+    arguments.priority = 1;
+
     unsubscribe(code_fetch_subscription_id);
     code_fetch_subscription_id = subscribe(
         PubSub::Filter{
             PubSub::Constraint{"type", "code_fetch_request"},
             PubSub::Constraint{"last_cache_miss_node_id", node_id(),
                                PubSub::ConstraintPredicates::NE, true}},
-        1);
+        arguments);
   }
 
   if (command == "disable") {
+    PubSub::SubscriptionArguments arguments;
+    arguments.priority = 1;
+
     unsubscribe(code_fetch_subscription_id);
     code_fetch_subscription_id = subscribe(
         PubSub::Filter{
@@ -236,7 +246,7 @@ void CodeStoreActor::receive_remote_fetch_control_command(
             PubSub::Constraint{"publisher_node_id", node_id()},
             PubSub::Constraint{"last_cache_miss_node_id", node_id(),
                                PubSub::ConstraintPredicates::NE, true}},
-        1);
+        arguments);
   }
 }
 

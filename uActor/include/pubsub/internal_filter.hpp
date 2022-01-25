@@ -68,6 +68,17 @@ struct InternalFilter {
     return *this;
   }
 
+  Filter to_filter() const {
+    Filter f{};
+    for (const auto& c : required) {
+      f.required.push_back(*c);
+    }
+    for (const auto& c : optional) {
+      f.optional.push_back(*c);
+    }
+    return f;
+  }
+
   bool matches(const Publication& publication) const {
     return check_required(publication) && check_optionals(publication);
   }

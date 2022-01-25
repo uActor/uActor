@@ -12,9 +12,11 @@
 
 #include <cstdio>
 #include <list>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 #include "code_store.hpp"
 #include "lua.hpp"
@@ -108,6 +110,10 @@ class ManagedLuaActor : public ManagedActor {
 
   static int add_reply_subscription_wrapper(lua_State* state);
 
+  static int allow_requests_wrapper(lua_State* state);
+
+  static int request_wrapper(lua_State* state);
+
 #if CONFIG_UACTOR_ENABLE_TELEMETRY
   static int telemetry_set_wrapper(lua_State* state);
 #endif
@@ -133,7 +139,11 @@ class ManagedLuaActor : public ManagedActor {
 
   static int actor_index(lua_State* state);
 
-  static PubSub::Filter parse_filters(lua_State* state, size_t index);
+  static std::vector<PubSub::Constraint> parse_filters(lua_State* state,
+                                                       size_t index);
+  static std::optional<PubSub::Constraint> parse_constraint(lua_State* state,
+                                                            size_t index_key,
+                                                            size_t index_value);
 
   static PubSub::Publication parse_publication(ManagedLuaActor* actor,
                                                lua_State* state, size_t index);
@@ -151,6 +161,8 @@ class ManagedLuaActor : public ManagedActor {
             {"queue_size", &queue_size_wrapper}, {"log", &log_wrapper},
             {"print", &print_wrapper},
             {"add_reply_sub", &add_reply_subscription_wrapper},
+            {"allow_requests", &allow_requests_wrapper},
+            {"request", &request_wrapper},
 #if CONFIG_BENCHMARK_ENABLED
             {"testbed_log_integer", &testbed_log_integer_wrapper},
             {"testbed_log_double", &testbed_log_double_wrapper},

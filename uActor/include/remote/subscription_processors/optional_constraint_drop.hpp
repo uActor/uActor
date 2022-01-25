@@ -18,7 +18,8 @@ class OptionalConstraintDrop : public SubscriptionProcessor {
 
   ~OptionalConstraintDrop() = default;
 
-  bool process_added(PubSub::Filter* filter) override {
+  bool process_added(PubSub::Filter* filter,
+                     const PubSub::SubscriptionArguments& arguments) override {
     filter->optional.erase(
         std::remove_if(filter->optional.begin(), filter->optional.end(),
                        [this](const auto& item) {
@@ -29,7 +30,9 @@ class OptionalConstraintDrop : public SubscriptionProcessor {
     return false;
   }
 
-  bool process_removed(PubSub::Filter* filter) override {
+  bool process_removed(
+      PubSub::Filter* filter,
+      const PubSub::SubscriptionArguments& arguments) override {
     filter->optional.erase(
         std::remove_if(filter->optional.begin(), filter->optional.end(),
                        [this](const auto& item) {

@@ -111,6 +111,11 @@ boost::program_options::variables_map parse_arguments(int arg_count,
     "Add a node label ( key:value, can be specified many times)."
   )
   (
+    "cluster",
+    boost::program_options::value<std::string>(),
+    "cluster-id"
+  )
+  (
     "cluster-labels",
     boost::program_options::value<std::string>(),
     "Comma-separated list of labels that are used"
@@ -308,6 +313,11 @@ int main(int arg_count, char** args) {
     label_update.set_attr("key", "node_id");
     label_update.set_attr("value", uActor::BoardFunctions::NODE_ID);
     uActor::PubSub::Router::get_instance().publish(std::move(label_update));
+  }
+
+  if (arguments.count("cluster")) {
+    uActor::Remote::RemoteConnection::cluster =
+        arguments["cluster"].as<std::string>();
   }
 
   if (arguments.count("cluster-labels")) {

@@ -4,6 +4,7 @@
 #include <functional>
 #include <list>
 #include <map>
+#include <memory>
 #include <mutex>
 #include <scoped_allocator>
 #include <set>
@@ -21,6 +22,7 @@
 #include "receiver.hpp"
 #include "receiver_handle.hpp"
 #include "subscription.hpp"
+#include "subscription_arguments.hpp"
 #include "support/memory_manager.hpp"
 
 namespace uActor::PubSub {
@@ -37,11 +39,14 @@ class Router {
 
   ReceiverHandle new_subscriber();
 
-  std::vector<std::string> subscriptions_for(
-      std::string_view node_id, std::function<bool(Filter*)> processing_chain,
-      uint32_t max_size = 0);
+  std::vector<std::shared_ptr<PubSub::Publication::Map>> subscription_lists_for(
+      std::string_view node_id,
+      std::function<bool(Filter*, const SubscriptionArguments&)>
+          processing_chain,
+      size_t num_subs = 0);
 
-  uint32_t find_sub_id(Filter&& filter);
+  uint32_t find_sub_id(const Filter& filter,
+                       const SubscriptionArguments& arguments);
   uint32_t number_of_subscriptions();
 
  private:
@@ -58,7 +63,8 @@ class Router {
   using ASubscription = Subscription<Allocator>;
   using AConstraitIndex = ConstraintIndex<Allocator>;
 
-  std::atomic<uint32_t> next_sub_id{1};
+  // Reserve some subscription ids for special functionality
+  std::atomic<uint32_t> next_sub_id{11};
 
   std::map<uint32_t, ASubscription, std::less<uint32_t>,
            std::scoped_allocator_adaptor<
@@ -89,7 +95,8 @@ class Router {
 
   uint32_t add_subscription(Filter&& f, Receiver* r,
                             const ActorIdentifier& subscriber,
-                            uint8_t priority = 0);
+                            const std::string& source_peer,
+                            SubscriptionArguments args);
 
   uint32_t remove_subscription(uint32_t sub_id, Receiver* r,
                                std::string node_id = "");
@@ -97,9 +104,12 @@ class Router {
   friend ReceiverHandle;
   friend Receiver;
 
-  void publish_subscription_added(const Filter& filter, AString exclude,
-                                  AString include);
+  void publish_subscription_added(const Filter& filter,
+                                  const SubscriptionArguments& arguments,
+                                  const ActorIdentifier& actor_identifier,
+                                  AString exclude, AString include);
   void publish_subscription_removed(const InternalFilter& filter,
+                                    const SubscriptionArguments& arguments,
                                     AString exclude, AString include);
 
   void publish_local_subscription_added(const ASubscription& subscription);

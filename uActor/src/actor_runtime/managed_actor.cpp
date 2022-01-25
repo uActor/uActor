@@ -194,8 +194,9 @@ void ManagedActor::trigger_code_fetch() {
   publish(std::move(fetch_code));
 }
 
-uint32_t ManagedActor::subscribe(PubSub::Filter&& f, uint8_t priority) {
-  uint32_t sub_id = api->add_subscription(_id, std::move(f), priority);
+uint32_t ManagedActor::subscribe(PubSub::Filter&& f,
+                                 PubSub::SubscriptionArguments arguments) {
+  uint32_t sub_id = api->add_subscription(_id, std::move(f), arguments);
   subscriptions.insert(sub_id);
   return sub_id;
 }
@@ -260,12 +261,14 @@ void ManagedActor::publish_creation_message() {
 
 uint32_t ManagedActor::add_reply_subscription() {
   uint32_t sub_id = api->add_subscription(
-      _id, PubSub::Filter{PubSub::Constraint(std::string("node_id"),
-                                             std::string(_node_id)),
-                          PubSub::Constraint(std::string("actor_type"),
-                                             std::string(_actor_type)),
-                          PubSub::Constraint(std::string("instance_id"),
-                                             std::string(_instance_id))});
+      _id,
+      PubSub::Filter{
+          PubSub::Constraint(std::string("node_id"), std::string(_node_id)),
+          PubSub::Constraint(std::string("actor_type"),
+                             std::string(_actor_type)),
+          PubSub::Constraint(std::string("instance_id"),
+                             std::string(_instance_id))},
+      PubSub::SubscriptionArguments());
   subscriptions.insert(sub_id);
   return sub_id;
 }

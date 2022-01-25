@@ -120,7 +120,7 @@ class Executor : public ExecutorApi {
   }
 
   uint32_t add_subscription(uint32_t local_id, PubSub::Filter&& filter,
-                            uint8_t priority) override {
+                            PubSub::SubscriptionArguments arguments) override {
     auto actor_it = actors.find(local_id);
     if (actor_it == actors.end()) {
       return 0;
@@ -130,7 +130,7 @@ class Executor : public ExecutorApi {
         PubSub::ActorIdentifier(actor_it->second.node_id(),
                                 actor_it->second.actor_type(),
                                 actor_it->second.instance_id()),
-        priority);
+        std::string(node_id()), arguments);
     auto entry = subscription_mapping.find(sub_id);
     if (entry != subscription_mapping.end()) {
       entry->second.insert(local_id);

@@ -33,11 +33,13 @@ class LuaExecutor : public Executor<ManagedLuaActor, LuaExecutor> {
   void open_lua_math_optimized(lua_State* state);
   void open_lua_string_optimized(lua_State* state);
   void open_lua_table_optimized(lua_State* state);
+  void add_constraint_predicate_table(lua_State* lua_state);
 
   static int base_index(lua_State* state);
   static int math_index(lua_State* state);
   static int string_index(lua_State* state);
   static int table_index(lua_State* state);
+  static int constraint_predicate_index(lua_State* lua_state);
 
   friend Executor;
 };

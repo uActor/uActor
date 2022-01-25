@@ -11,7 +11,8 @@ class NodeIdAggregator : public SubscriptionProcessor {
 
   ~NodeIdAggregator() = default;
 
-  bool process_added(PubSub::Filter* filter) override {
+  bool process_added(PubSub::Filter* filter,
+                     const PubSub::SubscriptionArguments& arguments) override {
     for (const auto& constraint : filter->required) {
       if (constraint.attribute() == "node_id" &&
           std::get<std::string_view>(constraint.operand()) == local_node_id &&
@@ -28,7 +29,9 @@ class NodeIdAggregator : public SubscriptionProcessor {
     return false;
   }
 
-  bool process_removed(PubSub::Filter* filter) override {
+  bool process_removed(
+      PubSub::Filter* filter,
+      const PubSub::SubscriptionArguments& arguments) override {
     for (const auto& constraint : filter->required) {
       if (constraint.attribute() == "node_id" &&
           std::get<std::string_view>(constraint.operand()) == local_node_id &&

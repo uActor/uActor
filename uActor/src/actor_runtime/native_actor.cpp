@@ -30,8 +30,9 @@ void NativeActor::reply(PubSub::Publication&& publication) {
   actor_wrapper->reply(std::move(publication));
 }
 
-uint32_t NativeActor::subscribe(PubSub::Filter&& filter, uint8_t priority) {
-  return actor_wrapper->subscribe(std::move(filter), priority);
+uint32_t NativeActor::subscribe(PubSub::Filter&& filter,
+                                PubSub::SubscriptionArguments arguments) {
+  return actor_wrapper->subscribe(std::move(filter), arguments);
 }
 
 void NativeActor::unsubscribe(uint32_t subscription_id) {

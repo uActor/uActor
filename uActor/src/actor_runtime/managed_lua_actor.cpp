@@ -174,7 +174,7 @@ int ManagedLuaActor::deferred_block_for_wrapper(lua_State* state) {
       lua_touserdata(state, lua_upvalueindex(1)));
 
   uint32_t timeout = lua_tointeger(state, 2);
-  actor->deffered_block_for(std::move(parse_filters(state, 1)), timeout);
+  actor->deffered_block_for(PubSub::Filter(parse_filters(state, 1)), timeout);
   return 0;
 }
 
@@ -182,14 +182,71 @@ int ManagedLuaActor::subscribe_wrapper(lua_State* state) {
   ManagedLuaActor* actor = reinterpret_cast<ManagedLuaActor*>(
       lua_touserdata(state, lua_upvalueindex(1)));
 
-  uint8_t priority = 0;
-  if (lua_gettop(state) > 1) {
-    priority = lua_tointeger(state, 2);
+  PubSub::SubscriptionArguments arguments;
+  if (lua_gettop(state) > 1 && lua_type(state, 2) == LUA_TTABLE) {
+    lua_getfield(state, 2, "priority");
+    if (lua_isinteger(state, -1)) {
+      arguments.priority = lua_tointeger(state, -1);
+    }
+    lua_pop(state, 1);
+
+    lua_getfield(state, 2, "scope");
+    if (lua_isstring(state, -1)) {
+      std::string scope_string(lua_tostring(state, -1));
+      if (scope_string == "LOCAL") {
+        arguments.scope = PubSub::Scope::LOCAL;
+      } else if (scope_string == "GLOBAL") {
+        arguments.scope = PubSub::Scope::GLOBAL;
+      } else {
+        arguments.scope = PubSub::Scope::CLUSTER;
+      }
+    }
+    lua_pop(state, 1);
+
+    lua_getfield(state, 2, "fetch_policy");
+    if (lua_isstring(state, -1)) {
+      std::string policy_string(lua_tostring(state, -1));
+      arguments.fetch_policy =
+          PubSub::SubscriptionArguments::fetch_policy_from_string(
+              policy_string);
+    }
+    lua_pop(state, 1);
   }
 
-  uint32_t id = actor->subscribe(parse_filters(state, 1), priority);
+  uint32_t id =
+      actor->subscribe(PubSub::Filter(parse_filters(state, 1)), arguments);
   lua_pushinteger(state, id);
   return 1;
+}
+
+int ManagedLuaActor::allow_requests_wrapper(lua_State* state) {
+  ManagedLuaActor* actor = reinterpret_cast<ManagedLuaActor*>(
+      lua_touserdata(state, lua_upvalueindex(1)));
+
+  PubSub::Constraint type_filter{"type", "local_subscription_added"};
+  PubSub::Constraint fetch_filter{
+      "subscription_arguments",
+      std::vector<PubSub::Constraint>{
+          PubSub::Constraint{"fetch_policy", "FETCH"}},
+      PubSub::ConstraintPredicates::Predicate::MAP_ALL};
+  PubSub::Constraint request_filters{
+      "subscription", parse_filters(state, 1),
+      PubSub::ConstraintPredicates::Predicate::MAP_ALL};
+
+  uint32_t id = actor->subscribe(
+      PubSub::Filter{std::move(type_filter), std::move(fetch_filter),
+                     std::move(request_filters)},
+      PubSub::SubscriptionArguments());
+  lua_pushinteger(state, id);
+  return 1;
+}
+
+int ManagedLuaActor::request_wrapper(lua_State* state) {
+  ManagedLuaActor* actor = reinterpret_cast<ManagedLuaActor*>(
+      lua_touserdata(state, lua_upvalueindex(1)));
+
+  actor->request(PubSub::Filter(parse_filters(state, 1)));
+  return 0;
 }
 
 int ManagedLuaActor::add_reply_subscription_wrapper(lua_State* state) {
@@ -537,6 +594,12 @@ int ManagedLuaActor::actor_index(lua_State* state) {
     lua_getglobal(state, "Publication");
     return 1;
   }
+
+  if (key == "ConstraintPredicate") {
+    lua_getglobal(state, "ConstraintPredicate");
+    return 1;
+  }
+
 #if !UACTOR_EXPERIMENTAL_STATE_AS_PARAMETER
   lua_getglobal(
       state,
@@ -564,68 +627,98 @@ ManagedLuaActor::RuntimeReturnValue ManagedLuaActor::fetch_code_and_init() {
   }
 }
 
-PubSub::Filter ManagedLuaActor::parse_filters(lua_State* state, size_t index) {
-  std::list<PubSub::Constraint> filter_list;
+std::vector<PubSub::Constraint> ManagedLuaActor::parse_filters(lua_State* state,
+                                                               size_t index) {
+  std::vector<PubSub::Constraint> filter_list;
   luaL_checktype(state, index, LUA_TTABLE);
-  lua_pushvalue(state, index);
   lua_pushnil(state);
 
-  while (lua_next(state, -2) != 0) {
-    lua_pushvalue(state, -2);
-    std::string key(lua_tostring(state, -1));
-
-    // Simple Equality
-    if (lua_type(state, -2) == LUA_TSTRING) {
-      std::string value(lua_tostring(state, -2));
-      filter_list.emplace_back(std::move(key), std::move(value));
-    } else if (lua_isinteger(state, -2) != 0) {
-      int32_t value = lua_tointeger(state, -2);
-      filter_list.emplace_back(std::move(key), value);
-    } else if (lua_isnumber(state, -2) != 0) {
-      float value = lua_tonumber(state, -2);
-      filter_list.emplace_back(std::move(key), value);
-    } else if (lua_type(state, -2) == LUA_TTABLE) {  //  Complex Operator
-      lua_geti(state, -2, 1);
-      PubSub::ConstraintPredicates::Predicate operation =
-          PubSub::ConstraintPredicates::Predicate::EQ;
-      int32_t value = lua_tointeger(state, -1);
-      if (lua_isinteger(state, -1) != 0 && value > 0 &&
-          value <= PubSub::ConstraintPredicates::MAX_INDEX) {
-        operation = static_cast<PubSub::ConstraintPredicates::Predicate>(
-            lua_tointeger(state, -1));
-      } else {
-        luaL_error(state, "Bad Predicate");
-      }
-      lua_pop(state, 1);
-
-      bool optional = false;
-      lua_getfield(state, -2, "optional");
-      if (lua_isboolean(state, -1)) {
-        optional = (lua_toboolean(state, -1) != 0);
-      }
-      lua_pop(state, 1);
-
-      lua_geti(state, -2, 2);
-      if (lua_isinteger(state, -1) != 0) {
-        filter_list.emplace_back(std::move(key),
-                                 static_cast<int32_t>(lua_tointeger(state, -1)),
-                                 operation, optional);
-      } else if (lua_isnumber(state, -1) != 0) {
-        filter_list.emplace_back(std::move(key),
-                                 static_cast<float>(lua_tonumber(state, -1)),
-                                 operation, optional);
-      } else if (lua_isstring(state, -1) != 0) {
-        filter_list.emplace_back(std::move(key),
-                                 std::string_view(lua_tostring(state, -1)),
-                                 operation, optional);
-      }
-      lua_pop(state, 1);
+  while (lua_next(state, index) != 0) {
+    auto parsed_constraint = parse_constraint(state, -2, -1);
+    if (parsed_constraint) {
+      filter_list.emplace_back(std::move(*parsed_constraint));
+    } else {
+      Support::Logger::warning("MANAGED-LUA-ACTOR",
+                               "Failure parsing constraint.");
     }
-    lua_pop(state, 2);
-  }
-  lua_pop(state, 1);
 
-  return PubSub::Filter(std::move(filter_list));
+    lua_pop(state, 1);
+  }
+
+  return filter_list;
+}
+
+std::optional<PubSub::Constraint> ManagedLuaActor::parse_constraint(
+    lua_State* state, size_t index_key, size_t index_value) {
+  std::string key{lua_tostring(state, index_key)};
+
+  // Simple Equality
+  if (lua_type(state, index_value) == LUA_TSTRING) {
+    std::string value(lua_tostring(state, index_value));
+    return PubSub::Constraint(std::move(key), std::move(value));
+  } else if (lua_isinteger(state, index_value) != 0) {
+    int32_t value = lua_tointeger(state, index_value);
+    return PubSub::Constraint(std::move(key), value);
+  } else if (lua_isnumber(state, index_value) != 0) {
+    float value = lua_tonumber(state, index_value);
+    return PubSub::Constraint(std::move(key), value);
+  } else if (lua_type(state, index_value) == LUA_TTABLE) {  //  Complex Operator
+    lua_geti(state, index_value, 1);
+    PubSub::ConstraintPredicates::Predicate operation =
+        PubSub::ConstraintPredicates::Predicate::EQ;
+    int32_t value = lua_tointeger(state, -1);
+    if (lua_isinteger(state, -1) != 0 && value > 0 &&
+        value <= PubSub::ConstraintPredicates::MAX_INDEX) {
+      operation = static_cast<PubSub::ConstraintPredicates::Predicate>(
+          lua_tointeger(state, -1));
+    } else {
+      luaL_error(state, "Bad Predicate");
+    }
+    lua_pop(state, 1);
+
+    bool optional = false;
+    lua_getfield(state, index_value, "optional");
+    if (lua_isboolean(state, -1)) {
+      optional = (lua_toboolean(state, -1) != 0);
+    }
+    lua_pop(state, 1);
+
+    lua_geti(state, index_value, 2);
+    if (lua_isinteger(state, -1) != 0) {
+      int32_t number = static_cast<int32_t>(lua_tointeger(state, -1));
+      lua_pop(state, 1);
+      return PubSub::Constraint(std::move(key), number, operation, optional);
+    } else if (lua_isnumber(state, -1) != 0) {
+      float number = static_cast<float>(lua_tonumber(state, -1));
+      lua_pop(state, 1);
+      return PubSub::Constraint(std::move(key), number, operation, optional);
+    } else if (lua_isstring(state, -1) != 0) {
+      std::string value = lua_tostring(state, -1);
+      lua_pop(state, 1);
+      return PubSub::Constraint(std::move(key), value, operation, optional);
+    } else if (lua_istable(state, -1) != 0) {
+      std::vector<PubSub::Constraint> constraints;
+      int map_index = lua_gettop(state);
+      lua_pushnil(state);
+      while (lua_next(state, map_index) != 0) {
+        auto nested = parse_constraint(state, -2, -1);
+        if (nested) {
+          constraints.emplace_back(std::move(*nested));
+        } else {
+          Support::Logger::warning("MANAGED-LUA-ACTOR",
+                                   "Failure parsing nested constraint.");
+        }
+        lua_pop(state, 1);
+      }
+      lua_pop(state, 1);
+      return PubSub::Constraint(std::move(key), std::move(constraints),
+                                operation, optional);
+    } else {
+      lua_pop(state, 1);
+      return std::nullopt;
+    }
+  }
+  return std::nullopt;
 }
 
 PubSub::Publication ManagedLuaActor::parse_publication(ManagedLuaActor* actor,

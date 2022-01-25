@@ -56,4 +56,54 @@ TEST(Constraint, contains_no) {
     ASSERT_FALSE(c("abade"));
 }
 
+TEST(Constraint, nested_constraint_base_valid) {
+    auto c = PubSub::Constraint("key", std::vector<PubSub::Constraint>{PubSub::Constraint("nested_key", "nested_value")}, PubSub::ConstraintPredicates::Predicate::MAP_ALL);
+    auto input = std::make_shared<PubSub::Publication::Map>();
+    input->set_attr("nested_key", "nested_value");
+    ASSERT_TRUE(c(*input));
+}
+
+TEST(Constraint, nested_constraint_base_invalid) {
+    auto c = PubSub::Constraint("key", std::vector<PubSub::Constraint>{PubSub::Constraint("nested_key", "nested_value")}, PubSub::ConstraintPredicates::Predicate::MAP_ALL);
+    auto input = std::make_shared<PubSub::Publication::Map>();
+    input->set_attr("nested_key", "not_the_nested_value");
+    ASSERT_FALSE(c(*input));
+}
+
+TEST(Constraint, nested_constraint_base_not_contained) {
+    auto c = PubSub::Constraint("key", std::vector<PubSub::Constraint>{PubSub::Constraint("nested_key", "nested_value")}, PubSub::ConstraintPredicates::Predicate::MAP_ALL);
+    auto input = std::make_shared<PubSub::Publication::Map>();
+    input->set_attr("not_the_nested_key", "not_the_nested_value");
+    ASSERT_FALSE(c(*input));
+}
+
+TEST(Constraint, nested_constraint_base_empty) {
+    auto c = PubSub::Constraint("key", std::vector<PubSub::Constraint>{PubSub::Constraint("nested_key", "nested_value")}, PubSub::ConstraintPredicates::Predicate::MAP_ALL);
+    auto input = std::make_shared<PubSub::Publication::Map>();
+    ASSERT_FALSE(c(*input));
+}
+
+TEST(Constraint, nested_constraint_multiple_valid) {
+    auto c = PubSub::Constraint("key", std::vector<PubSub::Constraint>{PubSub::Constraint("nested_key", "nested_value"), PubSub::Constraint("nested_key2", static_cast<int32_t>(2))}, PubSub::ConstraintPredicates::Predicate::MAP_ALL);
+    auto input = std::make_shared<PubSub::Publication::Map>();
+    input->set_attr("nested_key", "nested_value");
+    input->set_attr("nested_key2", static_cast<int32_t>(2));
+    ASSERT_TRUE(c(*input));
+}
+
+TEST(Constraint, nested_constraint_base_one_missing) {
+    auto c = PubSub::Constraint("key", std::vector<PubSub::Constraint>{PubSub::Constraint("nested_key", "nested_value"), PubSub::Constraint("nested_key2", static_cast<int32_t>(2))}, PubSub::ConstraintPredicates::Predicate::MAP_ALL);
+    auto input = std::make_shared<PubSub::Publication::Map>();
+    input->set_attr("nested_key", "nested_value");
+    ASSERT_FALSE(c(*input));
+}
+
+TEST(Constraint, nested_constraint_base_one_invalid) {
+    auto c = PubSub::Constraint("key", std::vector<PubSub::Constraint>{PubSub::Constraint("nested_key", "nested_value"), PubSub::Constraint("nested_key2", static_cast<int32_t>(2))}, PubSub::ConstraintPredicates::Predicate::MAP_ALL);
+    auto input = std::make_shared<PubSub::Publication::Map>();
+    input->set_attr("nested_key", "nested_value");
+    input->set_attr("nested_key2", static_cast<int32_t>(3)); 
+    ASSERT_FALSE(c(*input));
+}
+
 }

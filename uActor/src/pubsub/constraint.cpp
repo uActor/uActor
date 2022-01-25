@@ -32,6 +32,15 @@ bool Constraint::operator()(float input) const {
   }
 }
 
+bool Constraint::operator()(const Publication::Map& input) const {
+  if (std::holds_alternative<Container<std::vector<Constraint>>>(_operand)) {
+    return (std::get<Container<std::vector<Constraint>>>(_operand))
+        .match<const Publication::Map&>(input);
+  } else {
+    return false;
+  }
+}
+
 bool Constraint::operator==(const Constraint& other) const {
   return other._attribute == _attribute && other._operand == _operand;
 }
@@ -100,7 +109,8 @@ std::optional<Constraint> Constraint::deserialize(std::string_view serialized,
   }
 }
 
-std::variant<std::monostate, std::string_view, int32_t, float>
+std::variant<std::monostate, std::string_view, int32_t, float,
+             const std::vector<Constraint>*>
 Constraint::operand() const {
   if (std::holds_alternative<Container<AString>>(_operand)) {
     const auto& ct = std::get<Container<AString>>(_operand);
@@ -111,8 +121,12 @@ Constraint::operand() const {
   } else if (std::holds_alternative<Container<float>>(_operand)) {
     const auto& ct = std::get<Container<float>>(_operand);
     return ct.operand;
+  } else if (std::holds_alternative<Container<std::vector<Constraint>>>(
+                 _operand)) {
+    return &std::get<Container<std::vector<Constraint>>>(_operand).operand;
   }
-  return std::variant<std::monostate, std::string_view, int32_t, float>();
+  return std::variant<std::monostate, std::string_view, int32_t, float,
+                      const std::vector<Constraint>*>();
 }
 
 ConstraintPredicates::Predicate Constraint::predicate() const {
@@ -124,6 +138,10 @@ ConstraintPredicates::Predicate Constraint::predicate() const {
     return ct.operation_name;
   } else if (std::holds_alternative<Container<float>>(_operand)) {
     const auto& ct = std::get<Container<float>>(_operand);
+    return ct.operation_name;
+  } else if (std::holds_alternative<Container<std::vector<Constraint>>>(
+                 _operand)) {
+    const auto& ct = std::get<Container<std::vector<Constraint>>>(_operand);
     return ct.operation_name;
   }
   Support::Logger::warning("CONSTRAINT",
@@ -151,6 +169,8 @@ const char* ConstraintPredicates::name(uint32_t tag) {
       return "SF";
     case 9:
       return "CT";
+    case 10:
+      return "MAP_ALL";
     default:
       return nullptr;
   }
@@ -176,6 +196,8 @@ ConstraintPredicates::from_string(std::string_view name) {
     return Predicate::SF;
   } else if (name == "CT") {
     return Predicate::CT;
+  } else if (name == "MAP_ALL") {
+    return Predicate::MAP_ALL;
   } else {
     Support::Logger::warning("CONSTRAINT", "Deserialization error %s",
                              name.data());

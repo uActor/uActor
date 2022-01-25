@@ -16,7 +16,9 @@
 
 #include "board_functions.hpp"
 #include "controllers/telemetry_data.hpp"
+#include "pubsub/actor_identifier.hpp"
 #include "pubsub/router.hpp"
+#include "pubsub/subscription_arguments.hpp"
 #include "remote/forwarder_api.hpp"
 #include "remote/sequence_number_forwarding_strategy.hpp"
 #include "remote/subscription_processors/cluster_aggregator.hpp"
@@ -25,6 +27,8 @@
 #include "remote/subscription_processors/node_id_aggregator.hpp"
 #include "remote/subscription_processors/node_local_filter_drop.hpp"
 #include "remote/subscription_processors/optional_constraint_drop.hpp"
+#include "remote/subscription_processors/scope_cluster.hpp"
+#include "remote/subscription_processors/scope_local.hpp"
 #include "support/logger.hpp"
 
 namespace uActor::Remote {
@@ -192,18 +196,56 @@ void RemoteConnection::process_remote_publication(PubSub::Publication&& p,
 
 std::map<std::string, std::string> RemoteConnection::local_location_labels;
 std::list<std::vector<std::string>> RemoteConnection::clusters;
+std::string RemoteConnection::cluster;  //  NOLINT
 
 void RemoteConnection::handle_remote_subscriptions_added(
     const PubSub::Publication& p) {
-  if (p.has_attr("serialized_subscriptions")) {
-    for (auto serialized : Support::StringHelper::string_split(
-             *p.get_str_attr("serialized_subscriptions"), "&")) {
-      auto deserialized = PubSub::Filter::deserialize(serialized);
-      if (deserialized) {
+  if (auto subscription_list = p.get_nested_component("subscriptions");
+      subscription_list) {
+    for (size_t i = 0; i < (*subscription_list)->size(); i++) {
+      auto current_sub_map =
+          (*subscription_list)->get_nested_component(std::to_string(i));
+
+      if (!current_sub_map) {
+        continue;
+      }
+
+      auto subscription_raw =
+          (*current_sub_map)->get_nested_component("subscription");
+      auto arguments_raw =
+          (*current_sub_map)->get_nested_component("subscription_arguments");
+      auto subscriber_raw =
+          (*current_sub_map)->get_nested_component("subscriber");
+
+      if (subscription_raw && arguments_raw && subscriber_raw) {
+        auto deserialized =
+            PubSub::Filter::from_publication_map(**subscription_raw);
+        if (!deserialized) {
+          Support::Logger::warning(
+              "REMOTE-CONNECTION",
+              "Malformed subscription added: Fiter error.");
+          continue;
+        }
+
+        auto subscriber =
+            PubSub::ActorIdentifier::from_publication_map(**subscriber_raw);
+
+        if (!subscriber) {
+          Support::Logger::warning(
+              "REMOTE-CONNECTION",
+              "Malformed subscription added: Subscriber error.");
+          continue;
+        }
+
+        auto arguments =
+            PubSub::SubscriptionArguments::from_map(**arguments_raw);
+
         auto current_subscription_rule = *deserialized;
         bool skip = false;
+
         for (auto& ingress_processor : ingress_subscription_processors) {
-          if (ingress_processor->process_added(&current_subscription_rule)) {
+          if (ingress_processor->process_added(&current_subscription_rule,
+                                               arguments)) {
             skip = true;
           }
         }
@@ -211,8 +253,12 @@ void RemoteConnection::handle_remote_subscriptions_added(
           continue;
         }
         uint32_t sub_id = handle->add_remote_subscription(
-            local_id, std::move(current_subscription_rule), partner_node_id);
+            local_id, std::move(current_subscription_rule), partner_node_id,
+            *subscriber, arguments);
         subscription_ids.insert(sub_id);
+      } else {
+        Support::Logger::warning("REMOTE-CONNECTION",
+                                 "Malformed subscription added.");
       }
     }
   }
@@ -220,15 +266,41 @@ void RemoteConnection::handle_remote_subscriptions_added(
 
 void RemoteConnection::handle_remote_subscriptions_removed(
     const PubSub::Publication& p) {
-  if (p.has_attr("serialized_subscriptions")) {
-    for (auto serialized : Support::StringHelper::string_split(
-             *p.get_str_attr("serialized_subscriptions"), "&")) {
-      auto deserialized = PubSub::Filter::deserialize(serialized);
-      if (deserialized) {
+  if (auto subscription_list_map = p.get_nested_component("subscriptions");
+      subscription_list_map) {
+    for (size_t i = 0; i < (*subscription_list_map)->size(); i++) {
+      auto current_subscription_map =
+          (*subscription_list_map)->get_nested_component(std::to_string(i));
+
+      if (!current_subscription_map) {
+        Support::Logger::warning("REMOTE-CONNECTION",
+                                 "Malformed subscription removed.");
+        continue;
+      }
+
+      auto filter_raw =
+          (*current_subscription_map)->get_nested_component("subscription");
+      auto arguments_raw = (*current_subscription_map)
+                               ->get_nested_component("subscription_arguments");
+      // subscriber information is not transfered for removed subscriptions
+
+      if (filter_raw && arguments_raw) {
+        auto deserialized = PubSub::Filter::from_publication_map(**filter_raw);
+        auto arguments =
+            PubSub::SubscriptionArguments::from_map(**arguments_raw);
+
+        if (!deserialized) {
+          Support::Logger::warning("REMOTE-CONNECTION",
+                                   "Malformed subscription removed: Fiter.");
+          continue;
+        }
+
         auto current_subscription_rule = *deserialized;
         bool skip = false;
+
         for (auto& ingress_processor : ingress_subscription_processors) {
-          if (ingress_processor->process_removed(&current_subscription_rule)) {
+          if (ingress_processor->process_removed(&current_subscription_rule,
+                                                 arguments)) {
             skip = true;
           }
         }
@@ -236,9 +308,13 @@ void RemoteConnection::handle_remote_subscriptions_removed(
           continue;
         }
         uint32_t sub_id = PubSub::Router::get_instance().find_sub_id(
-            std::move(current_subscription_rule));
+            std::move(current_subscription_rule), std::move(arguments));
         handle->remove_remote_subscription(local_id, sub_id, partner_node_id);
         subscription_ids.erase(sub_id);
+      } else {
+        Support::Logger::warning("REMOTE-CONNECTION",
+                                 "Malformed subscription removed.");
+        continue;
       }
     }
   }
@@ -246,52 +322,106 @@ void RemoteConnection::handle_remote_subscriptions_removed(
 
 void RemoteConnection::handle_local_subscription_removed(
     const PubSub::Publication& p) {
-  if (!p.has_attr("serialized_subscription")) {
+  if (!p.has_attr("subscription")) {
+    Support::Logger::warning(
+        "REMOTE-CONNECTION",
+        "Filter missing from local subscription (removed).");
     return;
   }
 
-  auto o_current_subscription_rule =
-      PubSub::Filter::deserialize(*p.get_str_attr("serialized_subscription"));
+  auto o_current_subscription_rule = PubSub::Filter::from_publication_map(
+      **p.get_nested_component("subscription"));
   if (!o_current_subscription_rule) {
+    Support::Logger::warning(
+        "REMOTE-CONNECTION",
+        "Malformed filter in local subscription message (removed).");
     return;
   }
   auto current_subscription_rule = *o_current_subscription_rule;
 
+  PubSub::SubscriptionArguments arguments;
+  auto raw_args = p.get_nested_component("subscription_arguments");
+  if (raw_args) {
+    arguments = PubSub::SubscriptionArguments::from_map(**raw_args);
+  } else {
+    Support::Logger::warning(
+        "REMOTE-CONNECTION",
+        "Arguments missing from local subscription (removed).");
+    return;
+  }
+
   // Edit rules
 
   for (auto& processor : egress_subscription_processors) {
-    if (processor->process_removed(&current_subscription_rule)) {
+    if (processor->process_removed(&current_subscription_rule, arguments)) {
       return;
     }
   }
 
   // Send final rule update
-  PubSub::Publication rsa_message(BoardFunctions::NODE_ID, "remote_connection",
+  PubSub::Publication rsr_message(BoardFunctions::NODE_ID, "remote_connection",
                                   std::to_string(local_id));
-  rsa_message.set_attr("type", "subscriptions_removed");
-  rsa_message.set_attr("serialized_subscriptions",
-                       current_subscription_rule.serialize());
-  rsa_message.set_attr("remote_id", static_cast<int32_t>(local_id));
-  PubSub::Router::get_instance().publish(std::move(rsa_message));
+  rsr_message.set_attr("type", "subscriptions_removed");
+  rsr_message.set_attr("remote_id", static_cast<int32_t>(local_id));
+
+  auto sub = std::make_shared<PubSub::Publication::Map>();
+  sub->set_attr("subscription", current_subscription_rule.to_publication_map());
+  sub->set_attr("subscription_arguments", arguments.to_map());
+  // The receiver currently does not differentiate between multiple and single
+  // subscriptions, so this sends a list
+  auto sub_list = std::make_shared<PubSub::Publication::Map>();
+  sub_list->set_attr("0", std::move(sub));
+  rsr_message.set_attr("subscriptions", std::move(sub_list));
+
+  PubSub::Router::get_instance().publish(std::move(rsr_message));
 }
 
 void RemoteConnection::handle_local_subscription_added(
     const PubSub::Publication& p) {
-  if (!p.has_attr("serialized_subscription")) {
+  if (!p.has_attr("subscription")) {
+    Support::Logger::warning("REMOTE-CONNECTION",
+                             "Filter missing from local subscription (added).");
     return;
   }
 
-  auto o_current_subscription_rule =
-      PubSub::Filter::deserialize(*p.get_str_attr("serialized_subscription"));
+  auto o_current_subscription_rule = PubSub::Filter::from_publication_map(
+      **p.get_nested_component("subscription"));
   if (!o_current_subscription_rule) {
     return;
   }
   auto current_subscription_rule = *o_current_subscription_rule;
 
-  // Edit rule
+  PubSub::SubscriptionArguments arguments;
+  auto raw_args = p.get_nested_component("subscription_arguments");
+  if (raw_args) {
+    arguments = PubSub::SubscriptionArguments::from_map(**raw_args);
+  } else {
+    return Support::Logger::warning(
+        "REMOTE-CONNECTION",
+        "Arguments missing from local subscription (added).");
+  }
 
+  auto raw_subscriber = p.get_nested_component("subscriber");
+  if (!raw_subscriber) {
+    Support::Logger::warning(
+        "REMOTE-CONNECTION",
+        "Subscriber missing from local subscription (added).");
+    return;
+  }
+
+  auto opt_subscriber =
+      PubSub::ActorIdentifier::from_publication_map(**raw_subscriber);
+
+  if (!opt_subscriber) {
+    Support::Logger::warning(
+        "REMOTE-CONNECTION",
+        "Subscriber components missing from local subscription (added).");
+    return;
+  }
+
+  // Edit rule
   for (auto& processor : egress_subscription_processors) {
-    if (processor->process_added(&current_subscription_rule)) {
+    if (processor->process_added(&current_subscription_rule, arguments)) {
       return;
     }
   }
@@ -300,9 +430,19 @@ void RemoteConnection::handle_local_subscription_added(
   PubSub::Publication rsr_message(BoardFunctions::NODE_ID, "remote_connection",
                                   std::to_string(local_id));
   rsr_message.set_attr("type", "subscriptions_added");
-  rsr_message.set_attr("serialized_subscriptions",
-                       current_subscription_rule.serialize());
   rsr_message.set_attr("remote_id", static_cast<int32_t>(local_id));
+
+  // The receiver currently does not differentiate between multiple and single
+  // subscriptions, so this sends a list
+  auto sub = std::make_shared<PubSub::Publication::Map>();
+  sub->set_attr("subscription", current_subscription_rule.to_publication_map());
+  sub->set_attr("subscription_arguments", arguments.to_map());
+  sub->set_attr("subscriber", opt_subscriber->to_publication_map());
+
+  auto sub_list = std::make_shared<PubSub::Publication::Map>();
+  sub_list->set_attr("0", std::move(sub));
+  rsr_message.set_attr("subscriptions", std::move(sub_list));
+
   PubSub::Router::get_instance().publish(std::move(rsr_message));
 }
 
@@ -325,6 +465,11 @@ void RemoteConnection::handle_remote_hello(PubSub::Publication&& p) {
           partner_location_labels[label] = *p.get_str_attr(label);
         }
       }
+    }
+
+    auto raw_peer_cluster = p.get_str_attr("cluster");
+    if (raw_peer_cluster) {
+      peer_cluster = *raw_peer_cluster;
     }
 
     send_routing_info();
@@ -351,6 +496,7 @@ void RemoteConnection::handle_remote_hello(PubSub::Publication&& p) {
             PubSub::Constraint{"publisher_node_id",
                                std::string(BoardFunctions::NODE_ID)}});
 
+    // TODO(raphaelhetzel) this is a local subscription serving the remote node.
     remote_subs_added_id = handle->add_remote_subscription(
         local_id,
         PubSub::Filter{
@@ -358,8 +504,11 @@ void RemoteConnection::handle_remote_hello(PubSub::Publication&& p) {
             PubSub::Constraint{"remote_id", static_cast<int32_t>(local_id)},
             PubSub::Constraint{"publisher_node_id",
                                std::string(BoardFunctions::NODE_ID)}},
-        "local");
+        BoardFunctions::NODE_ID,
+        PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "remote_connection",
+                                "1"));
 
+    // TODO(raphaelhetzel) this is a local subscription serving the remote node.
     remote_subs_removed_id = handle->add_remote_subscription(
         local_id,
         PubSub::Filter{
@@ -367,7 +516,9 @@ void RemoteConnection::handle_remote_hello(PubSub::Publication&& p) {
             PubSub::Constraint{"remote_id", static_cast<int32_t>(local_id)},
             PubSub::Constraint{"publisher_node_id",
                                std::string(BoardFunctions::NODE_ID)}},
-        "local");
+        BoardFunctions::NODE_ID,
+        PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "remote_connection",
+                                "1"));
 
     forwarding_strategy->partner_node_id(partner_node_id);
 
@@ -389,6 +540,12 @@ void RemoteConnection::handle_remote_hello(PubSub::Publication&& p) {
           BoardFunctions::NODE_ID, partner_node_id, std::move(cl),
           KeyList{std::string("node_id")}));
     }
+
+    egress_subscription_processors.push_back(
+        std::make_unique<ScopeLocal>(BoardFunctions::NODE_ID, partner_node_id));
+    egress_subscription_processors.push_back(std::make_unique<ScopeCluster>(
+        BoardFunctions::NODE_ID, partner_node_id, cluster, peer_cluster));
+
     egress_subscription_processors.push_back(
         std::make_unique<OptionalConstraintDrop>(
             BoardFunctions::NODE_ID, partner_node_id,
@@ -402,25 +559,24 @@ void RemoteConnection::handle_remote_hello(PubSub::Publication&& p) {
                                             partner_node_id));
 #endif
 
-    for (const auto& chunk : PubSub::Router::get_instance().subscriptions_for(
+    for (const auto &chunk :
+         PubSub::Router::get_instance().subscription_lists_for(
              partner_node_id,
-             [&](PubSub::Filter* f) {
+             [&](PubSub::Filter*f,
+                 const PubSub::SubscriptionArguments&arguments) {
                for (auto& processor : egress_subscription_processors) {
-                 if (processor->process_added(f)) {
+                 if (processor->process_added(f, arguments)) {
                    return true;
                  }
                }
                return false;
              },
              1000)) {
-      uActor::Support::Logger::info("REMOTE-CONNECTION",
-                                    "Send initial subscription chunk. Size: %d",
-                                    chunk.size());
       PubSub::Publication p{BoardFunctions::NODE_ID, "remote_connection",
                             std::to_string(local_id)};
       p.set_attr("type", "subscriptions_added");
       p.set_attr("remote_id", static_cast<int32_t>(local_id));
-      p.set_attr("serialized_subscriptions", chunk);
+      p.set_attr("subscriptions", std::move(chunk));
       PubSub::Router::get_instance().publish(std::move(p));
     }
 

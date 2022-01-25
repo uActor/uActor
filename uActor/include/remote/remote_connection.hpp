@@ -40,6 +40,8 @@ class RemoteConnection {
 
   static std::map<std::string, std::string> local_location_labels;
   static std::list<std::vector<std::string>> clusters;
+  static std::string cluster;
+  std::string peer_cluster;
 
  protected:
   uint32_t local_id;

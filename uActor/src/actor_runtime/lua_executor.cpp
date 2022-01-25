@@ -6,6 +6,7 @@
 
 #include "actor_runtime/lua_functions.hpp"
 #include "actor_runtime/lua_publication_wrapper.hpp"
+#include "pubsub/constraint.hpp"
 #include "support/logger.hpp"
 #include "support/memory_manager.hpp"
 
@@ -118,6 +119,28 @@ void LuaExecutor::open_lua_math_optimized(lua_State* lua_state) {
   lua_setfield(lua_state, -2, "mininteger");
 
   lua_setglobal(lua_state, "math");
+}
+
+int LuaExecutor::constraint_predicate_index(lua_State* lua_state) {
+  const auto* key = lua_tostring(lua_state, 2);
+
+  auto value = PubSub::ConstraintPredicates::from_string(key);
+  if (value) {
+    lua_pushinteger(lua_state, static_cast<uint32_t>(*value));
+  } else {
+    lua_pushnil(lua_state);
+  }
+  return 1;
+}
+
+void LuaExecutor::add_constraint_predicate_table(lua_State* lua_state) {
+  lua_newtable(lua_state);
+  lua_newtable(lua_state);
+  lua_pushcfunction(lua_state, constraint_predicate_index);
+  lua_setfield(lua_state, -2, "__index");
+  lua_setmetatable(lua_state, -2);
+
+  lua_setglobal(lua_state, "ConstraintPredicate");
 }
 
 void LuaExecutor::open_lua_string_optimized(lua_State* lua_state) {
@@ -240,6 +263,7 @@ int LuaExecutor::table_index(lua_State* state) {
   }
   return 1;
 }
+
 lua_State* LuaExecutor::create_lua_state() {
   lua_State* lua_state =
       lua_newstate(uActor::Support::MemoryManager::allocate_lua, nullptr);
@@ -247,6 +271,7 @@ lua_State* LuaExecutor::create_lua_state() {
   open_lua_math_optimized(lua_state);
   open_lua_string_optimized(lua_state);
   open_lua_table_optimized(lua_state);
+  add_constraint_predicate_table(lua_state);
   luaL_requiref(lua_state, "Publication", LuaPublicationWrapper::luaopen, 1);
   lua_pop(lua_state, 1);
   luaL_requiref(lua_state, "PublicationMap", LuaPublicationMapWrapper::luaopen,

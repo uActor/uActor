@@ -25,7 +25,8 @@ class ClusterAggregator : public SubscriptionProcessor {
 
   ~ClusterAggregator() = default;
 
-  bool process_added(PubSub::Filter* filter) override {
+  bool process_added(PubSub::Filter* filter,
+                     const PubSub::SubscriptionArguments& arguments) override {
     if (same_cluster) {
       return false;
     }
@@ -49,7 +50,9 @@ class ClusterAggregator : public SubscriptionProcessor {
     }
   }
 
-  bool process_removed(PubSub::Filter* filter) override {
+  bool process_removed(
+      PubSub::Filter* filter,
+      const PubSub::SubscriptionArguments& arguments) override {
     if (same_cluster) {
       return false;
     }

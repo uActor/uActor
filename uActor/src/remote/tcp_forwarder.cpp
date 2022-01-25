@@ -200,12 +200,12 @@ uint32_t TCPForwarder::add_local_subscription(uint32_t local_id,
   return sub_id;
 }
 
-uint32_t TCPForwarder::add_remote_subscription(uint32_t local_id,
-                                               PubSub::Filter&& filter,
-                                               std::string node_id) {
-  uint32_t sub_id =
-      handle.subscribe(std::move(filter),
-                       PubSub::ActorIdentifier(node_id, "tcp_forwarder", "1"));
+uint32_t TCPForwarder::add_remote_subscription(
+    uint32_t local_id, PubSub::Filter&& filter, std::string node_id,
+    const PubSub::ActorIdentifier& subscriber,
+    PubSub::SubscriptionArguments subscription_arguments) {
+  uint32_t sub_id = handle.subscribe(std::move(filter), subscriber, node_id,
+                                     subscription_arguments);
   auto entry = subscription_mapping.find(sub_id);
   if (entry != subscription_mapping.end()) {
     entry->second.insert(local_id);

@@ -34,6 +34,11 @@ bool Filter::check_required(const Publication& publication) const {
       if (std::holds_alternative<float>(attr) &&
           !constraint(std::get<float>(attr))) {
         return false;
+      } else if (std::holds_alternative<std::shared_ptr<Publication::Map>>(
+                     attr) &&
+                 !constraint(
+                     *std::get<std::shared_ptr<Publication::Map>>(attr))) {
+        return false;
       }
     } else {
       return false;
@@ -56,6 +61,11 @@ bool Filter::check_optionals(const Publication& publication) const {
       }
       if (std::holds_alternative<float>(attr) &&
           !constraint(std::get<float>(attr))) {
+        return false;
+      } else if (std::holds_alternative<std::shared_ptr<Publication::Map>>(
+                     attr) &&
+                 !constraint(
+                     *std::get<std::shared_ptr<Publication::Map>>(attr))) {
         return false;
       }
     }
@@ -83,61 +93,182 @@ bool Filter::operator==(const Filter& other) const {
   return true;
 }
 
-std::string Filter::serialize() const {
-  std::string serialized;
-  for (const auto& constraint : required) {
-    serialized += constraint.serialize() + "^";
-  }
-  if (serialized.length() >= 2) {
-    serialized.replace(serialized.length() - 1, 1, "?");
+void Filter::add_constraint_to_map(const Constraint& constraint,
+                                   Publication::Map* map) const {
+  if (std::holds_alternative<std::monostate>(constraint.operand())) {
+    return;
   }
 
-  for (const auto& constraint : optional) {
-    serialized += constraint.serialize() + "^";
+  auto current_attribute = std::make_shared<Publication::Map>();
+  current_attribute->set_attr(
+      "operator", ConstraintPredicates::name(constraint.predicate()));
+
+  if (std::holds_alternative<std::string_view>(constraint.operand())) {
+    current_attribute->set_attr(
+        "operand", std::get<std::string_view>(constraint.operand()));
+  } else if (std::holds_alternative<int32_t>(constraint.operand())) {
+    current_attribute->set_attr("operand",
+                                std::get<int32_t>(constraint.operand()));
+  } else if (std::holds_alternative<float>(constraint.operand())) {
+    current_attribute->set_attr("operand",
+                                std::get<float>(constraint.operand()));
+  } else if (std::holds_alternative<const std::vector<Constraint>*>(
+                 constraint.operand())) {
+    auto elem = std::make_shared<Publication::Map>();
+    for (const auto& elem_constraint :
+         *std::get<const std::vector<Constraint>*>(constraint.operand())) {
+      add_constraint_to_map(elem_constraint, elem.get());
+    }
+    current_attribute->set_attr("operand", std::move(elem));
   }
 
-  if (serialized.length() >= 2) {
-    serialized.resize(serialized.length() - 1);
+  current_attribute->set_attr("optional", constraint.optional() ? 1 : 0);
+
+  if (map->has_attr(constraint.attribute())) {
+    auto handle = map->get_nested_component(constraint.attribute());
+    if ((*handle)->has_attr("_m")) {
+      (*handle)->set_attr(std::to_string((*handle)->size() - 1),
+                          std::move(current_attribute));
+    } else {
+      auto container = std::make_shared<Publication::Map>();
+      container->set_attr("_m", 1);
+      container->set_attr("0", std::move(*handle));
+      container->set_attr("1", std::move(current_attribute));
+      map->set_attr(constraint.attribute(), std::move(container));
+    }
+  } else {
+    map->set_attr(constraint.attribute(), std::move(current_attribute));
   }
-  return std::move(serialized);
 }
 
-std::optional<Filter> Filter::deserialize(std::string_view serialized) {
-  Filter filter;
+std::shared_ptr<PubSub::Publication::Map> Filter::to_publication_map() const {
+  auto map = std::make_shared<PubSub::Publication::Map>();
 
-  if (serialized.length() == 0) {
-    return std::move(filter);
+  for (const auto& item : required) {
+    add_constraint_to_map(item, map.get());
   }
 
-  size_t optional_index = serialized.find('?');
+  for (const auto& item : optional) {
+    add_constraint_to_map(item, map.get());
+  }
 
-  std::string_view required_args = serialized.substr(0, optional_index);
+  return map;
+}
 
-  for (std::string_view constraint_string :
-       Support::StringHelper::string_split(required_args, "^")) {
-    auto constraint = Constraint::deserialize(constraint_string, false);
-    if (constraint) {
-      filter.required.emplace_back(std::move(*constraint));
+std::optional<Constraint> Filter::parse_constraint_from_map(
+    std::string_view key, const Publication::Map& item) {
+  auto raw_pred = item.get_str_attr("operator");
+  auto raw_optional = item.get_int_attr("optional");
+  auto operand_var = item.get_attr("operand");
+
+  auto pred = ConstraintPredicates::EQ;
+  if (raw_pred) {
+    auto parsed_pred = ConstraintPredicates::from_string(*raw_pred);
+    if (parsed_pred) {
+      pred = *parsed_pred;
     } else {
       return std::nullopt;
     }
   }
+  auto optional = raw_optional ? (*raw_optional == 1) : false;
 
-  if (optional_index != std::string_view::npos &&
-      optional_index + 1 != std::string_view::npos) {
-    std::string_view optional_args = serialized.substr(optional_index + 1);
-    for (std::string_view constraint_string :
-         Support::StringHelper::string_split(optional_args, "^")) {
-      auto constraint = Constraint::deserialize(constraint_string, true);
-      if (constraint) {
-        filter.optional.emplace_back(std::move(*constraint));
+  if (std::holds_alternative<std::monostate>(operand_var)) {
+    return std::nullopt;
+  }
+
+  if (std::holds_alternative<std::string_view>(operand_var)) {
+    return Constraint(std::string(key), std::get<std::string_view>(operand_var),
+                      pred, optional);
+  } else if (std::holds_alternative<int32_t>(operand_var)) {
+    return Constraint(std::string(key), std::get<int32_t>(operand_var), pred,
+                      optional);
+  } else if (std::holds_alternative<float>(operand_var)) {
+    return Constraint(std::string(key), std::get<float>(operand_var), pred,
+                      optional);
+  } else if (std::holds_alternative<std::shared_ptr<Publication::Map>>(
+                 operand_var)) {
+    std::vector<Constraint> constraints;
+    for (const auto& [attribute, data] :
+         *std::get<std::shared_ptr<Publication::Map>>(operand_var)) {
+      if (std::holds_alternative<std::shared_ptr<Publication::Map>>(data)) {
+        auto item = std::get<std::shared_ptr<Publication::Map>>(data);
+        if (item->has_attr("_m")) {
+          for (size_t i = 0; i < item->size() - 1; i++) {
+            auto map = item->get_nested_component(std::to_string(i));
+            if (map) {
+              auto constr = parse_constraint_from_map(attribute, **map);
+              if (constr) {
+                constraints.emplace_back(std::move(*constr));
+              } else {
+                return std::nullopt;
+              }
+            } else {
+              return std::nullopt;
+            }
+          }
+        } else {
+          auto constr = parse_constraint_from_map(attribute, *item);
+          if (constr) {
+            constraints.emplace_back(std::move(*constr));
+          } else {
+            return std::nullopt;
+          }
+        }
       } else {
         return std::nullopt;
       }
     }
+    return Constraint(std::string(key), std::move(constraints), pred, optional);
+  }
+  return std::nullopt;
+}
+
+std::optional<Filter> Filter::from_publication_map(
+    const Publication::Map& map) {
+  Filter filter;
+  for (const auto& [attribute, data] : map) {
+    if (std::holds_alternative<std::shared_ptr<Publication::Map>>(data)) {
+      auto item = std::get<std::shared_ptr<Publication::Map>>(data);
+      if (item->has_attr("_m")) {
+        for (size_t i = 0; i < item->size() - 1; i++) {
+          auto map = item->get_nested_component(std::to_string(i));
+          if (map) {
+            auto c = parse_constraint_from_map(attribute, **map);
+            if (c->optional()) {
+              if (c) {
+                filter.optional.emplace_back(std::move(*c));
+              } else {
+                return std::nullopt;
+              }
+            } else {
+              if (c) {
+                filter.required.emplace_back(std::move(*c));
+              } else {
+                return std::nullopt;
+              }
+            }
+          }
+        }
+      } else {
+        auto c = parse_constraint_from_map(attribute, *item);
+        if (c->optional()) {
+          if (c) {
+            filter.optional.emplace_back(std::move(*c));
+          } else {
+            return std::nullopt;
+          }
+        } else {
+          if (c) {
+            filter.required.emplace_back(std::move(*c));
+          } else {
+            return std::nullopt;
+          }
+        }
+      }
+    }
   }
 
-  return std::move(filter);
+  return filter;
 }
 
 }  // namespace uActor::PubSub

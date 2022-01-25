@@ -477,6 +477,183 @@ TEST(RuntimeSystem, sub_unsub) {
   shutdown_executors(&executors);
 }
 
+TEST(RuntimeSystem, sub_triggers_sub_added_message) {
+  const char actor_code[] = R"(function receive(publication)
+    if(publication.command == "sub") then
+      sub_id = subscribe({foo=1})
+    end
+  end)";
+
+  
+  auto executors = start_executor_threads();
+
+  auto sub_handle = PubSub::Router::get_instance().new_subscriber();
+  PubSub::Filter primary_filter{
+      PubSub::Constraint("type", "local_subscription_added")};
+  uint32_t root_subscription_id = sub_handle.subscribe(
+      primary_filter,
+      PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "test", "1"));
+
+  spawn_actor(actor_code, "1");
+
+  while(sub_handle.receive(0)) {
+    // NOOP
+  }
+
+  ASSERT_FALSE(sub_handle.receive(0));
+  {
+    auto sub = PubSub::Publication("node_1", "root", "1");
+    sub.set_attr("node_id", "node_1");
+    sub.set_attr("instance_id", "1");
+    sub.set_attr("actor_type", "actor");
+    sub.set_attr("command", "sub");
+    PubSub::Router::get_instance().publish(std::move(sub));
+  }
+
+  usleep(1000);
+
+  auto sub_msg = sub_handle.receive(0);
+  ASSERT_TRUE(sub_msg);
+
+  auto sub = sub_msg->publication;
+
+  ASSERT_EQ(sub.get_str_attr("type"), "local_subscription_added");
+  
+  auto filter = sub.get_nested_component("subscription");
+  auto attributes = sub.get_nested_component("subscription_arguments");
+  auto subscriber = sub.get_nested_component("subscriber");
+
+  ASSERT_TRUE(filter);
+  ASSERT_TRUE(attributes);
+  ASSERT_TRUE(subscriber);
+
+  ASSERT_TRUE((*filter)->has_attr("foo"));
+
+  ASSERT_EQ((*attributes)->get_str_attr("scope"), "CLUSTER");
+  ASSERT_EQ((*attributes)->get_str_attr("fetch_policy"), "FUTURE");
+  ASSERT_EQ((*attributes)->get_int_attr("priority"), 0);
+
+  ASSERT_EQ((*subscriber)->get_str_attr("actor_type"), "actor");
+  ASSERT_EQ((*subscriber)->get_str_attr("instance_id"), "1");
+  ASSERT_EQ((*subscriber)->get_str_attr("node_id"), "node_1");
+
+  shutdown_executors(&executors); 
+}
+
+TEST(RuntimeSystem, sub_triggers_sub_added_message_with_arguments) {
+  const char actor_code[] = R"(function receive(publication)
+    if(publication.command == "sub") then
+      sub_id = subscribe({foo=1}, {scope="LOCAL", fetch_policy="FETCH", priority=1})
+    end
+  end)";
+
+  
+  auto executors = start_executor_threads();
+
+  auto sub_handle = PubSub::Router::get_instance().new_subscriber();
+  PubSub::Filter primary_filter{
+      PubSub::Constraint("type", "local_subscription_added")};
+  uint32_t root_subscription_id = sub_handle.subscribe(
+      primary_filter,
+      PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "test", "1"));
+
+  spawn_actor(actor_code, "1");
+
+  while(sub_handle.receive(0)) {
+    // NOOP
+  }
+
+  ASSERT_FALSE(sub_handle.receive(0));
+  {
+    auto sub = PubSub::Publication("node_1", "root", "1");
+    sub.set_attr("node_id", "node_1");
+    sub.set_attr("instance_id", "1");
+    sub.set_attr("actor_type", "actor");
+    sub.set_attr("command", "sub");
+    PubSub::Router::get_instance().publish(std::move(sub));
+  }
+
+  usleep(1000);
+
+  auto sub_msg = sub_handle.receive(0);
+  ASSERT_TRUE(sub_msg);
+
+  auto sub = sub_msg->publication;
+
+  ASSERT_EQ(sub.get_str_attr("type"), "local_subscription_added");
+  auto attributes = sub.get_nested_component("subscription_arguments");
+  ASSERT_TRUE(attributes);
+
+  ASSERT_EQ((*attributes)->get_str_attr("scope"), "LOCAL");
+  ASSERT_EQ((*attributes)->get_str_attr("fetch_policy"), "FETCH");
+  ASSERT_EQ((*attributes)->get_int_attr("priority"), 1);
+
+  shutdown_executors(&executors); 
+}
+
+TEST(RuntimeSystem, subsub_triggers_sub_removed_message) {
+  const char actor_code[] = R"(function receive(publication)
+    if(publication.type == "init") then
+      sub_id = subscribe({foo=1})
+    end
+    if(publication.command == "unsub") then
+      unsubscribe(sub_id)
+    end
+  end)";
+
+  
+  auto executors = start_executor_threads();
+
+  auto sub_handle = PubSub::Router::get_instance().new_subscriber();
+  PubSub::Filter primary_filter{
+      PubSub::Constraint("type", "local_subscription_removed")};
+  uint32_t root_subscription_id = sub_handle.subscribe(
+      primary_filter,
+      PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "test", "1"));
+
+  spawn_actor(actor_code, "1");
+
+  while(sub_handle.receive(0)) {
+    // NOOP
+  }
+
+  ASSERT_FALSE(sub_handle.receive(0));
+  {
+    auto sub = PubSub::Publication("node_1", "root", "1");
+    sub.set_attr("node_id", "node_1");
+    sub.set_attr("instance_id", "1");
+    sub.set_attr("actor_type", "actor");
+    sub.set_attr("command", "unsub");
+    PubSub::Router::get_instance().publish(std::move(sub));
+  }
+
+  usleep(1000);
+
+  auto sub_msg = sub_handle.receive(0);
+  ASSERT_TRUE(sub_msg);
+
+  auto sub = sub_msg->publication;
+
+  ASSERT_EQ(sub.get_str_attr("type"), "local_subscription_removed");
+  
+  auto filter = sub.get_nested_component("subscription");
+  auto attributes = sub.get_nested_component("subscription_arguments");
+
+  ASSERT_TRUE(filter);
+  ASSERT_TRUE(attributes);
+
+  ASSERT_TRUE((*filter)->has_attr("foo"));
+
+  ASSERT_EQ((*attributes)->get_str_attr("scope"), "CLUSTER");
+  ASSERT_EQ((*attributes)->get_str_attr("fetch_policy"), "FUTURE");
+  ASSERT_EQ((*attributes)->get_int_attr("priority"), 0);
+
+  // the local_subscription_removed message does not contain information about the subscriber
+  ASSERT_FALSE(sub.has_attr("subscriber"));
+
+  shutdown_executors(&executors); 
+}
+
 TEST(RuntimeSystem, complex_subscription) {
   const char block_for_pong[] = R"(function receive(publication)
     if(publication.publisher_actor_type == "root") then

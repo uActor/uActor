@@ -57,14 +57,14 @@ class ManagedActor {
                std::string_view actor_type, std::string_view actor_version,
                std::string_view instance_id,
                PAllocator allocator = make_allocator<ManagedActor>())
-      : _id(unique_id),
+      : reply_context(allocator),
+        _id(unique_id),
         _node_id(node_id, allocator),
         _actor_type(actor_type, allocator),
         _actor_version(actor_version, allocator),
         _instance_id(instance_id, allocator),
         message_queue(allocator),
         subscriptions(allocator),
-        reply_context(allocator),
         api(api) {}
 
   ~ManagedActor() {
@@ -136,7 +136,8 @@ class ManagedActor {
   virtual bool hibernate_internal() = 0;
   virtual RuntimeReturnValue wakeup_internal() = 0;
 
-  uint32_t subscribe(PubSub::Filter&& f, uint8_t priority = 0);
+  uint32_t subscribe(PubSub::Filter&& f,
+                     PubSub::SubscriptionArguments arguments);
   void unsubscribe(uint32_t sub_id);
 
   void publish(PubSub::Publication&& p);
@@ -147,6 +148,12 @@ class ManagedActor {
   void reply(PubSub::Publication&& p) {
     reply_context.add_reply_fields(&p);
     publish(std::move(p));
+  }
+
+  void request(PubSub::Filter&& f) {
+    PubSub::SubscriptionArguments arguments;
+    arguments.fetch_policy = PubSub::FetchPolicy::FETCH;
+    subscribe(std::move(f), std::move(arguments));
   }
 
   void deffered_block_for(PubSub::Filter&& filter, uint32_t timeout);
