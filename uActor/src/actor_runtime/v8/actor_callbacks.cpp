@@ -190,14 +190,26 @@ void ActorClosures::subscribe(const v8::FunctionCallbackInfo<v8::Value>& info) {
   const auto [isolate, actor] = closure_preamble(info);
   v8::HandleScope scope(isolate);
 
-  if (info.Length() == 1 && info[0]->IsArray()) {
+  if (info.Length() >= 1 && info[0]->IsArray()) {
     auto f = V8Runtime::TypeUtils::parse_filter(
         info.GetIsolate(), v8::Local<v8::Array>::Cast(info[0]));
     if (!f) {
-      info.GetReturnValue().Set(v8::Number::New(info.GetIsolate(), 0));
+      info.GetReturnValue().Set(v8::Number::New(isolate, 0));
       return;
     }
     PubSub::SubscriptionArguments arguments;
+
+    if (info.Length() >= 2 && info[1]->IsObject()) {
+      auto args_raw = V8Runtime::TypeUtils::parse_arguments(
+          isolate, v8::Local<v8::Object>::Cast(info[1]));
+      if (args_raw) {
+        arguments = *args_raw;
+      } else {
+        info.GetReturnValue().Set(v8::Number::New(isolate, 0));
+        return;
+      }
+    }
+
     auto sid = actor->subscribe(std::move(*f), arguments);
     info.GetReturnValue().Set(
         v8::Number::New(info.GetIsolate(), static_cast<double>(sid)));

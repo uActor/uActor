@@ -591,6 +591,134 @@ TEST(RuntimeSystem, sub_triggers_sub_added_message_with_arguments) {
   shutdown_executors(&executors); 
 }
 
+#if CONFIG_UACTOR_V8
+
+TEST(RuntimeSystem, sub_triggers_sub_added_message_nested_filter_js) {
+  const char actor_code[] = R"(function receive(publication, state) {
+    log("test")
+    if(publication.command == "sub") {
+      let sub_id = subscribe([
+        {attribute: "foo", operand: [
+          {attribute: "bar", operation: "EQ", operand: "baz", optional: false},
+          {attribute: "fizz", operation: "EQ", operand: 1, optional: false} 
+        ], optional: false, operation: "EQ"}
+      ])
+    }
+  })";
+
+  
+  auto executors = start_executor_threads();
+
+  auto sub_handle = PubSub::Router::get_instance().new_subscriber();
+  PubSub::Filter primary_filter{
+      PubSub::Constraint("type", "local_subscription_added")};
+  uint32_t root_subscription_id = sub_handle.subscribe(
+      primary_filter,
+      PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "test", "1"));
+
+  spawn_actor(actor_code, "1", "javascript", "v8_executor");
+
+  while(sub_handle.receive(0)) {
+    // NOOP
+  }
+
+  ASSERT_FALSE(sub_handle.receive(0));
+  {
+    auto sub = PubSub::Publication("node_1", "root", "1");
+    sub.set_attr("node_id", "node_1");
+    sub.set_attr("instance_id", "1");
+    sub.set_attr("actor_type", "actor");
+    sub.set_attr("command", "sub");
+    PubSub::Router::get_instance().publish(std::move(sub));
+  }
+
+  usleep(1000);
+
+  auto sub_msg = sub_handle.receive(1000);
+  ASSERT_TRUE(sub_msg);
+
+  auto sub = sub_msg->publication;
+
+  ASSERT_EQ(sub.get_str_attr("type"), "local_subscription_added");
+  auto filter_map = sub.get_nested_component("subscription");
+  ASSERT_TRUE(filter_map);
+
+  auto top_level_constraint = (*filter_map)->get_nested_component("foo");
+
+  std::cout << (*filter_map)->to_string() << std::endl;
+
+  ASSERT_TRUE(top_level_constraint);
+
+  auto top_level_operand = (*top_level_constraint)->get_nested_component("operand");
+
+  ASSERT_TRUE(top_level_operand);
+
+  auto attr_1 = (*top_level_operand)->get_nested_component("bar");
+  ASSERT_TRUE(attr_1);
+  ASSERT_EQ((*attr_1)->get_str_attr("operand"), "baz");
+  auto attr_2 = (*top_level_operand)->get_nested_component("fizz");
+  ASSERT_EQ((*attr_2)->get_int_attr("operand"), 1);
+  ASSERT_TRUE(attr_2);
+
+
+
+  shutdown_executors(&executors); 
+}
+
+TEST(RuntimeSystem, sub_triggers_sub_added_message_with_arguments_js) {
+  const char actor_code[] = R"(function receive(publication, state) {
+    log("test")
+    if(publication.command == "sub") {
+      let sub_id = subscribe([{attribute: "foo", operand: 1, optional: false, operation: "EQ"}], {scope: "LOCAL", fetch_policy: "FETCH", priority: 1})
+    }
+  })";
+
+  
+  auto executors = start_executor_threads();
+
+  auto sub_handle = PubSub::Router::get_instance().new_subscriber();
+  PubSub::Filter primary_filter{
+      PubSub::Constraint("type", "local_subscription_added")};
+  uint32_t root_subscription_id = sub_handle.subscribe(
+      primary_filter,
+      PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "test", "1"));
+
+  spawn_actor(actor_code, "1", "javascript", "v8_executor");
+
+  while(sub_handle.receive(0)) {
+    // NOOP
+  }
+
+  ASSERT_FALSE(sub_handle.receive(0));
+  {
+    auto sub = PubSub::Publication("node_1", "root", "1");
+    sub.set_attr("node_id", "node_1");
+    sub.set_attr("instance_id", "1");
+    sub.set_attr("actor_type", "actor");
+    sub.set_attr("command", "sub");
+    PubSub::Router::get_instance().publish(std::move(sub));
+  }
+
+  usleep(1000);
+
+  auto sub_msg = sub_handle.receive(1000);
+  ASSERT_TRUE(sub_msg);
+
+  auto sub = sub_msg->publication;
+
+  ASSERT_EQ(sub.get_str_attr("type"), "local_subscription_added");
+  auto attributes = sub.get_nested_component("subscription_arguments");
+  ASSERT_TRUE(attributes);
+
+  ASSERT_EQ((*attributes)->get_str_attr("scope"), "LOCAL");
+  ASSERT_EQ((*attributes)->get_str_attr("fetch_policy"), "FETCH");
+  ASSERT_EQ((*attributes)->get_int_attr("priority"), 1);
+
+  shutdown_executors(&executors); 
+}
+#endif
+
+
 TEST(RuntimeSystem, subsub_triggers_sub_removed_message) {
   const char actor_code[] = R"(function receive(publication)
     if(publication.type == "init") then

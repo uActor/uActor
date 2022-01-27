@@ -94,7 +94,7 @@ std::optional<PubSub::Constraint> TypeUtils::parse_constraint(
             .To(&predicate_id)) {
       static_cast<PubSub::ConstraintPredicates::Predicate>(predicate_id);
     } else {
-      Support::Logger::warning("V8-TYPE-UTILS", "bad optional");
+      Support::Logger::warning("V8-TYPE-UTILS", "bad predicate");
       return std::nullopt;
     }
   }
@@ -129,6 +129,13 @@ std::optional<PubSub::Constraint> TypeUtils::parse_constraint(
     } else if ((*operand_value)->IsString()) {
       std::string operand = *v8::String::Utf8Value(isolate, *operand_value);
       return PubSub::Constraint(attribute, operand, predicate, optional);
+    } else if ((*operand_value)->IsArray()) {
+      auto filters = parse_filter_list(
+          isolate, v8::Local<v8::Array>::Cast(*operand_value));
+      if (filters) {
+        return PubSub::Constraint(attribute, std::move(*filters), predicate,
+                                  optional);
+      }
     }
   }
 
@@ -138,6 +145,15 @@ std::optional<PubSub::Constraint> TypeUtils::parse_constraint(
 }
 
 std::optional<PubSub::Filter> TypeUtils::parse_filter(
+    v8::Isolate* isolate, v8::Local<v8::Array> constraints) {
+  auto filters = parse_filter_list(isolate, constraints);
+  if (filters) {
+    return PubSub::Filter(std::move(*filters));
+  }
+  return std::nullopt;
+}
+
+std::optional<std::vector<PubSub::Constraint>> TypeUtils::parse_filter_list(
     v8::Isolate* isolate, v8::Local<v8::Array> constraints) {
   std::vector<PubSub::Constraint> parsed_constraints;
 
@@ -155,7 +171,59 @@ std::optional<PubSub::Filter> TypeUtils::parse_filter(
     parsed_constraints.push_back(*parsed_constraint);
   }
 
-  return PubSub::Filter(std::move(parsed_constraints));
+  return parsed_constraints;
+}
+
+std::optional<PubSub::SubscriptionArguments> TypeUtils::parse_arguments(
+    v8::Isolate* isolate, v8::Local<v8::Object> args) {
+  auto priority = get_value_from_obj(isolate, args, "priority");
+  auto fetch_policy = get_value_from_obj(isolate, args, "fetch_policy");
+  auto scope = get_value_from_obj(isolate, args, "scope");
+
+  if (!(priority || fetch_policy || scope)) {
+    return std::nullopt;
+  }
+
+  PubSub::SubscriptionArguments output;
+
+  if (priority) {
+    uint32_t number;
+    if ((*priority)->IsUint32() &&
+        (*priority)->Uint32Value(isolate->GetCurrentContext()).To(&number)) {
+      output.priority = number;
+    } else {
+      return std::nullopt;
+    }
+  }
+
+  if (fetch_policy) {
+    if (!(*fetch_policy)->IsString()) {
+      return std::nullopt;
+    }
+
+    std::string policy_raw = *v8::String::Utf8Value(isolate, *fetch_policy);
+    auto parsed =
+        PubSub::SubscriptionArguments::fetch_policy_from_string(policy_raw);
+    if (parsed == PubSub::FetchPolicy::NONE) {
+      return std::nullopt;
+    }
+    output.fetch_policy = parsed;
+  }
+
+  if (scope) {
+    if (!(*scope)->IsString()) {
+      return std::nullopt;
+    }
+
+    std::string scope_raw = *v8::String::Utf8Value(isolate, *scope);
+    auto parsed = PubSub::SubscriptionArguments::scope_from_string(scope_raw);
+    if (parsed == PubSub::Scope::NONE) {
+      return std::nullopt;
+    }
+    output.scope = parsed;
+  }
+
+  return output;
 }
 
 std::optional<v8::Local<v8::Value>> TypeUtils::get_value_from_obj(
