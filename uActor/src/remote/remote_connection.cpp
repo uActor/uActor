@@ -571,7 +571,7 @@ void RemoteConnection::handle_remote_hello(PubSub::Publication&& p) {
                }
                return false;
              },
-             1000)) {
+             5)) {
       PubSub::Publication p{BoardFunctions::NODE_ID, "remote_connection",
                             std::to_string(local_id)};
       p.set_attr("type", "subscriptions_added");
