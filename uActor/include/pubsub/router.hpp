@@ -115,12 +115,13 @@ class Router {
   void publish_local_subscription_added(const ASubscription& subscription);
   void publish_local_subscription_removed(const ASubscription& subscription);
 
-  bool is_meta_subscription(const Filter& filter);
+  std::vector<std::reference_wrapper<const Router::ASubscription>>
+  find_subscriptions_for_meta_filter(const Filter& meta);
+
+  bool is_fetch_meta_subscription(const Filter& filter,
+                                  const SubscriptionArguments& arguments);
   void handle_meta_subscription(const Filter& filter,
                                 const ActorIdentifier& subscriber);
-
-  std::vector<std::reference_wrapper<const Router::ASubscription>>
-      find_subscriptions(std::function<bool(const Filter&)>);
 };
 
 }  // namespace uActor::PubSub

@@ -381,4 +381,24 @@ std::string Publication::Map::to_string() const {
   return buffer + " }";
 }
 
+Publication Publication::unwrap() const {
+  PubSub::Publication pub{*get_str_attr("publisher_node_id"),
+                          *get_str_attr("publisher_actor_type"),
+                          *get_str_attr("publisher_instance_id")};
+  for (const auto& [key, value] : **get_nested_component("__wrapped")) {
+    if (std::holds_alternative<AString>(value)) {
+      pub.set_attr(key, std::get<AString>(value));
+    } else if (std::holds_alternative<int32_t>(value)) {
+      pub.set_attr(key, std::get<int32_t>(value));
+    } else if (std::holds_alternative<float>(value)) {
+      pub.set_attr(key, std::get<float>(value));
+    } else if (std::holds_alternative<std::shared_ptr<Map>>(value)) {
+      pub.set_attr(
+          key, std::make_shared<Map>(*std::get<std::shared_ptr<Map>>(value)));
+    }
+  }
+  pub.set_attr("__unwrapped", 1);
+  return pub;
+};
+
 }  //  namespace uActor::PubSub

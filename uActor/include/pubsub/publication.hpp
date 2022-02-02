@@ -171,6 +171,8 @@ class Publication {
 
   [[nodiscard]] size_t size() const { return attributes->size(); }
 
+  [[nodiscard]] Publication unwrap() const;
+
  private:
   std::shared_ptr<Map> attributes;
   bool _shallow_copy;

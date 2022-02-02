@@ -76,7 +76,13 @@ ManagedActor::ReceiveResult ManagedActor::receive_next_internal() {
     }
     if (ret == RuntimeReturnValue::NONE || ret == RuntimeReturnValue::OK) {
       reply_context.set(next_message);
-      ret = receive(std::move(next_message));
+
+      if (next_message.get_str_attr("type") == "__unicast_wrapper") {
+        ret = receive(next_message.unwrap());
+      } else {
+        ret = receive(std::move(next_message));
+      }
+
       reply_context.reset();
       if (ret == RuntimeReturnValue::NOT_READY) {
         Support::Logger::error("MANAGED-ACTOR",

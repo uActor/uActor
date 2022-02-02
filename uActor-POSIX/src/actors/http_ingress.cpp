@@ -15,8 +15,7 @@ void HTTPIngress::receive(const PubSub::Publication& publication) {
     stop_server();
   } else if (publication.get_str_attr("type") == "ingress_http_response") {
     handle_http_response(publication);
-  } else if (publication.get_str_attr("type") == "local_subscription_added" ||
-             publication.get_str_attr("type") == "local_subscription_exists") {
+  } else if (publication.get_str_attr("type") == "local_subscription_added") {
     auto subscription = parse_http_ingress_subscription(publication);
     if (subscription) {
       handle_subscription_added(std::move(*subscription));
@@ -83,15 +82,29 @@ void HTTPIngress::periodic_cleanup() {
 // handler.
 
 void HTTPIngress::add_subscription_update_subscriptions() {
+  PubSub::SubscriptionArguments args;
+  args.fetch_policy = PubSub::FetchPolicy::FETCH_FUTURE;
   subscribe(
-      PubSub::Filter{PubSub::Constraint("type", "local_subscription_added"),
-                     PubSub::Constraint("publisher_node_id",
-                                        std::string(BoardFunctions::NODE_ID))});
+      PubSub::Filter{
+          PubSub::Constraint("type", "local_subscription_added"),
+          PubSub::Constraint(
+              "subscription",
+              std::vector<PubSub::Constraint>{PubSub::Constraint(
+                  "type", std::vector<PubSub::Constraint>{PubSub::Constraint(
+                              "operand", "ingress_http_request")})}),
+          PubSub::Constraint("publisher_node_id",
+                             std::string(BoardFunctions::NODE_ID))},
+      std::move(args));
 
-  subscribe(
-      PubSub::Filter{PubSub::Constraint("type", "local_subscription_removed"),
-                     PubSub::Constraint("publisher_node_id",
-                                        std::string(BoardFunctions::NODE_ID))});
+  subscribe(PubSub::Filter{
+      PubSub::Constraint("type", "local_subscription_removed"),
+      PubSub::Constraint(
+          "subscription",
+          std::vector<PubSub::Constraint>{PubSub::Constraint(
+              "type", std::vector<PubSub::Constraint>{PubSub::Constraint(
+                          "operand", "ingress_http_request")})}),
+      PubSub::Constraint("publisher_node_id",
+                         std::string(BoardFunctions::NODE_ID))});
 }
 
 void HTTPIngress::handle_subscription_added(
@@ -130,8 +143,7 @@ HTTPIngress::parse_http_ingress_subscription(
 
   auto deserialized_subscription = PubSub::Filter::from_publication_map(*map);
 
-  if (!(deserialized_subscription &&
-        filter_has_ingress_http_constraint(*deserialized_subscription))) {
+  if (!(deserialized_subscription)) {
     return std::nullopt;
   }
 
@@ -155,21 +167,6 @@ HTTPIngress::parse_http_ingress_subscription(
   } else {
     return std::nullopt;
   }
-}
-
-bool HTTPIngress::filter_has_ingress_http_constraint(
-    const PubSub::Filter& filter) {
-  auto is_ingress_http_request_constraint = [](const auto& constraint) {
-    return constraint.attribute() == "type" &&
-           std::holds_alternative<std::string_view>(constraint.operand()) &&
-           std::get<std::string_view>(constraint.operand()) ==
-               "ingress_http_request";
-  };
-
-  return std::find_if(filter.required_constraints().begin(),
-                      filter.required_constraints().end(),
-                      is_ingress_http_request_constraint) !=
-         filter.required_constraints().end();
 }
 
 // Main HTTP Server

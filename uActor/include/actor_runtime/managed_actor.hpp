@@ -146,7 +146,10 @@ class ManagedActor {
   void enqueue_wakeup(uint32_t delay, std::string_view wakeup_id);
 
   void reply(PubSub::Publication&& p) {
-    reply_context.add_reply_fields(&p);
+    PubSub::Publication wrapper{_node_id, _actor_type, _instance_id};
+    wrapper.set_attr("type", "__unicast_wrapper");
+    wrapper.set_attr("__wrapped", p.root_handle());
+    reply_context.add_reply_fields(&wrapper);
     publish(std::move(p));
   }
 

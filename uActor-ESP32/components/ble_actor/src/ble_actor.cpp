@@ -41,15 +41,27 @@ BLEActor::BLEActor()
 
 #if CONFIG_UACTOR_OPTIMIZATIONS_BLE_FILTER
   handle.subscribe(
-      PubSub::Filter{PubSub::Constraint("type", "local_subscription_added"),
-                     PubSub::Constraint("publisher_node_id",
-                                        std::string(BoardFunctions::NODE_ID))},
+      PubSub::Filter{
+          PubSub::Constraint("type", "local_subscription_added"),
+          PubSub::Constraint(
+              "subscription",
+              std::vector<PubSub::Constraint>{PubSub::Constraint(
+                  "type", std::vector<PubSub::Constraint>{PubSub::Constraint(
+                              "operand", "ble_discovery")})}),
+          PubSub::Constraint("publisher_node_id",
+                             std::string(BoardFunctions::NODE_ID))},
       own_identifier);
 
   handle.subscribe(
-      PubSub::Filter{PubSub::Constraint("type", "local_subscription_removed"),
-                     PubSub::Constraint("publisher_node_id",
-                                        std::string(BoardFunctions::NODE_ID))},
+      PubSub::Filter{
+          PubSub::Constraint("type", "local_subscription_removed"),
+          PubSub::Constraint(
+              "subscription",
+              std::vector<PubSub::Constraint>{PubSub::Constraint(
+                  "type", std::vector<PubSub::Constraint>{PubSub::Constraint(
+                              "operand", "ble_discovery")})}),
+          PubSub::Constraint("publisher_node_id",
+                             std::string(BoardFunctions::NODE_ID))},
       own_identifier);
 #endif
 
@@ -87,8 +99,7 @@ void BLEActor::receive(PubSub::Publication&& publication) {
 #if CONFIG_UACTOR_OPTIMIZATIONS_BLE_FILTER
   } else if (publication.get_str_attr("type") == "local_subscription_removed") {
     handle_subscription_added(std::move(publication));
-  } else if (publication.get_str_attr("type") == "local_subscription_added" ||
-             publication.get_str_attr("type") == "local_subscription_exists") {
+  } else if (publication.get_str_attr("type") == "local_subscription_added") {
     handle_subscription_added(std::move(publication));
   }
 #else
@@ -118,7 +129,7 @@ void BLEActor::handle_subscription_added(PubSub::Publication&& publication) {
   auto deserialized = PubSub::Filter::from_publication_map(
       **publication.get_nested_component("subscription"));
 
-  if (deserialized && filter_has_ble_type_constraint(*deserialized)) {
+  if (deserialized) {
     if (std::find_if(
             active_filters.begin(), active_filters.end(),
             [&filter = std::as_const(*deserialized)](const auto& other) {
@@ -153,7 +164,7 @@ void BLEActor::handle_subscription_removed(PubSub::Publication&& publication) {
   auto deserialized = PubSub::Filter::from_publication_map(
       **publication.get_nested_component("subscription"));
 
-  if (deserialized && filter_has_ble_type_constraint(*deserialized)) {
+  if (deserialized) {
     auto filter_it = std::find_if(
         active_filters.begin(), active_filters.end(),
         [&other = std::as_const(*deserialized)](const auto& filter) {
@@ -165,18 +176,6 @@ void BLEActor::handle_subscription_removed(PubSub::Publication&& publication) {
   }
 }
 
-bool BLEActor::filter_has_ble_type_constraint(const PubSub::Filter& filter) {
-  auto is_ble_type_constraint = [](const auto& constraint) {
-    return constraint.attribute() == "type" &&
-           std::holds_alternative<std::string_view>(constraint.operand()) &&
-           std::get<std::string_view>(constraint.operand()) == "ble_discovery";
-  };
-
-  return std::find_if(filter.required_constraints().begin(),
-                      filter.required_constraints().end(),
-                      is_ble_type_constraint) !=
-         filter.required_constraints().end();
-}
 #endif
 
 void BLEActor::host_task(void* param) {

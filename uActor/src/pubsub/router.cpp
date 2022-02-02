@@ -180,16 +180,26 @@ Router::subscription_lists_for(
 }
 
 std::vector<std::reference_wrapper<const Router::ASubscription>>
-Router::find_subscriptions(std::function<bool(const Filter&)> filter) {
-  std::map<std::string, std::vector<Constraint>> example_constraints;
-
+Router::find_subscriptions_for_meta_filter(const Filter& meta) {
   std::vector<std::reference_wrapper<const Router::ASubscription>> result;
 
+  auto meta_filter = std::find_if(
+      meta.required_constraints().begin(), meta.required_constraints().end(),
+      [](const auto& constraint) {
+        return constraint.attribute() == "subscription";
+      });
+
+  if (meta_filter == meta.required_constraints().end()) {
+    return result;
+  }
+
   for (const auto& [sub_id, sub] : subscriptions) {
-    if (filter(sub.filter.to_filter())) {
+    auto serialized = sub.filter.to_filter().to_publication_map();
+    if ((*meta_filter)(*serialized)) {
       result.push_back(sub);
     }
   }
+
   return result;
 }
 
@@ -216,7 +226,7 @@ uint32_t Router::add_subscription(
     SubscriptionArguments args) {
   std::unique_lock lck(mtx);
 
-  if (is_meta_subscription(f)) {
+  if (is_fetch_meta_subscription(f, args)) {
     handle_meta_subscription(f, subscriber);
   }
 
@@ -315,7 +325,13 @@ uint32_t Router::add_subscription(
   }
 }
 
-bool Router::is_meta_subscription(const Filter& filter) {
+bool Router::is_fetch_meta_subscription(
+    const Filter& filter, const SubscriptionArguments& arguments) {
+  if (!(arguments.fetch_policy == PubSub::FetchPolicy::FETCH ||
+        arguments.fetch_policy == PubSub::FetchPolicy::FETCH_FUTURE)) {
+    return false;
+  }
+
   for (auto& constraint : filter.required_constraints()) {
     if (constraint.attribute() == "type" &&
         std::holds_alternative<std::string_view>(constraint.operand()) &&
@@ -330,16 +346,26 @@ bool Router::is_meta_subscription(const Filter& filter) {
 
 void Router::handle_meta_subscription(const Filter& filter,
                                       const ActorIdentifier& subscriber) {
-  auto accept_all = [](const Filter& filter) { return true; };
-
-  for (auto sub : find_subscriptions(accept_all)) {
+  for (auto sub : find_subscriptions_for_meta_filter(filter)) {
     auto pub = Publication(BoardFunctions::NODE_ID, "router", "1");
+
     pub.set_attr("node_id", subscriber.node_id);
     pub.set_attr("actor_type", subscriber.actor_type);
     pub.set_attr("instance_id", subscriber.instance_id);
-    pub.set_attr("type", "local_subscription_exists");
-    pub.set_attr("subscription",
-                 std::move(sub.get().filter.to_filter().to_publication_map()));
+
+    pub.set_attr("type", "__unicast_wrapper");
+
+    auto content = std::make_shared<PubSub::Publication::Map>();
+
+    content->set_attr("type", "local_subscription_added");
+    content->set_attr(
+        "subscription",
+        std::move(sub.get().filter.to_filter().to_publication_map()));
+    content->set_attr("subscription_arguments", sub.get().arguments.to_map());
+    // content->set_attr("subscriber", sub.get().receivers.)
+
+    pub.set_attr("__wrapped", std::move(content));
+
     publish_internal(std::move(pub));
   }
 }
