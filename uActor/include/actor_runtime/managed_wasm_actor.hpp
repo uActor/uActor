@@ -5,12 +5,11 @@
 #include "wasm_functions.hpp"
 
 namespace uActor::ActorRuntime {
-using pubvec_t = std::vector<PubSub::Publication>;
 
 class ManagedWasmActor : public ManagedActor {
  private:
   wasm3::environment env;
-  wasm3::runtime runtime = env.new_runtime(33184);
+  wasm3::runtime runtime = env.new_runtime(4096);
 
  public:
   template <typename PAllocator = allocator_type>
@@ -40,6 +39,7 @@ class ManagedWasmActor : public ManagedActor {
   }
 
   void ext_publish(PubSub::Publication&& m) const;
+  void ext_subscribe(PubSub::Filter&& f);
 
  private:
   RuntimeReturnValue fetch_code_and_init();

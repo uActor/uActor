@@ -4,4 +4,4 @@ ttl:  60000
 actor_type:   de.tum.ping_pong.actor.ping
 actor_runtime_type:  wasm
 actor_version:  "1.0"
-actor_code_file:  "test.wat"
+actor_code_file:  "build/test.wat"

@@ -9,26 +9,22 @@
 #include <vector>
 
 #include "actor_runtime/code_store.hpp"
+#include "actor_runtime/wasm_functions.hpp"
 #include "pubsub/publication.hpp"
+#include "pubsub/router.hpp"
 #include "support/logger.hpp"
-
+#include "wasm3.hpp"
 
 namespace uActor::ActorRuntime {
 ManagedActor::RuntimeReturnValue ManagedWasmActor::receive(
-    PubSub::Publication&& _pub) {
-  PubSub::Publication pub = _pub;
-
+    PubSub::Publication&& m) {
   try {
-    wasm3::function recieve_func = this->runtime.find_function("recieve");
+    wasm3::function recieve_func = this->runtime.find_function("receive");
     wasm3::pointer_t publication =
-        store_publication(this->runtime.get_memory(), pub);
-
-    std::cout << "Pub_addr" << publication << std::endl;
-
-    int32_t func_return = recieve_func.call<int32_t, int32_t>(publication);
-
-    std::cout << "Func_ret" << func_return << std::endl;
-
+        get_publication_storage().insert(std::move(m));
+    int32_t actor_ret = recieve_func.call<int32_t, wasm3::size_t>(publication);
+    Support::Logger::info("WASM ACTOR", "Actor returned %i", actor_ret);
+    get_publication_storage().erase(publication);
   } catch (const wasm3::error& e) {
     Support::Logger::error("WASM ACTOR", "Error executing receive function: %s",
                            e.what());
@@ -49,15 +45,20 @@ ManagedActor::RuntimeReturnValue ManagedWasmActor::fetch_code_and_init() {
   }
   try {
     wasm3::module mod =
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
         env.parse_module(reinterpret_cast<const uint8_t*>(result->code.data()),
                          result->code.length());
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
     runtime.load(mod, reinterpret_cast<void*>(this));
     mod.link("_uactor", "malloc", uactor_malloc);
+    mod.link("_uactor", "memcpy", uactor_memcpy);
     mod.link("_uactor", "free", uactor_free);
     mod.link("_uactor", "print", uactor_print);
     mod.link("_uactor", "publish", uactor_publish);
+    mod.link("_uactor", "get_val", uactor_get_val);
+    mod.link("_uactor", "subscribe", uactor_subscribe);
 
-    wasm3::function recieve_func = this->runtime.find_function("recieve");
+    wasm3::function recieve_func = this->runtime.find_function("receive");
 
   } catch (const wasm3::error& e) {
     Support::Logger::error("WASM ACTOR", "Error opening wasm module: %s",
@@ -70,6 +71,10 @@ ManagedActor::RuntimeReturnValue ManagedWasmActor::fetch_code_and_init() {
 
 void ManagedWasmActor::ext_publish(PubSub::Publication&& m) const {
   publish(std::move(m));
+}
+
+void ManagedWasmActor::ext_subscribe(PubSub::Filter&& f) {
+  this->subscribe(std::move(f));
 }
 
 bool ManagedWasmActor::createActorEnvironment(

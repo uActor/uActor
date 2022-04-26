@@ -4,34 +4,30 @@
 
 namespace uactor {
 class Publication;
-}
+class Subscription;
+}  // namespace uactor
 
 void* malloc(unsigned size);
 
 template <typename T>
 inline T* malloc(unsigned size) {
-  return static_cast<T*>(malloc(size));
+  return static_cast<T*>(malloc(sizeof(T) * size));
+}
+
+template <typename T>
+inline T* malloc() {
+  return static_cast<T*>(malloc(sizeof(T)));
 }
 
 void free(void* addr);
 
+void memcpy(void* dest, const void* src, size_t size);
+
 void print(const char*);
 void publish(const uactor::Publication*);
+void subscribe(const uactor::Subscription*);
 
-namespace uactor {
-template <typename T>
-class Array {
-  T* _data;
-
- public:
-  const unsigned size;
-
-  Array(T* data, unsigned size) : _data(data), size(size) {}
-  Array(unsigned size)
-      : _data(reinterpret_cast<T*>(malloc(size * sizeof(T)))), size(size) {}
-
-  [[nodiscard]] T* operator[](const unsigned pos) { return &_data[pos]; }
-} __attribute__((packed));
+void pub_get_val(size_t pub_id, const char* key, void* entry);
 
 // class String {
 //   char* _str;
@@ -47,27 +43,3 @@ class Array {
 //   [[nodiscard]] bool operator==(const String& other) const;
 //   [[nodiscard]] bool operator==(const char* other) const;
 // } __attribute__((packed));
-
-class Publication {
- public:
-  enum class Type : int32_t { STRING = 0, INT32 = 1, FLOAT = 3, BIN = 4 };
-  struct Entry {
-    Type _t;
-    const void* _elem;
-    const char* key;
-  } __attribute__((packed));
-
- private:
-  Array<Entry> _data;
-
- public:
-  explicit Publication(unsigned size);
-  [[nodiscard]] unsigned size() const;
-  // Entry* find(const String& key);
-  Entry* find(const char* key);
-  // Entry* operator[](const String& key);
-  Entry* operator[](const char* key);
-  Entry* acc(const unsigned pos);
-} __attribute__((packed));
-
-}  // namespace uactor
