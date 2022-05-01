@@ -4,6 +4,7 @@
 
 #include <optional>
 #include <variant>
+#include  <vector>
 
 #include "pubsub/constraint.hpp"
 #include "pubsub/filter.hpp"

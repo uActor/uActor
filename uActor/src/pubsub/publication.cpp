@@ -399,6 +399,6 @@ Publication Publication::unwrap() const {
   }
   pub.set_attr("__unwrapped", 1);
   return pub;
-};
+}
 
 }  //  namespace uActor::PubSub
