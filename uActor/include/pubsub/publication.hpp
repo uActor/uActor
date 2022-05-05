@@ -78,6 +78,7 @@ class Publication {
     void set_attr(std::string_view name, std::string_view value);
     void set_attr(std::string_view name, int32_t value);
     void set_attr(std::string_view name, float value);
+    void set_attr(std::string_view name, BinType value);
     void set_attr(std::string_view name, std::shared_ptr<Map> value);
 
     void erase_attr(std::string_view name);
@@ -154,14 +155,14 @@ class Publication {
       std::string_view name) const;
   [[nodiscard]] std::optional<std::shared_ptr<Map>> get_nested_component(
       std::string_view name) const;
-  [[nodiscard]] std::optional<bin_type&> get_bin_attr(
+  [[nodiscard]] std::optional<Map::BinType> get_bin_attr(std::string_view name);
 
 
   void set_attr(std::string_view name, std::string_view value);
   void set_attr(std::string_view name, int32_t value);
   void set_attr(std::string_view name, float value);
   void set_attr(std::string_view name, std::shared_ptr<Map> value);
-  void set_attr(std::string_view name, bin_type value);
+  void set_attr(std::string_view name, Map::BinType value);
 
   void erase_attr(std::string_view name);
 

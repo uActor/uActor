@@ -33,23 +33,43 @@ void msgpack_to_map(std::shared_ptr<Publication::Map> handle,
                     msgpack::object_map map) {
   // NOLINTNEXTLINE (cppcoreguidelines-pro-type-union-access)
   for (const auto& value_pair : map) {
-    if (value_pair.val.type == msgpack::type::object_type::STR) {
-      handle->set_attr(value_pair.key.as<std::string>(),
-                       value_pair.val.as<std::string>());
-    } else if (value_pair.val.type == msgpack::type::object_type::FLOAT32 ||
-               value_pair.val.type == msgpack::type::object_type::FLOAT64) {
-      handle->set_attr(value_pair.key.as<std::string>(),
-                       value_pair.val.as<float>());
-    } else if (value_pair.val.type ==
-                   msgpack::type::object_type::POSITIVE_INTEGER ||
-               value_pair.val.type ==
-                   msgpack::type::object_type::NEGATIVE_INTEGER) {
-      handle->set_attr(value_pair.key.as<std::string>(),
-                       value_pair.val.as<int32_t>());
-    } else if (value_pair.val.type == msgpack::type::object_type::MAP) {
-      auto element_handle = std::make_shared<Publication::Map>();
-      uActor::PubSub::msgpack_to_map(element_handle, value_pair.val.via.map);
-      handle->set_attr(value_pair.key.as<std::string>(), element_handle);
+    switch (value_pair.val.type) {
+      case msgpack::type::object_type::STR: {
+        handle->set_attr(value_pair.key.as<std::string>(),
+                   value_pair.val.as<std::string>());
+        break;
+      }
+      case msgpack::type::object_type::FLOAT32:
+      case msgpack::type::object_type::FLOAT64: {
+        handle->set_attr(value_pair.key.as<std::string>(),
+                   value_pair.val.as<float>());
+        break;
+      }
+      case msgpack::type::object_type::POSITIVE_INTEGER:
+      case msgpack::type::object_type::NEGATIVE_INTEGER: {
+        handle->set_attr(value_pair.key.as<std::string>(),
+                   value_pair.val.as<int32_t>());
+        break;
+      }
+      case msgpack::type::object_type::BIN: {
+        handle->set_attr(value_pair.key.as<std::string>(),
+                   value_pair.val.as<std::vector<char>>());
+        break;
+      }
+      case msgpack::type::object_type::MAP: {
+        auto element_handle = std::make_shared<Publication::Map>();
+        uActor::PubSub::msgpack_to_map(element_handle, value_pair.val.via.map);
+        handle->set_attr(value_pair.key.as<std::string>(), element_handle);
+        break;
+      } default: {
+        Support::Logger::error(
+            "PUBLICATION-FACTORY", "Unknown key type for \"%s\", %u",
+            value_pair.key.as<std::string>().c_str(), value_pair.val.type);
+#ifndef __OPTIMIZE__
+        // Crash non optimized builds
+        assert(false);
+#endif
+      }
     }
   }
 }

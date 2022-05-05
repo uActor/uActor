@@ -74,7 +74,8 @@ void ManagedWasmActor::ext_publish(PubSub::Publication&& m) const {
 }
 
 void ManagedWasmActor::ext_subscribe(PubSub::Filter&& f) {
-  this->subscribe(std::move(f));
+  // todo(Kilian) Check if other args are required
+  this->subscribe(std::move(f), {});
 }
 
 bool ManagedWasmActor::createActorEnvironment(

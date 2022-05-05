@@ -2,6 +2,7 @@
 
 #include <array>
 #include <msgpack.hpp>
+#include <string_view>
 
 #include "support/logger.hpp"
 #include "support/memory_manager.hpp"
@@ -353,6 +354,10 @@ void Publication::Map::set_attr(std::string_view name, float value) {
   data.insert_or_assign(AString(name, make_allocator<AString>()), value);
 }
 
+void Publication::Map::set_attr(std::string_view name, BinType value) {
+  data.insert_or_assign(AString(name, make_allocator<AString>()), value);
+}
+
 void Publication::Map::set_attr(std::string_view name,
                                 std::shared_ptr<Publication::Map> value) {
   data.insert_or_assign(AString(name, make_allocator<AString>()), value);
@@ -400,7 +405,4 @@ Publication Publication::unwrap() const {
   pub.set_attr("__unwrapped", 1);
   return pub;
 }
-
-size_t Publication::size() const { return this->attributes->size(); }
-
 }  //  namespace uActor::PubSub
