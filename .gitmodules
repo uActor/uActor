@@ -39,4 +39,4 @@
 	url = https://github.com/BLAKE2/BLAKE2.git
 [submodule "vendor/wasm3_cpp"]
 	path = vendor/wasm3_cpp
-	url = https://gitlab.lrz.de/cm/wasm3-cpp.git
+	url = ../../cm/wasm3-cpp.git
