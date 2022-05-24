@@ -53,7 +53,7 @@ build_esp32:
 
 build_armv7:
   before_script:
-    - apt-get update -y && apt-get upgrade -y && apt-get install -y git ssh-client build-essential cmake ninja-build python3-pip crossbuild-essential-armhf g++-10-arm-linux-gnueabihf && pip3 install conan && git submodule sync --recursive && git submodule update --init --recursive
+    - apt-get update -y && apt-get upgrade -y && apt-get install -y git ssh-client build-essential cmake ninja-build python3-pip crossbuild-essential-armhf g++-10-arm-linux-gnueabihf make && pip3 install conan && git submodule sync --recursive && git submodule update --init --recursive
   stage: build
   image: debian:bullseye
   script: CONAN_USER_HOME=$PWD/conan make build_armv7
@@ -64,7 +64,7 @@ build_armv7:
 
 build_arm64:
   before_script:
-    - apt-get update -y && apt-get upgrade -y && apt-get install -y git ssh-client build-essential cmake ninja-build python3-pip crossbuild-essential-arm64 g++-10-aarch64-linux-gnu && pip3 install conan && git submodule sync --recursive && git submodule update --init --recursive
+    - apt-get update -y && apt-get upgrade -y && apt-get install -y git ssh-client build-essential cmake ninja-build python3-pip crossbuild-essential-arm64 g++-10-aarch64-linux-gnu make && pip3 install conan && git submodule sync --recursive && git submodule update --init --recursive
   stage: build
   image: debian:bullseye
   script: CONAN_USER_HOME=$PWD/conan make build_arm64
