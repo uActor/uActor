@@ -81,7 +81,29 @@ struct LaunchUtils {
     return spawn_result;
   }
 #endif
-
+#if CONFIG_UACTOR_WASM
+template <typename T>
+  static T await_start_wasm_executor(
+      std::function<T(ActorRuntime::ExecutorSettings*)> launch) {
+    auto r = uActor::PubSub::Router::get_instance().new_subscriber();
+    r.subscribe(
+        uActor::PubSub::Filter{
+            uActor::PubSub::Constraint{"type", "executor_update"},
+            uActor::PubSub::Constraint{"command", "register"},
+            uActor::PubSub::Constraint{"update_actor_type", "wasm_executor"},
+            uActor::PubSub::Constraint{"update_instance_id", "1"},
+            uActor::PubSub::Constraint{"publisher_node_id",
+                                       uActor::BoardFunctions::NODE_ID}},
+        PubSub::ActorIdentifier(BoardFunctions::NODE_ID, "start_helper", "1"));
+    uActor::ActorRuntime::ExecutorSettings* params =
+        new uActor::ActorRuntime::ExecutorSettings{
+            .node_id = uActor::BoardFunctions::NODE_ID, .instance_id = "1"};
+    T spawn_result = launch(params);
+    auto res = r.receive(uActor::BoardFunctions::SLEEP_FOREVER);
+    assert(res);
+    return spawn_result;
+  }
+  #endif
   template <typename T>
   static T await_start_native_executor(
       std::function<T(ActorRuntime::ExecutorSettings*)> launch,

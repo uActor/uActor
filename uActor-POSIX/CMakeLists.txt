@@ -152,6 +152,7 @@ target_compile_definitions(uActor PUBLIC CONFIG_UACTOR_ENABLE_HEAP_TRACKING=1)
 target_compile_definitions(uActor PUBLIC CONFIG_UACTOR_ENABLE_INFLUXDB_ACTOR=1)
 target_compile_definitions(uActor PUBLIC CONFIG_UACTOR_ENABLE_HTTP_INGRESS=1)
 target_compile_definitions(uActor PUBLIC CONFIG_UACTOR_ENABLE_HTTP_CLIENT_ACTOR=1)
+target_compile_definitions(uActor PUBLIC CONFIG_UACTOR_WASM=1)
 
 # Large Scale Eval: Enable
 # target_compile_definitions(uActor PUBLIC CONFIG_UACTOR_ENABLE_SECONDS_TELEMETRY=1)

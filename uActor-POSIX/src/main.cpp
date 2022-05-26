@@ -18,6 +18,9 @@
 #if CONFIG_UACTOR_V8
 #include "actor_runtime/v8/executor.hpp"
 #endif
+#if CONFIG_UACTOR_WASM
+#include "actor_runtime/wasm_executor.hpp"
+#endif
 #include "remote/remote_connection.hpp"
 #include "remote/tcp_forwarder.hpp"
 #include "support/core_native_actors.hpp"
@@ -272,6 +275,14 @@ int main(int arg_count, char** args) {
           [](uActor::ActorRuntime::ExecutorSettings* params) {
             return std::thread(
                 &uActor::ActorRuntime::V8Runtime::V8Executor::os_task, params);
+          });
+#endif
+
+#if CONFIG_UACTOR_WASM
+  auto wasm_executor =
+      uActor::Support::LaunchUtils::await_start_wasm_executor<std::thread>(
+          [](uActor::ActorRuntime::ExecutorSettings* params) {
+            return std::thread(&uActor::ActorRuntime::WasmExecutor::os_task, params);
           });
 #endif
 
