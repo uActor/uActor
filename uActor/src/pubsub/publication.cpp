@@ -2,7 +2,9 @@
 
 #include <array>
 #include <msgpack.hpp>
+#include <optional>
 #include <string_view>
+#include <variant>
 
 #include "support/logger.hpp"
 #include "support/memory_manager.hpp"
@@ -107,18 +109,17 @@ std::shared_ptr<std::vector<char>> Publication::to_msg_pack() {
   } catch (std::bad_alloc& exception) {
     Support::Logger::error(
         "PUBLICATION", "TO_MSG_PACK",
-        "Dropped outgoin message as the system is out of memory");
+        "Dropped outgoing message as the system is out of memory");
     return std::make_shared<std::vector<char>>(4);
   }
 }
 
 std::variant<std::monostate, std::string_view, int32_t, float,
-             std::shared_ptr<Publication::Map>>
+             Publication::Map::BinType, std::shared_ptr<Publication::Map>>
 Publication::get_attr(std::string_view name) const {
   if (!attributes) {
     Support::Logger::warning("PUBLICATION", "Get: moved");
-    return std::variant<std::monostate, std::string_view, int32_t, float,
-                        std::shared_ptr<Publication::Map>>();
+    return {};
   }
   return attributes->get_attr(name);
 }
@@ -146,6 +147,23 @@ std::optional<float> Publication::get_float_attr(std::string_view name) const {
     return std::nullopt;
   }
   return attributes->get_float_attr(name);
+}
+
+std::optional<const std::string_view> Publication::get_code(
+    std::string_view name) const {
+  if (!attributes) {
+    Support::Logger::warning("PUBLICATION", "Get: moved");
+    return std::nullopt;
+  }
+  const auto code = attributes->get_attr(name);
+
+  if (std::holds_alternative<std::string_view>(code)) {
+    return std::get<std::string_view>(code);
+  } else if (std::holds_alternative<Map::BinType>(code)) {
+    const Map::BinType& bin = std::get<Map::BinType>(code);
+    return std::string_view(bin.data(), bin.size());
+  }
+  return std::nullopt;
 }
 
 std::optional<std::shared_ptr<Publication::Map>>
@@ -274,7 +292,7 @@ bool Publication::Map::operator==(const Map& other) const {
 }
 
 std::variant<std::monostate, std::string_view, int32_t, float,
-             std::shared_ptr<Publication::Map>>
+             Publication::Map::BinType, std::shared_ptr<Publication::Map>>
 Publication::Map::get_attr(std::string_view name) const {
   auto result = data.find(AString(name));
   if (result != data.end()) {
@@ -286,10 +304,11 @@ Publication::Map::get_attr(std::string_view name) const {
       return std::get<float>(result->second);
     } else if (std::holds_alternative<std::shared_ptr<Map>>(result->second)) {
       return std::get<std::shared_ptr<Map>>(result->second);
+    } else if (std::holds_alternative<BinType>(result->second)) {
+      return std::get<BinType>(result->second);
     }
   }
-  return std::variant<std::monostate, std::string_view, int32_t, float,
-                      std::shared_ptr<Publication::Map>>();
+  return {};
 }
 
 std::optional<const std::string_view> Publication::Map::get_str_attr(
@@ -320,6 +339,17 @@ std::optional<float> Publication::Map::get_float_attr(
   if (result != data.end()) {
     if (std::holds_alternative<float>(result->second)) {
       return std::get<float>(result->second);
+    }
+  }
+  return std::nullopt;
+}
+
+std::optional<Publication::Map::BinType> Publication::Map::get_bin_attr(
+    std::string_view name) const {
+  auto result = data.find(AString(name));
+  if (result != data.end()) {
+    if (std::holds_alternative<BinType>(result->second)) {
+      return std::get<BinType>(result->second);
     }
   }
   return std::nullopt;

@@ -83,7 +83,7 @@ void DeploymentManager::receive_deployment(
           *publication.get_str_attr("deployment_actor_type");
       std::string_view actor_version =
           *publication.get_str_attr("deployment_actor_version");
-      auto actor_code = publication.get_str_attr("deployment_actor_code");
+      auto actor_code = publication.get_code("deployment_actor_code");
       std::string_view actor_runtime_type =
           *publication.get_str_attr("deployment_actor_runtime_type");
       std::string_view required_actors =

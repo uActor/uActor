@@ -18,7 +18,7 @@ class ManagedWasmActor : public ManagedActor {
                    std::string_view actor_version, std::string_view instance_id,
                    PAllocator allocator = make_allocator<ManagedWasmActor>())
       : ManagedActor(api, unique_id, node_id, actor_type, actor_version,
-                     instance_id, allocator) {}
+                   instance_id, allocator) {}
 
   ~ManagedWasmActor() = default;
 

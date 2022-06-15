@@ -63,7 +63,7 @@ class Publication {
     }
 
     [[nodiscard]] std::variant<std::monostate, std::string_view, int32_t, float,
-                               std::shared_ptr<Map>>
+                               BinType, std::shared_ptr<Map>>
     get_attr(std::string_view name) const;
 
     [[nodiscard]] std::optional<const std::string_view> get_str_attr(
@@ -73,6 +73,8 @@ class Publication {
     [[nodiscard]] std::optional<float> get_float_attr(
         std::string_view name) const;
     [[nodiscard]] std::optional<std::shared_ptr<Map>> get_nested_component(
+        std::string_view name) const;
+    [[nodiscard]] std::optional<BinType> get_bin_attr(
         std::string_view name) const;
 
     void set_attr(std::string_view name, std::string_view value);
@@ -144,7 +146,7 @@ class Publication {
   }
 
   [[nodiscard]] std::variant<std::monostate, std::string_view, int32_t, float,
-                             std::shared_ptr<Map>>
+                             Map::BinType, std::shared_ptr<Map>>
   get_attr(std::string_view name) const;
 
   [[nodiscard]] std::optional<const std::string_view> get_str_attr(
@@ -155,8 +157,10 @@ class Publication {
       std::string_view name) const;
   [[nodiscard]] std::optional<std::shared_ptr<Map>> get_nested_component(
       std::string_view name) const;
-  [[nodiscard]] std::optional<Map::BinType> get_bin_attr(std::string_view name);
-
+  [[nodiscard]] std::optional<Map::BinType> get_bin_attr(
+      std::string_view name) const;
+  [[nodiscard]] std::optional<const std::string_view> get_code(
+      std::string_view name) const;
 
   void set_attr(std::string_view name, std::string_view value);
   void set_attr(std::string_view name, int32_t value);
