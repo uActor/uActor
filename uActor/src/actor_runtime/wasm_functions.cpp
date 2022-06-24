@@ -51,7 +51,7 @@ PublicationStorage& get_publication_storage() {
 
 void get_publication(wasm3::memory* m, const void* addr,
                      uActor::PubSub::Publication& ret) {
-  const Publication* pub = reinterpret_cast<const Publication*>(addr);
+  const Publication* pub = static_cast<const Publication*>(addr);
   // Publication is based on previous publication --> we must merge
   if (pub->id != 0) {
     auto& pub_store = get_publication_storage();
@@ -77,9 +77,10 @@ void get_publication(wasm3::memory* m, const void* addr,
                      *static_cast<int32_t*>(m->access(cur_entry->val._elem)));
         break;
       case Publication::Type::VOID:
-        // todo erase entry
+        ret.erase_attr(
+            static_cast<const char*>(m->access(cur_entry->val._key)));
       case Publication::Type::BIN:
-        // todo add me runs to default for now
+        // Bin Type is currently not supported, will run through to default
       default:
         uActor::Support::Logger::error("WASM ACTOR",
                                        "Error unhandled publication type");
@@ -143,7 +144,6 @@ void uactor_subscribe(int32_t id, const void* addr) {
     } else if (std::holds_alternative<float>(val.second)) {
       vec.emplace_back(std::string(val.first), std::get<float>(val.second));
     }
-    // vec.emplace_back(val.first, val.second);
   }
 
   PubSub::Filter f(vec);
@@ -178,13 +178,7 @@ void uactor_get_val(int32_t mem_id, int32_t pub_id, const void* _key,
   } else if (std::holds_alternative<float>(pub_entry_handle)) {
     cur_entry->_t = Publication::Type::FLOAT;
     cur_entry->_elem = m->store(std::get<float>(pub_entry_handle));
-  } /*else if (std::holds_alternative<uActor::PubSub::Publication::bin_type>(
-                 pub_entry_handle)) {
-    cur_entry->_t = Publication::Type::BIN;
-    cur_entry->_elem = m->malloc(sizeof(WasmDataStructures::Array<uint8_t>));
-    // todo store bin type
-  }*/
-  else {
+  } else {
     uActor::Support::Logger::error("WASM ACTOR",
                                    "Error unhandled publication type");
     assert(false);

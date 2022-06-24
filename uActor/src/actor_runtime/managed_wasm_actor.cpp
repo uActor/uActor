@@ -49,7 +49,7 @@ ManagedActor::RuntimeReturnValue ManagedWasmActor::fetch_code_and_init() {
         env.parse_module(reinterpret_cast<const uint8_t*>(result->code.data()),
                          result->code.length());
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-    runtime.load(mod, reinterpret_cast<void*>(this));
+    runtime.load(mod, static_cast<void*>(this));
     mod.link("_uactor", "malloc", uactor_malloc);
     mod.link("_uactor", "memcpy", uactor_memcpy);
     mod.link("_uactor", "free", uactor_free);
@@ -74,7 +74,6 @@ void ManagedWasmActor::ext_publish(PubSub::Publication&& m) const {
 }
 
 void ManagedWasmActor::ext_subscribe(PubSub::Filter&& f) {
-  // todo(Kilian) Check if other args are required
   this->subscribe(std::move(f), {});
 }
 
