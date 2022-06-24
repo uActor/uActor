@@ -29,7 +29,6 @@ class Array {
  public:
   const size_t size = 0;
 
-  // Array(T* data, size_t size) : _data(data), size(size) {}
   Array(size_t size) : _data(malloc(size * sizeof(T))), size(size) {}
   Array(size_t size, T value) : _data(malloc<T>(size * sizeof(T))), size(size) {
     for (size_t i = 0; i < size; i++) {

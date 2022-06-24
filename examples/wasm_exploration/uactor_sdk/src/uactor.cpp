@@ -29,6 +29,6 @@ void subscribe(const uactor::Subscription* sub) {
                  static_cast<const void*>(sub));
 }
 
-void pub_get_val(int pub_id, const char* key, void* entry) {
+void pub_get_val(size_t pub_id, const char* key, void* entry) {
   _pub_get_val_int(*reinterpret_cast<int*>(1), pub_id, key, entry);
 }

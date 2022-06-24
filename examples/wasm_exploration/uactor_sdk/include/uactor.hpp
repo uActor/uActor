@@ -5,6 +5,9 @@
 namespace uactor {
 class Publication;
 class Subscription;
+namespace Publicaton {
+struct Entry;
+} // namespace Publicaton
 }  // namespace uactor
 
 void* malloc(unsigned size);
@@ -28,18 +31,3 @@ void publish(const uactor::Publication*);
 void subscribe(const uactor::Subscription*);
 
 void pub_get_val(size_t pub_id, const char* key, void* entry);
-
-// class String {
-//   char* _str;
-
-//  public:
-//   String(char* str) : _str(str) {}
-//   const char* c_str();
-//   String(String& other) = default;
-//   String(String&&) = default;
-
-//   [[nodiscard]] size_t size() const;
-//   String& operator=(const String& other) = default;
-//   [[nodiscard]] bool operator==(const String& other) const;
-//   [[nodiscard]] bool operator==(const char* other) const;
-// } __attribute__((packed));

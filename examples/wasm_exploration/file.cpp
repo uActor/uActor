@@ -1,5 +1,3 @@
-// extern long int create_new_publication();
-
 #include "uactor_sdk.hpp"
 #include "uactor_sdk/include/data_structures.hpp"
 #include "uactor_sdk/include/imports.hpp"
@@ -19,15 +17,12 @@ void func2(uactor::Publication& pub) {
   print(static_cast<const char*>(entry->_elem));
 }
 
-void* malloc(const void*, size_t size);
-
 WASM_EXPORT int receive(size_t _pub) {
-  uactor::Subscription s{};
-  s.insert("test", "val");
-  subscribe(&s);
+  uactor::Subscription subscription{};
+  subscription.insert("test", "val");
+  subscribe(&subscription);
   uactor::Publication pub{_pub};
   uactor::Publication::Entry* entry = pub.find("type");
-  // return 0;
   if (entry == nullptr) {
     return -1;
   }
@@ -85,10 +80,10 @@ WASM_EXPORT int receive(size_t _pub) {
 // every linked function is called once in the ignore_me function
 // and will therefore not be omitted by the compiler
 WASM_EXPORT void ignore_me() {
-  const auto a = malloc(1);
+  void* a = malloc(1);
   free(a);
   print(nullptr);
   publish(nullptr);
   subscribe(nullptr);
-  // pub_get_val(0, nullptr, nullptr);
+  pub_get_val(0, nullptr, nullptr);
 }

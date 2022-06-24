@@ -28,10 +28,9 @@ class Publication {
   Publication() = default;
   explicit Publication(size_t id) : id(id) {}
   ~Publication() = default;
-  // [[nodiscard]] unsigned size() const;
-  // Entry* find(const String& key);
+
   Entry* find(const char* key);
-  // Entry* operator[](const String& key);
+
   Entry* operator[](const char* key);
 
   void insert(const char* key, const Entry& entry);
