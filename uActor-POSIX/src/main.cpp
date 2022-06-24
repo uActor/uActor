@@ -282,7 +282,8 @@ int main(int arg_count, char** args) {
   auto wasm_executor =
       uActor::Support::LaunchUtils::await_start_wasm_executor<std::thread>(
           [](uActor::ActorRuntime::ExecutorSettings* params) {
-            return std::thread(&uActor::ActorRuntime::WasmExecutor::os_task, params);
+            return std::thread(&uActor::ActorRuntime::WasmExecutor::os_task,
+                               params);
           });
 #endif
 

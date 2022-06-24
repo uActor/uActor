@@ -1,5 +1,7 @@
 #pragma once
 
+#include<string>
+
 #include "managed_actor.hpp"
 #include "wasm3.hpp"
 #include "wasm_functions.hpp"

@@ -59,7 +59,6 @@ ManagedActor::RuntimeReturnValue ManagedWasmActor::fetch_code_and_init() {
     mod.link("_uactor", "subscribe", uactor_subscribe);
 
     wasm3::function recieve_func = this->runtime.find_function("receive");
-
   } catch (const wasm3::error& e) {
     Support::Logger::error("WASM ACTOR", "Error opening wasm module: %s",
                            e.what());

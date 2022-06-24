@@ -3,7 +3,10 @@
 #include <cstdint>
 #include <cstdlib>
 #include <mutex>
+#include <string>
 #include <string_view>
+#include <utility>
+#include <vector>
 
 #include "pubsub/publication.hpp"
 #include "wasm3.hpp"
@@ -149,7 +152,6 @@ class List {
     memcpy(&elem->val, val, sizeof(T));
     return _ret;
   }
-
 } __attribute__((packed));
 
 template <typename ValType, wasm3::size_t TableSize = 13,
@@ -234,9 +236,9 @@ class Publication {
 
 wasm3::pointer_t store_publication(wasm3::memory* m,
                                    const uActor::PubSub::Publication& pub);
-
+// todo Raphael, should we allow non const pointers or should this be a Pointer?
 void get_publication(wasm3::memory* m, const void* addr,
-                     uActor::PubSub::Publication& ret);
+                      uActor::PubSub::Publication& ret);
 
 wasm3::pointer_t uactor_malloc(int32_t id, wasm3::pointer_t size);
 

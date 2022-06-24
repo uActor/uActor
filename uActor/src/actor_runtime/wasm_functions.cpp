@@ -159,7 +159,7 @@ void uactor_get_val(int32_t mem_id, int32_t pub_id, const void* _key,
   uActor::PubSub::Publication& pub = get_publication_storage()[pub_id];
   Publication::Entry* cur_entry = static_cast<Publication::Entry*>(pub_entry);
   const char* key = static_cast<const char*>(_key);
-
+  // todo raphael not or ! ?
   if (not pub.has_attr(key)) {
     cur_entry->_t = Publication::Type::VOID;
     cur_entry->_elem = 0;
