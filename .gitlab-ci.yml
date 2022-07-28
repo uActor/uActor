@@ -1,8 +1,7 @@
-variables:
-  GIT_SUBMODULE_STRATEGY: recursive
 stages:
+  - lint
   - build
-  - lint_test
+  - test
 
 cache:
   key: ${CI_JOB_NAME}
@@ -11,47 +10,39 @@ cache:
 
 variables:
   DEBIAN_FRONTEND: noninteractive
+  GIT_SUBMODULE_STRATEGY: recursive
 
-lint_cpplint:
+default:
   before_script:
     - apt update -y && apt upgrade -y && apt install -y git ssh-client build-essential cmake ninja-build python3 python3-pip clang-tidy && pip3 install conan cpplint && git submodule sync --recursive && git submodule update --init --recursive
-  stage: lint_test
   image: ubuntu:20.04
+
+
+lint:cpplint:
+  stage: lint
   script: CONAN_USER_HOME=$PWD/conan make lint_cpplint
 
-lint_clang_tidy_posix:
-  before_script:
-    - apt update -y && apt upgrade -y && apt install -y git ssh-client build-essential cmake ninja-build python3 python3-pip clang-tidy && pip3 install conan cpplint && git submodule sync --recursive && git submodule update --init --recursive
-  stage: lint_test
-  image: ubuntu:20.04
-  rules:
-    - allow_failure: true
+lint:clang_tidy_posix:
+  stage: lint
+  allow_failure: true
   script: CONAN_USER_HOME=$PWD/conan make lint_clang-tidy_posix
 
 test:
-  before_script:
-    - apt-get update -y && apt-get upgrade -y && apt-get install -y git ssh-client build-essential cmake ninja-build python3-pip && pip3 install conan && git submodule sync --recursive && git submodule update --init --recursive
-  stage: lint_test
-  image: ubuntu:20.04
-  rules:
-    - allow_failure: false
-  script: CONAN_USER_HOME=$PWD/conan make test
+  stage: test
+  script: make test
 
-build_linux_x64:
-  before_script:
-    - apt-get update -y && apt-get upgrade -y && apt-get install -y git ssh-client build-essential cmake ninja-build python3-pip && pip3 install conan && git submodule sync --recursive && git submodule update --init --recursive
+build:linux_x64:
   stage: build
-  image: ubuntu:20.04
   script: CONAN_USER_HOME=$PWD/conan make
 
-build_esp32:
-  before_script:
-    -  apt-get update -y && apt-get upgrade -y && apt-get install -y && git submodule sync --recursive && git submodule update --init --recursive
+build:esp32:
   stage: build
   image: espressif/idf:release-v4.2
   script: make build_esp32
+  inherit:
+    default: false
 
-build_armv7:
+build:armv7:
   before_script:
     - apt-get update -y && apt-get upgrade -y && apt-get install -y git ssh-client build-essential cmake ninja-build python3-pip crossbuild-essential-armhf g++-10-arm-linux-gnueabihf make && pip3 install conan && git submodule sync --recursive && git submodule update --init --recursive
   stage: build
@@ -62,7 +53,7 @@ build_armv7:
       - build/arm_v7/release/uActorBin
     expire_in: 1 week
 
-build_arm64:
+build:arm64:
   before_script:
     - apt-get update -y && apt-get upgrade -y && apt-get install -y git ssh-client build-essential cmake ninja-build python3-pip crossbuild-essential-arm64 g++-10-aarch64-linux-gnu make && pip3 install conan && git submodule sync --recursive && git submodule update --init --recursive
   stage: build
