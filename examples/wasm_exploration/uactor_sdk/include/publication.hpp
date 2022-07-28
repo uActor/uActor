@@ -6,15 +6,16 @@ namespace uactor {
 class Publication {
  public:
   enum class Type : int32_t {
-    STRING = 0,
-    INT32 = 1,
+    VOID = 0,
+    STRING = 1,
+    INT32 = 2,
     FLOAT = 3,
     BIN = 4,
-    VOID = 5
   };
   struct Entry {
     Type _t;
     const void* _elem;
+    // todo currently key duplication, remove key in Entry
     const char* key;
     Entry(Type _t, const char* key, const void* _elem)
         : _t(_t), _elem(_elem), key(key) {}

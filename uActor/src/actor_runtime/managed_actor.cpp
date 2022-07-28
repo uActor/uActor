@@ -212,7 +212,7 @@ void ManagedActor::unsubscribe(uint32_t sub_id) {
   api->remove_subscription(_id, sub_id);
 }
 
-void ManagedActor::publish(PubSub::Publication&& p) const {
+void ManagedActor::publish(PubSub::Publication&& p) {
   p.set_attr("publisher_node_id", _node_id);
   p.set_attr("publisher_instance_id", _instance_id);
   p.set_attr("publisher_actor_type", _actor_type);

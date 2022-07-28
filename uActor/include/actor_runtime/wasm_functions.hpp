@@ -13,7 +13,8 @@
 
 namespace uActor::ActorRuntime {
 
-struct PublicationStorage {
+
+struct WASMPublicationStorage {
   struct PubVecEntry {
     bool free = false;
     uActor::PubSub::Publication pub;
@@ -28,7 +29,7 @@ struct PublicationStorage {
   PubSub::Publication& operator[](size_t id);
 };
 
-PublicationStorage& get_publication_storage();
+WASMPublicationStorage& get_publication_storage();
 
 namespace WasmDataStructures {
 template <typename KeyType, wasm3::size_t TableSize>
@@ -216,14 +217,14 @@ class StringHashMap {
 
 }  // namespace WasmDataStructures
 
-class Publication {
+class WASMPublication {
  public:
   enum class Type : int32_t {
-    STRING = 0,
-    INT32 = 1,
+    VOID = 0,
+    STRING = 1,
+    INT32 = 2,
     FLOAT = 3,
     BIN = 4,
-    VOID = 5
   };
   struct Entry {
     Type _t;

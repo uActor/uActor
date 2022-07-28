@@ -1,6 +1,6 @@
 #pragma once
 
-#include<string>
+#include <string>
 
 #include "managed_actor.hpp"
 #include "wasm3.hpp"
@@ -20,7 +20,7 @@ class ManagedWasmActor : public ManagedActor {
                    std::string_view actor_version, std::string_view instance_id,
                    PAllocator allocator = make_allocator<ManagedWasmActor>())
       : ManagedActor(api, unique_id, node_id, actor_type, actor_version,
-                   instance_id, allocator) {}
+                     instance_id, allocator) {}
 
   ~ManagedWasmActor() = default;
 
@@ -40,7 +40,9 @@ class ManagedWasmActor : public ManagedActor {
     return fetch_code_and_init();
   }
 
-  void ext_publish(PubSub::Publication&& m) const;
+  // We must be able to call publish and subscribe from a static context,
+  // therefore we add this static proxy methods
+  void ext_publish(PubSub::Publication&& m);
   void ext_subscribe(PubSub::Filter&& f);
 
  private:

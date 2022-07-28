@@ -68,7 +68,7 @@ ManagedActor::RuntimeReturnValue ManagedWasmActor::fetch_code_and_init() {
   return ManagedWasmActor::RuntimeReturnValue::OK;
 }
 
-void ManagedWasmActor::ext_publish(PubSub::Publication&& m) const {
+void ManagedWasmActor::ext_publish(PubSub::Publication&& m) {
   publish(std::move(m));
 }
 

@@ -4,7 +4,7 @@
 #include "types.hpp"
 
 namespace uactor {
-
+// todo currently WASM subscriptions only support a tiny subset of the usual subscription features
 class Subscription : private Publication {
  public:
   Subscription() = default;

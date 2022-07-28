@@ -7,7 +7,8 @@
   __attribute__((import_module(module))) __attribute__((import_name(name)))
 
 #define WASM_EXPORT extern "C" __attribute__((visibility("default")))
-
+// These functions are not meant to be called by the user,
+// only used by the sdk to communicate with the runtime
 WASM_IMPORT("_uactor", "malloc")
 pointer_t _malloc_int(pointer_t, int32_t);
 WASM_IMPORT("_uactor", "memcpy")

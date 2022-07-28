@@ -1,7 +1,7 @@
 type: deployment
-name: de.tum.ping_pong.deployment.ping
+name: de.tum.wasm_test.deployment
 ttl:  60000
-actor_type:   de.tum.ping_pong.actor.ping
+actor_type:   de.tum.wasm_test.actor
 actor_runtime_type:  wasm
 actor_version:  "1.0"
 actor_code_file:  "build/test.wat"

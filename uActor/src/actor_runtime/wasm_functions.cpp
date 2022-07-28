@@ -14,7 +14,7 @@
 
 namespace uActor::ActorRuntime {
 
-size_t PublicationStorage::insert(uActor::PubSub::Publication&& pub) {
+size_t WASMPublicationStorage::insert(uActor::PubSub::Publication&& pub) {
   mtx.lock();
   size_t pos;
   auto search = std::find_if(pub_vec.begin(), pub_vec.end(),
@@ -31,27 +31,27 @@ size_t PublicationStorage::insert(uActor::PubSub::Publication&& pub) {
   return pos;
 }
 
-void PublicationStorage::erase(size_t id) {
+void WASMPublicationStorage::erase(size_t id) {
   mtx.lock();
   assert(pub_vec.size() > id);
   pub_vec[id].free = true;
   mtx.unlock();
 }
 
-PubSub::Publication& PublicationStorage::operator[](size_t id) {
+PubSub::Publication& WASMPublicationStorage::operator[](size_t id) {
   assert(pub_vec.size() > id);
   assert(not pub_vec[id].free);
   return pub_vec[id].pub;
 }
 
-PublicationStorage& get_publication_storage() {
-  static PublicationStorage pubstore{};
+WASMPublicationStorage& get_publication_storage() {
+  static WASMPublicationStorage pubstore{};
   return pubstore;
 }
 
 void get_publication(wasm3::memory* m, const void* addr,
                      uActor::PubSub::Publication& ret) {
-  const Publication* pub = static_cast<const Publication*>(addr);
+  const WASMPublication* pub = static_cast<const WASMPublication*>(addr);
   // Publication is based on previous publication --> we must merge
   if (pub->id != 0) {
     auto& pub_store = get_publication_storage();
@@ -60,26 +60,26 @@ void get_publication(wasm3::memory* m, const void* addr,
   }
   wasm3::pointer_t _cur_entry = pub->_data.data._list_head;
   while (_cur_entry != 0) {
-    WasmDataStructures::List<Publication::Entry>::ListEntry* cur_entry =
-        static_cast<WasmDataStructures::List<Publication::Entry>::ListEntry*>(
+    WasmDataStructures::List<WASMPublication::Entry>::ListEntry* cur_entry =
+        static_cast<WasmDataStructures::List<WASMPublication::Entry>::ListEntry*>(
             m->access(_cur_entry));
     switch (cur_entry->val._t) {
-      case Publication::Type::STRING:
+      case WASMPublication::Type::STRING:
         ret.set_attr(static_cast<const char*>(m->access(cur_entry->val._key)),
                      static_cast<const char*>(m->access(cur_entry->val._elem)));
         break;
-      case Publication::Type::FLOAT:
+      case WASMPublication::Type::FLOAT:
         ret.set_attr(static_cast<const char*>(m->access(cur_entry->val._key)),
                      *static_cast<float*>(m->access(cur_entry->val._elem)));
         break;
-      case Publication::Type::INT32:
+      case WASMPublication::Type::INT32:
         ret.set_attr(static_cast<const char*>(m->access(cur_entry->val._key)),
                      *static_cast<int32_t*>(m->access(cur_entry->val._elem)));
         break;
-      case Publication::Type::VOID:
+      case WASMPublication::Type::VOID:
         ret.erase_attr(
             static_cast<const char*>(m->access(cur_entry->val._key)));
-      case Publication::Type::BIN:
+      case WASMPublication::Type::BIN:
         // Bin Type is currently not supported, will run through to default
       default:
         uActor::Support::Logger::error("WASM ACTOR",
@@ -107,7 +107,7 @@ void uactor_print(int32_t id, const void* string) {
   if (string == nullptr) {
     return;
   }
-  Support::Logger::log("WASM_ACTOR", "Printed: %s",
+  Support::Logger::log("WASM_ACTOR", "Printed:",
                        static_cast<const char*>(string));
 }
 
@@ -118,7 +118,7 @@ void uactor_publish(int32_t id, const void* addr) {
   uActor::PubSub::Publication pub;
   get_publication(wasm_memory::get_wasm_mem_storage()[id], addr, pub);
 
-  const ManagedWasmActor* wasm_act = static_cast<const ManagedWasmActor*>(
+  ManagedWasmActor* wasm_act = static_cast<ManagedWasmActor*>(
       wasm_memory::get_wasm_mem_storage().access_managed_wasm_actor(id));
 
   wasm_act->ext_publish(std::move(pub));
@@ -157,26 +157,26 @@ void uactor_get_val(int32_t mem_id, int32_t pub_id, const void* _key,
                     void* pub_entry) {
   wasm3::memory* m = wasm_memory::get_wasm_mem_storage()[mem_id];
   uActor::PubSub::Publication& pub = get_publication_storage()[pub_id];
-  Publication::Entry* cur_entry = static_cast<Publication::Entry*>(pub_entry);
+  WASMPublication::Entry* cur_entry = static_cast<WASMPublication::Entry*>(pub_entry);
   const char* key = static_cast<const char*>(_key);
   // todo raphael not or ! ?
   if (not pub.has_attr(key)) {
-    cur_entry->_t = Publication::Type::VOID;
+    cur_entry->_t = WASMPublication::Type::VOID;
     cur_entry->_elem = 0;
     return;
   }
 
   const auto pub_entry_handle = pub.get_attr(static_cast<const char*>(key));
   if (std::holds_alternative<std::string_view>(pub_entry_handle)) {
-    cur_entry->_t = Publication::Type::STRING;
+    cur_entry->_t = WASMPublication::Type::STRING;
     cur_entry->_elem =
         m->store_str(std::string(std::get<std::string_view>(pub_entry_handle)));
 
   } else if (std::holds_alternative<int32_t>(pub_entry_handle)) {
-    cur_entry->_t = Publication::Type::INT32;
+    cur_entry->_t = WASMPublication::Type::INT32;
     cur_entry->_elem = m->store(std::get<int32_t>(pub_entry_handle));
   } else if (std::holds_alternative<float>(pub_entry_handle)) {
-    cur_entry->_t = Publication::Type::FLOAT;
+    cur_entry->_t = WASMPublication::Type::FLOAT;
     cur_entry->_elem = m->store(std::get<float>(pub_entry_handle));
   } else {
     uActor::Support::Logger::error("WASM ACTOR",
