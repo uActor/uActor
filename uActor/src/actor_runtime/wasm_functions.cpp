@@ -40,7 +40,7 @@ void WASMPublicationStorage::erase(size_t id) {
 
 PubSub::Publication& WASMPublicationStorage::operator[](size_t id) {
   assert(pub_vec.size() > id);
-  assert(not pub_vec[id].free);
+  assert(!pub_vec[id].free);
   return pub_vec[id].pub;
 }
 
@@ -50,34 +50,35 @@ WASMPublicationStorage& get_publication_storage() {
 }
 
 void get_publication(wasm3::memory* m, const void* addr,
-                     uActor::PubSub::Publication& ret) {
+                     uActor::PubSub::Publication* ret) {
   const WASMPublication* pub = static_cast<const WASMPublication*>(addr);
   // Publication is based on previous publication --> we must merge
   if (pub->id != 0) {
     auto& pub_store = get_publication_storage();
-    ret = std::move(pub_store[pub->id]);
+    *ret = std::move(pub_store[pub->id]);
     pub_store.erase(pub->id);
   }
   wasm3::pointer_t _cur_entry = pub->_data.data._list_head;
   while (_cur_entry != 0) {
     WasmDataStructures::List<WASMPublication::Entry>::ListEntry* cur_entry =
-        static_cast<WasmDataStructures::List<WASMPublication::Entry>::ListEntry*>(
+        static_cast<
+            WasmDataStructures::List<WASMPublication::Entry>::ListEntry*>(
             m->access(_cur_entry));
     switch (cur_entry->val._t) {
       case WASMPublication::Type::STRING:
-        ret.set_attr(static_cast<const char*>(m->access(cur_entry->val._key)),
+        ret->set_attr(static_cast<const char*>(m->access(cur_entry->val._key)),
                      static_cast<const char*>(m->access(cur_entry->val._elem)));
         break;
       case WASMPublication::Type::FLOAT:
-        ret.set_attr(static_cast<const char*>(m->access(cur_entry->val._key)),
+        ret->set_attr(static_cast<const char*>(m->access(cur_entry->val._key)),
                      *static_cast<float*>(m->access(cur_entry->val._elem)));
         break;
       case WASMPublication::Type::INT32:
-        ret.set_attr(static_cast<const char*>(m->access(cur_entry->val._key)),
+        ret->set_attr(static_cast<const char*>(m->access(cur_entry->val._key)),
                      *static_cast<int32_t*>(m->access(cur_entry->val._elem)));
         break;
       case WASMPublication::Type::VOID:
-        ret.erase_attr(
+        ret->erase_attr(
             static_cast<const char*>(m->access(cur_entry->val._key)));
       case WASMPublication::Type::BIN:
         // Bin Type is currently not supported, will run through to default
@@ -107,8 +108,8 @@ void uactor_print(int32_t id, const void* string) {
   if (string == nullptr) {
     return;
   }
-  Support::Logger::log("WASM_ACTOR", "Printed:",
-                       static_cast<const char*>(string));
+  Support::Logger::log("WASM_ACTOR",
+                       "Printed:", static_cast<const char*>(string));
 }
 
 void uactor_publish(int32_t id, const void* addr) {
@@ -116,7 +117,7 @@ void uactor_publish(int32_t id, const void* addr) {
     return;
   }
   uActor::PubSub::Publication pub;
-  get_publication(wasm_memory::get_wasm_mem_storage()[id], addr, pub);
+  get_publication(wasm_memory::get_wasm_mem_storage()[id], addr, &pub);
 
   ManagedWasmActor* wasm_act = static_cast<ManagedWasmActor*>(
       wasm_memory::get_wasm_mem_storage().access_managed_wasm_actor(id));
@@ -130,7 +131,7 @@ void uactor_subscribe(int32_t id, const void* addr) {
   }
 
   uActor::PubSub::Publication pub;
-  get_publication(wasm_memory::get_wasm_mem_storage()[id], addr, pub);
+  get_publication(wasm_memory::get_wasm_mem_storage()[id], addr, &pub);
 
   std::vector<PubSub::Constraint> vec;
 
@@ -157,10 +158,10 @@ void uactor_get_val(int32_t mem_id, int32_t pub_id, const void* _key,
                     void* pub_entry) {
   wasm3::memory* m = wasm_memory::get_wasm_mem_storage()[mem_id];
   uActor::PubSub::Publication& pub = get_publication_storage()[pub_id];
-  WASMPublication::Entry* cur_entry = static_cast<WASMPublication::Entry*>(pub_entry);
+  WASMPublication::Entry* cur_entry =
+      static_cast<WASMPublication::Entry*>(pub_entry);
   const char* key = static_cast<const char*>(_key);
-  // todo raphael not or ! ?
-  if (not pub.has_attr(key)) {
+  if (!pub.has_attr(key)) {
     cur_entry->_t = WASMPublication::Type::VOID;
     cur_entry->_elem = 0;
     return;

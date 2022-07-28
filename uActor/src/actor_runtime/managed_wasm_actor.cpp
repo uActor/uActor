@@ -39,7 +39,7 @@ bool ManagedWasmActor::hibernate_internal() { return false; }
 ManagedActor::RuntimeReturnValue ManagedWasmActor::fetch_code_and_init() {
   auto result = CodeStore::get_instance().retrieve(
       CodeIdentifier(actor_type(), actor_version(), std::string_view("wasm")));
-  if (not result.has_value()) {
+  if (!result.has_value()) {
     trigger_code_fetch();
     return RuntimeReturnValue::NOT_READY;
   }

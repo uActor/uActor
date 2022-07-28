@@ -237,9 +237,8 @@ class WASMPublication {
 
 wasm3::pointer_t store_publication(wasm3::memory* m,
                                    const uActor::PubSub::Publication& pub);
-// todo Raphael, should we allow non const pointers or should this be a Pointer?
 void get_publication(wasm3::memory* m, const void* addr,
-                      uActor::PubSub::Publication& ret);
+                      uActor::PubSub::Publication* ret);
 
 wasm3::pointer_t uactor_malloc(int32_t id, wasm3::pointer_t size);
 
