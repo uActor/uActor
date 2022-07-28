@@ -33,20 +33,23 @@ test:
 
 build:linux_x64:
   stage: build
+  needs: []
   script: CONAN_USER_HOME=$PWD/conan make
 
 build:esp32:
   stage: build
+  needs: []
   image: espressif/idf:release-v4.2
   script: make build_esp32
   inherit:
     default: false
 
 build:armv7:
+  stage: build
+  needs: []
+  image: debian:bullseye
   before_script:
     - apt-get update -y && apt-get upgrade -y && apt-get install -y git ssh-client build-essential cmake ninja-build python3-pip crossbuild-essential-armhf g++-10-arm-linux-gnueabihf make && pip3 install conan && git submodule sync --recursive && git submodule update --init --recursive
-  stage: build
-  image: debian:bullseye
   script: CONAN_USER_HOME=$PWD/conan make build_armv7
   artifacts:
     paths:
@@ -54,10 +57,11 @@ build:armv7:
     expire_in: 1 week
 
 build:arm64:
+  stage: build
+  needs: []
+  image: debian:bullseye
   before_script:
     - apt-get update -y && apt-get upgrade -y && apt-get install -y git ssh-client build-essential cmake ninja-build python3-pip crossbuild-essential-arm64 g++-10-aarch64-linux-gnu make && pip3 install conan && git submodule sync --recursive && git submodule update --init --recursive
-  stage: build
-  image: debian:bullseye
   script: CONAN_USER_HOME=$PWD/conan make build_arm64
   artifacts:
     paths:
