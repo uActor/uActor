@@ -39,22 +39,11 @@ specification is defined in [two_node_deployment.lua](two_node_deployment.lua).
 Start the nodes:
 ```bash
 ./path_to/uActorBin --node-id=example_node_1 --tcp-port=5555
-./path_to/uActorBin --node-id=example_node_2 --server-node=example_node_1 --tcp-port=5556
+./path_to/uActorBin --node-id=example_node_2 --server-node=example_node_1 --tcp-port=5556 --tcp-static-peer=example_node_1:127.0.0.1:5555
 ```
 
-Inform the node about the location of the other node:
-```bash
-python ./../../tools/tools/peer_announcer.py -p example_node_1 127.0.0.1 5555 -p example_node_2 127.0.0.1  5556
-```
-
-Note: The basic system manages possible client connections using a list of
-server nodes. On the POSIX node, these server nodes can be defined by one or
-more instances of the `--server-node` parameter. This parameter does not create
-connections, it only enables this node to connect the defined node once it
-receives a `peer_announcement` message, which is sent by the `peer_announcer.py`
-script. The topology management can be implemented in different ways and the
-basic static and manual implementation is meant to be a placeholder used during
-the system's evaluation.
+Due to the tcp-static-peer parameter, the second node will connect to the first node after ~30 seconds.
+This will result in a log-entry on both nodes.
 
 Deploy the code:
 ```bash

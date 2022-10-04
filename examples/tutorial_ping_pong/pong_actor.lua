@@ -9,7 +9,7 @@ function receive(message)
     print("Stop pong actor")
   end
   if(message.type == "ping") then
-    print("ping received: "..pub.sequence_number)
+    print("ping received: "..message.sequence_number)
     publish(Publication.new(
       -- Assume sender default subscription is present and sufficient
       -- TODO(raphaelhetzel): Implement generic reply and demonstrate it here
