@@ -3,6 +3,8 @@
 Platform for running actors on various devices (from microcontrollers to edge and cloud nodes based on Linux/Unix) in the network.
 These actors are deployed by multiple tenants and are able to communicate using Content-based Networking.
 
+A basic user-guide can be found in [examples/tutorial_ping_pong](examples/tutorial_ping_pong)
+
 ## Project Structure
 
 ### Code
