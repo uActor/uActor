@@ -108,6 +108,13 @@ else()
   set(CONAN_HOST_SYSTEM_NAME ${CMAKE_HOST_SYSTEM_NAME})
 endif()
 
+if(CMAKE_CXX_COMPILER_ID STREQUAL AppleClang)
+  string(REGEX MATCH "^[0-9]+" MAJOR ${CMAKE_CXX_COMPILER_VERSION})
+  set(CONAN_COMPILER_VERSION ${MAJOR})
+else()
+  set (CONAN_COMPILER_VERSION ${CMAKE_CXX_COMPILER_VERSION})
+endif()
+
 conan_cmake_autodetect(settings)
 conan_cmake_install(PATH_OR_REFERENCE .
                     BUILD missing
@@ -116,10 +123,12 @@ conan_cmake_install(PATH_OR_REFERENCE .
                     SETTINGS_HOST 
                       arch=${CONAN_SYSTEM_PROCESSOR}
                       os=${CONAN_SYSTEM_NAME}
+                      compiler.version=${CONAN_COMPILER_VERSION}
                     SETTINGS_BUILD 
                       ${settings}
                       arch=${CONAN_HOST_SYSTEM_PROCESSOR}
                       os=${CONAN_HOST_SYSTEM_NAME}
+                      compiler.version=${CONAN_COMPILER_VERSION} 
                     ENV CC=${CMAKE_C_COMPILER}
                     ENV CXX=${CMAKE_CXX_COMPILER}
                     ENV CFLAGS=${CMAKE_C_FLAGS}
