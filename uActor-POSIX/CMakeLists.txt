@@ -19,6 +19,25 @@ option(HTTPCLIENT_ACTOR_ENABLE_SSL "Enable openssl for the http client actor" ON
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_BINARY_DIR})
 list(APPEND CMAKE_PREFIX_PATH ${CMAKE_BINARY_DIR})
 
+include(../cmake/sanitizer.cmake)
+include(../cmake/clear_variable.cmake)
+
+get_property(isMultiConfig GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+if (NOT isMultiConfig)
+    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "${ALLOWED_BUILD_TYPES}")
+    if (NOT CMAKE_BUILD_TYPE)
+        set(CMAKE_BUILD_TYPE Debug CACHE STRING "" FORCE)
+    elseif(NOT CMAKE_BUILD_TYPE IN_LIST ALLOWED_BUILD_TYPES)
+        message(FATAL_ERROR "Invalid build type: ${CMAKE_BUILD_TYPE}")
+    endif()
+else ()
+    unset(CMAKE_BUILD_TYPE)
+    foreach(TYPE ${ALLOWED_BUILD_TYPES})
+        if (NOT ${TYPE} IN_LIST CMAKE_CONFIGURATION_TYPES)
+            list(APPEND CMAKE_CONFIGURATION_TYPES ${TYPE})
+        endif()
+    endforeach()
+endif()
 
 file(GLOB_RECURSE SOURCES src/*.cpp)
 file(GLOB_RECURSE HEADERS include/*.hpp)
@@ -111,7 +130,19 @@ endif()
 string(REGEX MATCH "^[0-9]+" MAJOR ${CMAKE_CXX_COMPILER_VERSION})
 set(CONAN_COMPILER_VERSION ${MAJOR})
 
-conan_cmake_autodetect(settings)
+
+set(CONAN_CONFIGS"Release;Debug;RelWithDebInfo")
+if(NOT CMAKE_BUILD_TYPE IN_LIST CONAN_CONFIGS)
+    set(CONAN_BUILD_TYPE "Debug")
+else()
+    set(CONAN_BUILD_TYPE ${CMAKE_BUILD_TYPE})
+endif()
+
+
+clear_variable(DESTINATION CMAKE_BUILD_TYPE BACKUP CMAKE_BUILD_TYPE_BKP REPLACE ${CONAN_BUILD_TYPE})
+conan_cmake_autodetect(settings ARGUMENTS_BUILD_TYPE ${CONAN_BUILD_TYPE})
+restore_variable(DESTINATION CMAKE_BUILD_TYPE BACKUP CMAKE_BUILD_TYPE_BKP)
+
 conan_cmake_install(PATH_OR_REFERENCE .
                     BUILD missing
                     REMOTE conancenter
@@ -140,6 +171,7 @@ set(Boost_USE_STATIC_LIBS ON)
 find_package(Boost COMPONENTS program_options REQUIRED)
 find_package(CURL REQUIRED)
 find_package(fmt REQUIRED)
+
 
 add_executable(uActorBin ${SOURCES} ${HEADERS})
 target_include_directories(uActorBin PUBLIC "include")

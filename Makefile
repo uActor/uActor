@@ -26,6 +26,11 @@ ${LOCAL_BUILD_DIRECTORY}/debug/compile_commands.json:
 	cd ${LOCAL_BUILD_DIRECTORY}/debug && \
 	cmake -G Ninja ${PROJECT_HOME}/uActor-POSIX -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=TRUE
 
+${LOCAL_BUILD_DIRECTORY}/allsan/compile_commands.json:
+	mkdir -p ${LOCAL_BUILD_DIRECTORY}/allsan/ && \
+	cd ${LOCAL_BUILD_DIRECTORY}/allsan && \
+	cmake -G Ninja ${PROJECT_HOME}/uActor-POSIX -DCMAKE_BUILD_TYPE=AllSan -DCMAKE_EXPORT_COMPILE_COMMANDS=TRUE
+
 ${LOCAL_BUILD_DIRECTORY}/release/compile_commands.json:
 	mkdir -p ${LOCAL_BUILD_DIRECTORY}/release && \
 	cd ${LOCAL_BUILD_DIRECTORY}/release && \
@@ -57,6 +62,10 @@ build_local: ${LOCAL_BUILD_DIRECTORY}/release/compile_commands.json
 
 build_local_debug: ${LOCAL_BUILD_DIRECTORY}/debug/compile_commands.json
 	cd ${LOCAL_BUILD_DIRECTORY}/debug && \
+	ninja
+
+build_local_allsan: ${LOCAL_BUILD_DIRECTORY}/allsan/compile_commands.json
+	cd ${LOCAL_BUILD_DIRECTORY}/allsan && \
 	ninja
 
 build_armv7_debug: ${ARMV7_BUILD_DIRECTORY}/debug/compile_commands.json
