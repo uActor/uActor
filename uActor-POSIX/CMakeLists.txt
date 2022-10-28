@@ -64,6 +64,7 @@ conan_cmake_configure(REQUIRES
                 boost/1.75.0
                 libcurl/7.76.0
                 uwebsockets/19.2.0
+                zlib/1.2.13
                 fmt/7.1.3
                       GENERATORS cmake_find_package
                       OPTIONS
