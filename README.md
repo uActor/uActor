@@ -1,3 +1,20 @@
+# μActor Archive
+
+This repository contains an archive of the final state of the μActor Project.
+
+μActor was superseded by [Edgeless](https://github.com/edgeless-project/edgeless) and [Nextless](https://github.com/edgeless-project/nextless).
+
+μActor was presented at the 1st Workshop on Serverless mobile networking for 6G Communications:
+```
+Raphael Hetzel, Teemu Kärkkäinen, and Jörg Ott. 2021. μActor: Stateful Serverless at the Edge. In Proceedings of the 1st Workshop on Serverless mobile networking for 6G Communications (MobileServerless'21). Association for Computing Machinery, New York, NY, USA, 1–6. https://doi.org/10.1145/3469263.3470828
+```
+
+This repository contains the code used in the paper as well as some unpublished additions.
+It depends on some unpublished dependencies for its wasm3 integration and can't be fully cloned or built as is.
+It has not been built since 2022 and is only meant as an archive/starting point for future projects.
+
+The old README can be found below.
+
 # μActor: Stateful Serverless at the Edge
 
 Platform for running actors on various devices (from microcontrollers to edge and cloud nodes based on Linux/Unix) in the network.
@@ -117,4 +134,4 @@ uActor is released under the [MIT license](LICENSE.txt). Please refer to CONTRIB
 
 uActor was originally developed and licensed under the MIT license by Raphael Hetzel.
 Parts of the software where developed while being employed at the Technical University of Munich,
-which now holds a copyright on this project. 
+which now holds a copyright on this project.

@@ -56,6 +56,12 @@ https://curl.se/libcurl/
 uWebSockets:
 https://github.com/uNetworking/uWebSockets
 
+V8:
+https://v8.dev/
+
+wasm3:
+https://github.com/wasm3/wasm3
+
 :Tooling:
 
 Antlr4 (antlr4-python3-runtime):
